@@ -26,7 +26,7 @@ import {
     XClose, Check, CreditCard02, CreditCard01, BankNote01, Package,
     Lightbulb02, CheckCircle, Gift01, CreditCardCheck, Wallet01, User01, Heart,
 } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, to12h } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { PAYMENT_METHODS, type Customer, type PaymentProvider, type PurchaseLineItem } from "@/lib/store";
@@ -452,8 +452,7 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
 function sessionWhenLabel(a: NonNullable<PurchaseLineItem["appointment"]>): string {
     const d = new Date(`${a.dateISO}T00:00:00`);
     const date = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-    const [h, m] = a.startTime.split(":").map(Number);
-    const time = `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+    const time = to12h(a.startTime);
     const who = a.openSession ? null : (a.flexible ? "Flexible" : (a.instructorName ?? "Instructor"));
     return who ? `${date} · ${time} · ${who}` : `${date} · ${time}`;
 }
@@ -877,7 +876,8 @@ export interface ReceiptStepProps {
 export function ReceiptStep(p: ReceiptStepProps) {
     const dateLabel = useMemo(() => {
         const d = new Date();
-        return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+        return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })
+            .replace(/:00(?=\s?[AP]M)/i, "").replace(/:(\d{2})/, ".$1");
     }, []);
 
     return (

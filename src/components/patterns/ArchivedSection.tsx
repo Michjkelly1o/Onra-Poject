@@ -20,12 +20,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { XClose, Archive } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { setArchivedDock } from "./archivedModalDock";
 
 export function ArchivedSection({
     entitySingular,
     count,
     children,
     pagination,
+    modalWidthClass = "w-[1040px]",
 }: {
     /** Singular entity noun for the label — "customer" → "Archived customer". */
     entitySingular: string;
@@ -35,12 +37,19 @@ export function ArchivedSection({
     children: ReactNode;
     /** Optional pinned footer (table modules pass <Pagination>). */
     pagination?: ReactNode;
+    /** Modal container width class. Defaults to `w-[1040px]`; pass a wider
+     *  class (e.g. `w-[1160px]`) when the archived table needs more room so
+     *  its action column stays visible without horizontal scrolling. */
+    modalWidthClass?: string;
     /** Accepted for call-site compatibility (the modal owns layout now). */
     defaultExpanded?: boolean;
     fill?: boolean;
     bordered?: boolean;
 }) {
     const [open, setOpen] = useState(false);
+    // DOM node inside the modal that a page's <BulkBarDock> portals into while
+    // the modal is open, so bulk actions dock inside instead of behind it.
+    const [dockEl, setDockEl] = useState<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (!open) return;
@@ -48,6 +57,13 @@ export function ArchivedSection({
         document.addEventListener("keydown", onKey);
         return () => document.removeEventListener("keydown", onKey);
     }, [open]);
+
+    // Publish open-state + dock target so the module's bulk bar re-homes into
+    // the modal. Cleared on close / unmount.
+    useEffect(() => {
+        setArchivedDock({ open: open && !!dockEl, target: open ? dockEl : null });
+        return () => setArchivedDock({ open: false, target: null });
+    }, [open, dockEl]);
 
     if (count === 0) return null;
 
@@ -68,7 +84,8 @@ export function ArchivedSection({
                 <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-[#0c111d]/40" onClick={() => setOpen(false)} />
                     <div className={cn(
-                        "relative bg-white rounded-[16px] w-[1040px] max-w-full max-h-[85vh]",
+                        "relative bg-white rounded-[16px] max-w-full max-h-[85vh]",
+                        modalWidthClass,
                         "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
                         "flex flex-col overflow-hidden",
                     )}>
@@ -93,6 +110,9 @@ export function ArchivedSection({
                                 {pagination}
                             </div>
                         )}
+                        {/* Dock target — the page's bulk-action bar portals here
+                            (pinned to the modal bottom) while the modal is open. */}
+                        <div ref={setDockEl} />
                     </div>
                 </div>,
                 document.body,

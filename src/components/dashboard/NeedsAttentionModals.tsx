@@ -303,7 +303,7 @@ export function fmtDateTime(iso: string | undefined): string {
     const m = String(d.getMinutes()).padStart(2, "0");
     const period = h >= 12 ? "PM" : "AM";
     const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${date}, ${hh}:${m} ${period}`;
+    return `${date}, ${m === "00" ? `${hh}` : `${hh}.${m}`} ${period}`;
 }
 
 // ─── 1. Renewal due modal ──────────────────────────────────────────────────
@@ -1058,7 +1058,7 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
             if (Number.isNaN(h)) return hhmm;
             const period = h >= 12 ? "PM" : "AM";
             const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-            return `${String(hh).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+            return m === 0 ? `${hh} ${period}` : `${hh}.${String(m).padStart(2, "0")} ${period}`;
         }
         return `${fmt(start)} - ${fmt(end)}`;
     }
@@ -1094,8 +1094,8 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
                             <th className={TH}>
                                 <SortableHeader sortKey="location" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Location</SortableHeader>
                             </th>
-                            <th className={TH}>
-                                <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
+                            <th className={cn(TH, "!text-right")}>
+                                <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Attendance</SortableHeader>
                             </th>
                             <th className={TH}>
                                 <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
@@ -1137,7 +1137,7 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
                                         </div>
                                     </td>
                                     <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{s.room ?? "—"}</td>
-                                    <td className={TD}>
+                                    <td className={cn(TD, "text-right")}>
                                         <div className="flex items-center gap-2 min-w-[100px]">
                                             <div className="flex-1 h-1.5 bg-[var(--colors-bg-quaternary)] rounded-full overflow-hidden">
                                                 <div className="h-full bg-[var(--colors-secondary-400)] transition-all" style={{ width: `${fillPct}%` }} />
@@ -1664,7 +1664,7 @@ export function WaitlistConfirmModal({ open, onClose, branchIds }: WaitlistConfi
                         <tr>
                             <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
                             <th className={TH}><SortableHeader sortKey="klass" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class</SortableHeader></th>
-                            <th className={TH}><SortableHeader sortKey="position" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Waitlist position</SortableHeader></th>
+                            <th className={cn(TH, "!text-right")}><SortableHeader sortKey="position" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Waitlist position</SortableHeader></th>
                             <th className={cn(TH, "w-14")} />
                         </tr>
                     </thead>
@@ -1678,7 +1678,7 @@ export function WaitlistConfirmModal({ open, onClose, branchIds }: WaitlistConfi
                                     <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{r.sched.name}</p>
                                     <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{r.sched.displayTime} · {r.sched.booked}/{r.sched.capacity} booked</p>
                                 </td>
-                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>#{r.booking.waitlistPosition ?? 1}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>#{r.booking.waitlistPosition ?? 1}</td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         items={[
@@ -1844,8 +1844,8 @@ export function TrialsEndingModal({ open, onClose, branchIds, forwardRangeDays }
                             <th className={TH}>
                                 <SortableHeader sortKey="trial" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Trial package</SortableHeader>
                             </th>
-                            <th className={TH}>
-                                <SortableHeader sortKey="credits" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Credits left</SortableHeader>
+                            <th className={cn(TH, "!text-right")}>
+                                <SortableHeader sortKey="credits" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Credits left</SortableHeader>
                             </th>
                             <th className={TH}>
                                 <SortableHeader sortKey="expires" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Expires</SortableHeader>
@@ -1873,7 +1873,7 @@ export function TrialsEndingModal({ open, onClose, branchIds, forwardRangeDays }
                                     className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors cursor-pointer">
                                     <td className={TD}><CustomerCell c={r.customer} /></td>
                                     <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{r.plan.name}</td>
-                                    <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{creditsLabel}</td>
+                                    <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>{creditsLabel}</td>
                                     <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}
                                         title={fmtDate(r.expiryDate)}>
                                         {expiresLabel}

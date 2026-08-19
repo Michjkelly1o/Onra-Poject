@@ -49,10 +49,11 @@ function fmtDateTime(iso: string): string {
     const m = String(d.getUTCMonth() + 1).padStart(2, "0");
     const day = String(d.getUTCDate()).padStart(2, "0");
     let h = d.getUTCHours();
-    const min = String(d.getUTCMinutes()).padStart(2, "0");
+    const minutes = d.getUTCMinutes();
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
-    return `${y}-${m}-${day}, ${h}:${min} ${ampm}`;
+    const time = minutes === 0 ? `${h} ${ampm}` : `${h}.${String(minutes).padStart(2, "0")} ${ampm}`;
+    return `${y}-${m}-${day}, ${time}`;
 }
 
 /** "Olivia Rhye" → "OR". */
@@ -360,8 +361,8 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                                     <th className={cn(TH, "w-[320px]")}>
                                         <SortableHeader sortKey="referred" currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Referred customer</SortableHeader>
                                     </th>
-                                    <th className={TH}>
-                                        <SortableHeader sortKey="benefit"  currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Benefit</SortableHeader>
+                                    <th className={cn(TH, "!text-right")}>
+                                        <SortableHeader sortKey="benefit"  currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort} align="right">Benefit</SortableHeader>
                                     </th>
                                     <th className={cn(TH, "w-[200px]")}>
                                         <SortableHeader sortKey="date"     currentSort={referralSortKey} dir={referralSortDir} onSort={toggleReferralSort}>Date referred</SortableHeader>
@@ -383,8 +384,8 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className={cn(TD, "text-[var(--colors-text-quaternary)]")}>
-                                            <div className="flex flex-col gap-0.5">
+                                        <td className={cn(TD, "text-[var(--colors-text-quaternary)]", "text-right")}>
+                                            <div className="flex flex-col gap-0.5 items-end">
                                                 {/* v56 — type-aware Benefit cell. Class-credit rows
                                                     read "N credit(s)"; account-credit rows read
                                                     "AED N". Discount rows fall back to the legacy

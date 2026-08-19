@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { BulkBarDock } from "@/components/patterns/BulkBarDock";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import {
     useRetailCategoriesController,
@@ -225,7 +226,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
 }) {
     if (count === 0) return null;
     return (
-        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+        <BulkBarDock>
             <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button
                     type="button"
@@ -282,7 +283,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                     )}
                 </div>
             </div>
-        </div>
+        </BulkBarDock>
     );
 }
 
@@ -431,11 +432,11 @@ function RetailTable({
                         <th className={cn(TH, "w-[160px]")}>
                             <SortableHeader sortKey="category" currentSort={sortKey} dir={sortDir} onSort={onSort}>Retail category</SortableHeader>
                         </th>
-                        <th className={cn(TH, "w-[140px]")}>
-                            <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort}>Price</SortableHeader>
+                        <th className={cn(TH, "w-[140px]", "!text-right")}>
+                            <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort} align="right">Price</SortableHeader>
                         </th>
-                        <th className={cn(TH, "w-[120px]")}>
-                            <SortableHeader sortKey="stock" currentSort={sortKey} dir={sortDir} onSort={onSort}>Stock</SortableHeader>
+                        <th className={cn(TH, "w-[120px]", "!text-right")}>
+                            <SortableHeader sortKey="stock" currentSort={sortKey} dir={sortDir} onSort={onSort} align="right">Stock</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[120px]")}>
                             <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
@@ -486,8 +487,8 @@ function RetailTable({
                                     </td>
                                     <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{r.sku}</td>
                                     <td className={cn(TD, "whitespace-nowrap")}>{r.categoryLabel}</td>
-                                    <td className={cn(TD, "whitespace-nowrap")}>{formatAed(r.priceAed)}</td>
-                                    <td className={cn(TD, "whitespace-nowrap")}>
+                                    <td className={cn(TD, "whitespace-nowrap text-right")}>{formatAed(r.priceAed)}</td>
+                                    <td className={cn(TD, "whitespace-nowrap text-right")}>
                                         <span className={stockTone}>{stockLabel}</span>
                                     </td>
                                     <td className={TD}>
@@ -514,8 +515,8 @@ function RetailTable({
                                                     <thead>
                                                         <tr>
                                                             <th className={cn(TH, "min-w-[220px]")}>Branch</th>
-                                                            <th className={cn(TH, "w-[160px]")}>Stock on hand</th>
-                                                            <th className={cn(TH, "w-[120px]")}>Sold</th>
+                                                            <th className={cn(TH, "w-[160px]", "!text-right")}>Stock on hand</th>
+                                                            <th className={cn(TH, "w-[120px]", "!text-right")}>Sold</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -525,7 +526,7 @@ function RetailTable({
                                                             return (
                                                                 <tr key={b.branchId}>
                                                                     <td className={TD}>{b.branchName}</td>
-                                                                    <td className={cn(TD, "whitespace-nowrap")}>
+                                                                    <td className={cn(TD, "whitespace-nowrap text-right")}>
                                                                         <span className={cn(
                                                                             isOut && "text-[#b42318] font-medium",
                                                                             isLow && "text-[#dc6803] font-medium",
@@ -533,7 +534,7 @@ function RetailTable({
                                                                             {isOut ? "Out of stock" : `${b.unitsOnHand} units`}
                                                                         </span>
                                                                     </td>
-                                                                    <td className={cn(TD, "whitespace-nowrap tabular-nums")}>
+                                                                    <td className={cn(TD, "whitespace-nowrap tabular-nums text-right")}>
                                                                         {b.sold > 0 ? `${b.sold} units` : "—"}
                                                                     </td>
                                                                 </tr>

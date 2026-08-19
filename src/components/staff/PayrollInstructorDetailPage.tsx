@@ -1223,8 +1223,8 @@ export default function PayrollInstructorDetailPage({
                                                     <th className={cn(TH, "w-[130px]")}>
                                                         <SortableHeader sortKey="type"       currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Type</SortableHeader>
                                                     </th>
-                                                    <th className={cn(TH, "w-[120px]")}>
-                                                        <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
+                                                    <th className={cn(TH, "w-[120px]", "!text-right")}>
+                                                        <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Attendance</SortableHeader>
                                                     </th>
                                                     <th className={cn(TH, "w-[160px]")}>
                                                         <SortableHeader sortKey="rating"     currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Rating</SortableHeader>
@@ -1235,8 +1235,8 @@ export default function PayrollInstructorDetailPage({
                                                     <th className={cn(TH, "w-[140px]")}>
                                                         <SortableHeader sortKey="payRate"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pay rate</SortableHeader>
                                                     </th>
-                                                    <th className={cn(TH, "w-[140px]")}>
-                                                        <SortableHeader sortKey="earnings"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Earnings</SortableHeader>
+                                                    <th className={cn(TH, "w-[140px]", "!text-right")}>
+                                                        <SortableHeader sortKey="earnings"   currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Earnings</SortableHeader>
                                                     </th>
                                                     <th className={cn(TH, "w-[52px]")} />
                                                 </tr>
@@ -1255,7 +1255,7 @@ export default function PayrollInstructorDetailPage({
                                                             </div>
                                                         </td>
                                                         <td className={TD}><SessionTypeTag type={r.type} /></td>
-                                                        <td className={TD}>{r.attendees}/{r.capacity}</td>
+                                                        <td className={cn(TD, "text-right")}>{r.attendees}/{r.capacity}</td>
                                                         <td className={TD}>
                                                             {r.ratingCount > 0 ? (
                                                                 <div className="flex flex-col">
@@ -1275,7 +1275,7 @@ export default function PayrollInstructorDetailPage({
                                                         </td>
                                                         <td className={TD}><ClassStatusBadge status={r.status} /></td>
                                                         <td className={TD}>{r.payRateName}</td>
-                                                        <td className={TD}>
+                                                        <td className={cn(TD, "text-right")}>
                                                             {/* No per-booking rate (that track is off) OR cancelled
                                                                 → AED 0. Otherwise the calculated per-booking earning;
                                                                 a not-yet-completed booking shows "—" (pending). */}

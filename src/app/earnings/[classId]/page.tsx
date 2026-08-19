@@ -143,7 +143,7 @@ function fmtBookingTime(iso: string): string {
     const mm = String(d.getMinutes()).padStart(2, "0");
     const period = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
-    return `${y}-${m}-${day}, ${String(h).padStart(2, "0")}:${mm} ${period}`;
+    return `${y}-${m}-${day}, ${mm === "00" ? `${h}` : `${h}.${mm}`} ${period}`;
 }
 
 function fmtFullDate(iso: string): string {

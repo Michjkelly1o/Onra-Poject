@@ -55,6 +55,7 @@ import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { BulkBarDock } from "@/components/patterns/BulkBarDock";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -273,7 +274,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
 }) {
     if (count === 0) return null;
     return (
-        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+        <BulkBarDock>
             <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
@@ -315,7 +316,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                     )}
                 </div>
             </div>
-        </div>
+        </BulkBarDock>
     );
 }
 
@@ -407,8 +408,8 @@ function TaxTable({
                         <th className={cn(TH, "w-[140px]")}>
                             <SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Type</SortableHeader>
                         </th>
-                        <th className={cn(TH, "w-[140px]")}>
-                            <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Tax rate</SortableHeader>
+                        <th className={cn(TH, "w-[140px]", "!text-right")}>
+                            <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={onSort} align="right">Tax rate</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[220px]")}>
                             <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={onSort}>Effective date</SortableHeader>
@@ -440,7 +441,7 @@ function TaxTable({
                                     </div>
                                 </td>
                                 <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{TYPE_LABEL[r.type]}</td>
-                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>
+                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]", "text-right")}>
                                     {r.type === "exempt" ? "—" : formatPct(r.ratePercentage)}
                                 </td>
                                 <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>
@@ -866,23 +867,23 @@ export default function TaxPage() {
                             <thead>
                                 <tr className="border-b border-[var(--colors-border-secondary)]">
                                     <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">Tax type</th>
-                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">Item subtotal</th>
-                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">Tax due</th>
-                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">Item total</th>
+                                    <th className="px-6 py-3 text-right text-[12px] font-medium text-[var(--colors-text-tertiary)]">Item subtotal</th>
+                                    <th className="px-6 py-3 text-right text-[12px] font-medium text-[var(--colors-text-tertiary)]">Tax due</th>
+                                    <th className="px-6 py-3 text-right text-[12px] font-medium text-[var(--colors-text-tertiary)]">Item total</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr className="border-b border-[var(--colors-border-secondary)]">
                                     <td className="px-6 py-4 text-[14px] font-medium text-[var(--colors-text-primary)]">5% Exclusive</td>
-                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 500</td>
-                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 25</td>
-                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 525 (AED 500 + AED 25)</td>
+                                    <td className="px-6 py-4 text-right text-[14px] text-[var(--colors-text-quaternary)]">AED 500</td>
+                                    <td className="px-6 py-4 text-right text-[14px] text-[var(--colors-text-quaternary)]">AED 25</td>
+                                    <td className="px-6 py-4 text-right text-[14px] text-[var(--colors-text-quaternary)]">AED 525 (AED 500 + AED 25)</td>
                                 </tr>
                                 <tr>
                                     <td className="px-6 py-4 text-[14px] font-medium text-[var(--colors-text-primary)]">5% Inclusive</td>
-                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 500</td>
-                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 25 (already included in total)</td>
-                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 500 (AED 475 + AED 25)</td>
+                                    <td className="px-6 py-4 text-right text-[14px] text-[var(--colors-text-quaternary)]">AED 500</td>
+                                    <td className="px-6 py-4 text-right text-[14px] text-[var(--colors-text-quaternary)]">AED 25 (already included in total)</td>
+                                    <td className="px-6 py-4 text-right text-[14px] text-[var(--colors-text-quaternary)]">AED 500 (AED 475 + AED 25)</td>
                                 </tr>
                             </tbody>
                         </table>

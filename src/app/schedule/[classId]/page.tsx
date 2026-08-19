@@ -55,7 +55,7 @@ function fmtBookingTime(iso: string): string {
     const min = String(d.getMinutes()).padStart(2, "0");
     const ap = h >= 12 ? "PM" : "AM";
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${y}-${m}-${day}, ${String(h12).padStart(2, "0")}:${min} ${ap}`;
+    return `${y}-${m}-${day}, ${min === "00" ? `${h12}` : `${h12}.${min}`} ${ap}`;
 }
 
 /** Spot label derived from a fixed 4-column grid (A1..D8). System-assigned by

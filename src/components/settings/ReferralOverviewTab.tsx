@@ -269,8 +269,8 @@ export function ReferralOverviewTab({ period }: { period: DateFilter }) {
                                     <th className={cn(TH, "w-[48px] text-center")}>#</th>
                                     <th className={TH}><SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={toggle}>Customer</SortableHeader></th>
                                     <th className={TH}>Branch</th>
-                                    <th className={TH}><SortableHeader sortKey="referrals" currentSort={sortKey} dir={sortDir} onSort={toggle}>Referrals</SortableHeader></th>
-                                    <th className={TH}><SortableHeader sortKey="credits"   currentSort={sortKey} dir={sortDir} onSort={toggle}>Credits earned</SortableHeader></th>
+                                    <th className={cn(TH, "!text-right")}><SortableHeader sortKey="referrals" currentSort={sortKey} dir={sortDir} onSort={toggle} align="right">Referrals</SortableHeader></th>
+                                    <th className={cn(TH, "!text-right")}><SortableHeader sortKey="credits"   currentSort={sortKey} dir={sortDir} onSort={toggle} align="right">Credits earned</SortableHeader></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -288,8 +288,8 @@ export function ReferralOverviewTab({ period }: { period: DateFilter }) {
                                             </div>
                                         </td>
                                         <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{r.branchName}</td>
-                                        <td className={cn(TD, "text-[14px] text-[var(--colors-text-primary)]")}>{r.referrals}</td>
-                                        <td className={cn(TD, "text-[14px] text-[var(--colors-text-primary)]")}>{r.credits} {r.credits === 1 ? "credit" : "credits"}</td>
+                                        <td className={cn(TD, "text-[14px] text-[var(--colors-text-primary)]", "text-right")}>{r.referrals}</td>
+                                        <td className={cn(TD, "text-[14px] text-[var(--colors-text-primary)]", "text-right")}>{r.credits} {r.credits === 1 ? "credit" : "credits"}</td>
                                     </tr>
                                 ))}
                             </tbody>

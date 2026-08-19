@@ -13,13 +13,13 @@ export function formatShortDate(dateISO: string): string {
     });
 }
 
-/** "09:00" → "9:00 AM", "17:30" → "5:30 PM". */
+/** "09:00" → "9 AM", "17:30" → "5.30 PM" (Onra convention: dot minutes, drop :00). */
 export function formatTime12(hhmm: string): string {
     const [hRaw, mRaw] = hhmm.split(":");
     let h = Number.parseInt(hRaw ?? "0", 10);
-    const m = (mRaw ?? "00").padStart(2, "0");
+    const mm = Number.parseInt(mRaw ?? "0", 10) || 0;
     const meridiem = h >= 12 ? "PM" : "AM";
     h %= 12;
     if (h === 0) h = 12;
-    return `${h}:${m} ${meridiem}`;
+    return mm === 0 ? `${h} ${meridiem}` : `${h}.${String(mm).padStart(2, "0")} ${meridiem}`;
 }

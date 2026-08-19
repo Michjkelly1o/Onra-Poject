@@ -147,6 +147,25 @@ export function NumberWithUnitInput({
                     disabled ? "text-[var(--colors-text-quaternary)] cursor-not-allowed" : "text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)]",
                 )}
             />
+            {/* Up/down stepper — matches the currency / numeric fields. */}
+            <div className="shrink-0 flex flex-col justify-center border-l border-[var(--colors-border-primary)]">
+                <button
+                    type="button" tabIndex={-1} aria-label="Increase"
+                    disabled={disabled || (max !== undefined && value >= max)}
+                    onClick={() => onValueChange(max !== undefined ? Math.min(max, value + 1) : value + 1)}
+                    className="flex h-5 w-7 items-center justify-center text-[var(--colors-text-quaternary)] transition-colors hover:text-[var(--colors-text-secondary)] disabled:opacity-30 disabled:hover:text-[var(--colors-text-quaternary)]"
+                >
+                    <ChevronUp className="w-4 h-4" />
+                </button>
+                <button
+                    type="button" tabIndex={-1} aria-label="Decrease"
+                    disabled={disabled || value <= min}
+                    onClick={() => onValueChange(Math.max(min, value - 1))}
+                    className="flex h-5 w-7 items-center justify-center text-[var(--colors-text-quaternary)] transition-colors hover:text-[var(--colors-text-secondary)] disabled:opacity-30 disabled:hover:text-[var(--colors-text-quaternary)]"
+                >
+                    <ChevronDown className="w-4 h-4" />
+                </button>
+            </div>
             <button
                 ref={triggerRef}
                 type="button"

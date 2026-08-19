@@ -112,7 +112,7 @@ function fmtDateTime(iso?: string): string {
     const min = String(d.getUTCMinutes()).padStart(2, "0");
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
-    return `${y}-${m}-${day}, ${h}:${min} ${ampm}`;
+    return `${y}-${m}-${day}, ${min === "00" ? `${h}` : `${h}.${min}`} ${ampm}`;
 }
 
 /** Whole days between two ISO dates. */
@@ -681,7 +681,7 @@ const CUSTOMER_ACTION_CFG: Record<CustomerAction, {
 }> = {
     archive: {
         title: "Archive this customer?",
-        description: n => `${n} will be hidden from the customer list, counts, search, and campaigns — reachable only via “View archived”. Access is unchanged and all history is preserved; they return automatically if they book from their own account, or you can recover them anytime.`,
+        description: () => `This customer will be hidden from lists, counts, and search. You can unarchive anytime.`,
         confirmLabel: "Archive", destructive: false,
         IconComp: Archive, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
@@ -710,7 +710,7 @@ function CustomerStatusModal({ action, customerName, onClose, onConfirm }: {
                         <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{cfg.title}</h3>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{action === "archive" ? `Archive ${customerName}?` : cfg.title}</h3>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{cfg.description(customerName)}</p>
                     </div>
                 </div>
@@ -1463,8 +1463,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                         <th className={cn(TH, "w-[160px]")}>
                                                             <SortableHeader sortKey="planType" currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Plan type</SortableHeader>
                                                         </th>
-                                                        <th className={cn(TH, "w-[200px]")}>
-                                                            <SortableHeader sortKey="creditLeft" currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Credit left</SortableHeader>
+                                                        <th className={cn(TH, "w-[200px]", "!text-right")}>
+                                                            <SortableHeader sortKey="creditLeft" currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort} align="right">Credit left</SortableHeader>
                                                         </th>
                                                         <th className={cn(TH, "w-[120px]")}>
                                                             <SortableHeader sortKey="status"   currentSort={planSortKey} dir={planSortDir} onSort={togglePlanSort}>Status</SortableHeader>
@@ -1511,7 +1511,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                         return (
                                                                             <div className="flex items-center gap-3 min-w-0">
                                                                                 <div className={cn("flex-1 h-1.5 rounded-full", barFill)} />
-                                                                                <span className={cn("w-[72px] text-left shrink-0 text-[14px] font-medium whitespace-nowrap", creditTextCls)}>Unlimited</span>
+                                                                                <span className={cn("w-[72px] text-right shrink-0 text-[14px] font-medium whitespace-nowrap", creditTextCls)}>Unlimited</span>
                                                                             </div>
                                                                         );
                                                                     }
@@ -1521,7 +1521,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                             <div className="flex-1 h-1.5 rounded-full bg-[var(--colors-bg-tertiary)] overflow-hidden">
                                                                                 <div className={cn("h-full rounded-full", barFill)} style={{ width: `${pct}%` }} />
                                                                             </div>
-                                                                            <span className={cn("w-[72px] text-left shrink-0 text-[14px] font-medium whitespace-nowrap", creditTextCls)}>{bal.left}/{bal.total}</span>
+                                                                            <span className={cn("w-[72px] text-right shrink-0 text-[14px] font-medium whitespace-nowrap", creditTextCls)}>{bal.left}/{bal.total}</span>
                                                                         </div>
                                                                     );
                                                                 })()}

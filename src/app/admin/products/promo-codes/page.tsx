@@ -115,7 +115,7 @@ function formatValidUntil(iso?: string): string {
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
     const mm = String(d.getUTCMinutes()).padStart(2, "0");
-    return `${dd}/${mo}/${d.getUTCFullYear()}, ${h}:${mm} ${ampm}`;
+    return `${dd}/${mo}/${d.getUTCFullYear()}, ${mm === "00" ? `${h}` : `${h}.${mm}`} ${ampm}`;
 }
 
 const ACTION_LABEL: Record<NonNullable<PromoCode["action"]>, string> = {

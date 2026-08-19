@@ -58,5 +58,7 @@ export function formatUtcInBranchTz(
     if (!iso) return "—";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleString("en-US", { ...opts, timeZone: branchTimezone(branch) });
+    // Onra convention (client 2026-08): drop ":00" on whole hours, dot minutes.
+    return d.toLocaleString("en-US", { ...opts, timeZone: branchTimezone(branch) })
+        .replace(/:00(?=\s?[AP]M)/i, "").replace(/:(\d{2})/, ".$1");
 }

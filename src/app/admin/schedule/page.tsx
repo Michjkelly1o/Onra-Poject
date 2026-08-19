@@ -35,6 +35,7 @@ import { Toast } from "@/components/ui/Toast";
 import { useAppStore, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type SessionType, type Shift } from "@/lib/store";
 import { shortCustomerName, cancelNotifyLine, cancelTitle, CANCEL_KEEP_LABEL, CANCEL_CONFIRM_LABEL } from "@/lib/cancel-copy";
 import { decideAssign } from "@/lib/staff/shift-assign-logic";
+import { currentWeekMondayISO } from "@/lib/week";
 import { scheduleExportData } from "@/lib/export/specs/schedule";
 import { branchTzLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill, SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
@@ -1393,7 +1394,9 @@ function SchedulePage() {
     function beginAssign(staffId: string, shiftId: string) {
         const st = staff.find(s => s.id === staffId);
         if (!st) return;
-        const decision = decideAssign(shiftId, staffId, shifts, shiftAssignments);
+        // Fresh (not the module-load constant) so the live-assignment cutoff stays
+        // correct if the tab spans a week boundary.
+        const decision = decideAssign(shiftId, staffId, shifts, shiftAssignments, currentWeekMondayISO());
         if (!decision) return;
         if (decision.kind === "duplicate") {
             showToast("Shift already assigned", `${st.fullName} is already on ${decision.shift.name}.`, "warning", "alert");

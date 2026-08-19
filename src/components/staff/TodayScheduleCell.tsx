@@ -35,10 +35,7 @@ function toHours(t: string): number {
 
 /** "07-12 AM" — hour-only, single meridiem (from the shift start). */
 function shiftTimeCompact(start: string, end: string): string {
-    const h = (t: string) => {
-        const n = parseInt(t.split(":")[0] || "0", 10);
-        return String(n % 12 || 12).padStart(2, "0");
-    };
+    const h = (t: string) => String(parseInt(t.split(":")[0] || "0", 10) % 12 || 12);
     const mer = parseInt(start.split(":")[0] || "0", 10) < 12 ? "AM" : "PM";
     return `${h(start)}-${h(end)} ${mer}`;
 }

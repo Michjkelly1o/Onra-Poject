@@ -101,7 +101,7 @@ export function ConfirmModal({
                 <>
                     <div className="h-5 shrink-0" />
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
-                    {extraContent}
+                    <div className="px-6 pt-5">{extraContent}</div>
                 </>
             )}
 

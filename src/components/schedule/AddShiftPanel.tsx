@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type Shift } from "@/lib/store";
+import { currentWeekMondayISO } from "@/lib/week";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
 import { ShiftPeriodModal } from "@/components/schedule/ShiftPeriodModal";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
@@ -43,7 +44,8 @@ export function shiftTime12(t: string): string {
     const [h, m] = t.split(":").map(Number);
     const period = h >= 12 ? "PM" : "AM";
     const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    return mm === 0 ? `${h12} ${period}` : `${h12}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 /** Monday-of-week ISO for a "YYYY-MM-DD" date. */
@@ -100,7 +102,7 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
         ? new Set(shiftAssignments.filter(a => a.staff_id === assignToStaff.id).map(a => a.shift_id))
         : null;
     const list = shifts.filter(s =>
-        s.status === "active" && (!heldByTarget || !heldByTarget.has(s.id)),
+        s.status === "active" && !s.deleted_at && (!heldByTarget || !heldByTarget.has(s.id)),
     );
     const weekStart = mondayISOof(dateISO);
 
@@ -115,7 +117,7 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
     // Shared 4-case flow (dedup → conflict-replace → single-immediate / recurring
     // period) so the panel matches the Day view + Staff schedule exactly.
     function requestAssign(shift: Shift, staffId: string, staffName: string) {
-        const decision = decideAssign(shift.id, staffId, allShifts, shiftAssignments);
+        const decision = decideAssign(shift.id, staffId, allShifts, shiftAssignments, currentWeekMondayISO());
         if (!decision) return;
         if (decision.kind === "duplicate") {
             showToast("Shift already assigned", `${staffName} is already on ${decision.shift.name}.`, "warning", "alert");

@@ -117,7 +117,7 @@ function to12h(hhmm: string): string {
     const [h, m] = hhmm.split(":").map(Number);
     const ap = h >= 12 ? "PM" : "AM";
     const h12 = h % 12 || 12;
-    return `${h12}:${String(m ?? 0).padStart(2, "0")} ${ap}`;
+    return (m ?? 0) === 0 ? `${h12} ${ap}` : `${h12}.${String(m ?? 0).padStart(2, "0")} ${ap}`;
 }
 function timeOfDay(startTime: string): TimeOfDay {
     const h = Number(startTime.split(":")[0]);

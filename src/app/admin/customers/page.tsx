@@ -46,6 +46,7 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { BulkBarDock } from "@/components/patterns/BulkBarDock";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
@@ -139,7 +140,9 @@ const MODAL_CONFIG: Record<RowActionKind, {
         IconComp: Archive,
         titleSingle: "Archive this customer?",
         titleBulk: n => `Archive ${n} customers?`,
-        description: subject => <>{subject} will be hidden from the customer list, counts, search, and campaigns — reachable only via “View archived”. Access is unchanged and all history is preserved; they return automatically if they book from their own account, or you can recover them anytime.</>,
+        description: (_subject, n) => n > 1
+            ? <>These customers will be hidden from lists, counts, and search. You can unarchive anytime.</>
+            : <>This customer will be hidden from lists, counts, and search. You can unarchive anytime.</>,
         confirmLabel: "Archive",
     },
     recover: {
@@ -340,7 +343,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
 }) {
     if (count === 0) return null;
     return (
-        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+        <BulkBarDock>
             <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
@@ -368,7 +371,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
                     )}
                 </div>
             </div>
-        </div>
+        </BulkBarDock>
     );
 }
 
@@ -597,6 +600,9 @@ export default function CustomersPage() {
             ...appointmentBookings.map(b => b.customerId),
             ...customerTransactions.map(t => t.customerId),
         ]);
+        // A customer who ever held a plan (active OR expired/cancelled) carries
+        // history too — counted alongside bookings / transactions.
+        const customerPlanCustomerIds = new Set<string>(customerPlans.map(p => p.customerId));
         const liveState = { customers, classBookings, customerPlans, customerTransactions };
         // Newest customers first so a just-created customer lands at the top.
         return [...customers]
@@ -607,6 +613,7 @@ export default function CustomersPage() {
                 // Falls back to the stored tag only if compute returns
                 // nothing usable (defensive; shouldn't happen).
                 const lc = computeLifecycleTag(c.id, liveState);
+                const tag = lc?.tag ?? c.lifecycleTag ?? "Lead";
                 return {
                     id: c.id,
                     name: `${c.firstName} ${c.lastName}`.trim(),
@@ -620,8 +627,15 @@ export default function CustomersPage() {
                     lastVisitISO: c.lastVisitISO,
                     planExpiryISO: c.planExpiryISO,
                     branchId: c.branchId,
-                    hasHistory: historyCustomerIds.has(c.id),
-                    lifecycleTag: lc?.tag ?? c.lifecycleTag ?? "Lead",
+                    // History-bearing = any real record on file: a class /
+                    // appointment booking, a purchase/refund transaction, or a
+                    // plan ever held (active OR expired). A customer with ZERO
+                    // such records is hard-deletable regardless of the computed
+                    // lifecycle tag (CLAUDE.md archive rule: Delete only when 0
+                    // history). Drives both the row Delete and the bulk-bar Delete.
+                    hasHistory: historyCustomerIds.has(c.id)
+                        || customerPlanCustomerIds.has(c.id),
+                    lifecycleTag: tag,
                     isVip: c.isVip,
                     assignedTo: c.assignedTo,
                 };
@@ -1011,6 +1025,7 @@ export default function CustomersPage() {
             <ArchivedSection
                 entitySingular="customer"
                 count={archivedRows.length}
+                modalWidthClass="w-[1160px]"
                 pagination={
                     <Pagination
                         page={clampedArchivedPage} total={archivedSortedRows.length} pageSize={pageSize}
@@ -1042,14 +1057,18 @@ export default function CustomersPage() {
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);
                 const cfg = MODAL_CONFIG[pendingConfirm.kind];
-                const title = count > 1 ? cfg.titleBulk(count) : cfg.titleSingle;
+                const title = count > 1
+                    ? cfg.titleBulk(count)
+                    : pendingConfirm.kind === "archive" && pendingConfirm.mode === "row"
+                        ? `Archive ${pendingConfirm.row.name}?`
+                        : cfg.titleSingle;
                 const tone = DESTRUCTIVE_ACTIONS.has(pendingConfirm.kind) ? "danger" : "success";
                 // Optional internal note captured on archive (display-only,
                 // never shown to the customer). Stored on the customer record.
                 const noteField = pendingConfirm.kind === "archive" ? (
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[13px] font-medium text-[var(--colors-text-secondary)]">
-                            Internal note <span className="text-[var(--colors-text-quaternary)]">(optional)</span>
+                            Reason <span className="text-[var(--colors-text-quaternary)]">(optional)</span>
                         </label>
                         <textarea
                             rows={2}

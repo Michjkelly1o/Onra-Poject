@@ -1016,9 +1016,10 @@ function primaryHoursDisplay(hours: BusinessHours[]): string {
 
 function to12h(hhmm: string): string {
     const [h, m] = hhmm.split(":").map(Number);
-    const period = h >= 12 ? "PM" : "AM";
-    const hr = ((h + 11) % 12) + 1;
-    return `${String(hr).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${period}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    const period = h < 12 ? "AM" : "PM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return mm === 0 ? `${h12} ${period}` : `${h12}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 /** Fallback only — the branch row shows the real stored `branch.email`; this

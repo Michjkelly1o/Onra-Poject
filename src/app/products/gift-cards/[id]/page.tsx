@@ -59,10 +59,13 @@ function formatExpiry(iso: string): string {
     if (Number.isNaN(d.getTime())) return iso;
     const pad = (n: number) => String(n).padStart(2, "0");
     const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-    let h = d.getUTCHours();
+    const h = d.getUTCHours();
     const ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12 || 12;
-    return `${date}, ${h}:${pad(d.getUTCMinutes())} ${ampm}`;
+    const h12 = h % 12 || 12;
+    const mm = d.getUTCMinutes();
+    // Onra convention: drop ":00" on whole hours, dot before non-zero minutes.
+    const time = mm === 0 ? `${h12} ${ampm}` : `${h12}.${pad(mm)} ${ampm}`;
+    return `${date}, ${time}`;
 }
 
 /** Gift card loaded value — fixed cards show the exact amount, custom cards
@@ -499,8 +502,8 @@ function ActiveCustomersTab({ holders, cardName }: {
                                     <th className="px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]">
                                         <SortableHeader sortKey="contact" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Contact</SortableHeader>
                                     </th>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]">
-                                        <SortableHeader sortKey="balance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Amount left &amp; expired</SortableHeader>
+                                    <th className="px-4 py-3 text-right text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]">
+                                        <SortableHeader sortKey="balance" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Amount left &amp; expired</SortableHeader>
                                     </th>
                                     <th className="px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)] w-[52px]"></th>
                                 </tr>
@@ -547,8 +550,8 @@ function HolderRow({ holder }: { holder: GiftCardHolder }) {
                     {c.phone && <span className="text-[14px] text-[var(--colors-text-quaternary)]">{c.phone}</span>}
                 </div>
             </td>
-            <td className="px-4 py-4 border-b border-[var(--colors-bg-tertiary)]">
-                <div className="flex flex-col">
+            <td className="px-4 py-4 border-b border-[var(--colors-bg-tertiary)] text-right">
+                <div className="flex flex-col items-end">
                     <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{formatAed(holder.issuedCard.current_balance_aed)} left</span>
                     <span className="text-[14px] text-[var(--colors-text-tertiary)]">{formatExpiry(holder.issuedCard.expires_at)}</span>
                 </div>

@@ -508,9 +508,9 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
                         <tr>
                             <th className={cn(TH, "min-w-[200px]")}>Branch</th>
                             {isSized && <th className={cn(TH, "w-[120px]")}>Size</th>}
-                            <th className={cn(TH, "w-[160px]")}>Units on hand</th>
-                            <th className={cn(TH, "w-[120px]")}>Sold</th>
-                            <th className={cn(TH, "w-[140px]")}>Reorder at</th>
+                            <th className={cn(TH, "w-[160px]", "!text-right")}>Units on hand</th>
+                            <th className={cn(TH, "w-[120px]", "!text-right")}>Sold</th>
+                            <th className={cn(TH, "w-[140px]", "!text-right")}>Reorder at</th>
                             <th className={cn(TH, "w-[180px]")}>Last updated</th>
                         </tr>
                     </thead>
@@ -523,7 +523,7 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
                                 <tr key={c.key}>
                                     <td className={TD}>{c.branchName}</td>
                                     {isSized && <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{c.size}</td>}
-                                    <td className={cn(TD, "whitespace-nowrap")}>
+                                    <td className={cn(TD, "whitespace-nowrap text-right")}>
                                         <span className={cn(
                                             isOut && "text-[#b42318] font-medium",
                                             !isOut && isLow && "text-[#dc6803] font-medium",
@@ -531,10 +531,10 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
                                             {isOut ? "Out of stock" : `${units} units`}
                                         </span>
                                     </td>
-                                    <td className={cn(TD, "whitespace-nowrap tabular-nums")}>
+                                    <td className={cn(TD, "whitespace-nowrap tabular-nums text-right")}>
                                         {c.sold > 0 ? `${c.sold} units` : "—"}
                                     </td>
-                                    <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
+                                    <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)] text-right")}>
                                         {product.reorderThreshold}
                                     </td>
                                     <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
@@ -585,7 +585,7 @@ function ActivityTab({ product, adjRows, branches }: {
                             <th className={cn(TH, "w-[180px]")}>Date</th>
                             <th className={cn(TH, "min-w-[180px]")}>Branch</th>
                             <th className={cn(TH, "w-[140px]")}>Type</th>
-                            <th className={cn(TH, "w-[120px]")}>Change</th>
+                            <th className={cn(TH, "w-[120px]", "!text-right")}>Change</th>
                             <th className={cn(TH, "min-w-[220px]")}>Reason</th>
                         </tr>
                     </thead>
@@ -598,7 +598,7 @@ function ActivityTab({ product, adjRows, branches }: {
                                     <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{formatDate(a.createdAt)}</td>
                                     <td className={TD}>{branch?.name ?? "—"}</td>
                                     <td className={cn(TD)}>{KIND_LABEL[a.kind]}</td>
-                                    <td className={cn(TD, "whitespace-nowrap font-medium", positive ? "text-[#164e52]" : "text-[#b42318]")}>
+                                    <td className={cn(TD, "whitespace-nowrap font-medium text-right", positive ? "text-[#164e52]" : "text-[#b42318]")}>
                                         {positive ? `+${a.delta} units` : `${a.delta} units`}
                                     </td>
                                     <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{a.reason ?? "—"}</td>

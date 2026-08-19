@@ -72,17 +72,19 @@ export function formatDate(dateStr: string): string {
 
 export function formatTime(dateStr: string): string {
   if (!dateStr) return "";
+  // Onra convention (client 2026-08): drop ":00" on whole hours, dot minutes.
   return new Date(dateStr).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  });
+  }).replace(/:00(?=\s?[AP]M)/i, "").replace(/:(\d{2})/, ".$1");
 }
 
 /**
  * Canonical 12-hour clock formatter for the ADMIN + shared surfaces.
- * Converts a 24-hour "HH:MM" wall-clock string into "h:mm AM/PM"
- * (e.g. "17:00" → "5:00 PM", "09:30" → "9:30 AM", "00:15" → "12:15 AM").
+ * Onra convention (client 2026-08): AM/PM, NO ":00" on whole hours, and
+ * minutes shown with a DOT and only when non-zero.
+ *   "17:00" → "5 PM" · "09:30" → "9.30 AM" · "00:15" → "12.15 AM" · "12:00" → "12 PM"
  * Mirrors the customer app's `to12h` (src/lib/customer/dates.ts) so both
  * apps read times the same way. Passes odd/empty input straight through.
  */
@@ -92,20 +94,23 @@ export function to12h(time: string): string {
   if (Number.isNaN(h)) return time;
   const period = h < 12 ? "AM" : "PM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(Number.isNaN(m) ? 0 : m).padStart(2, "0")} ${period}`;
+  const mm = Number.isNaN(m) ? 0 : m;
+  return mm === 0 ? `${h12} ${period}` : `${h12}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 /**
  * Same conversion as {@link to12h} but returns the clock and meridiem as
  * separate parts — for layouts that stack the AM/PM under the time
- * (e.g. the dashboard schedule timeline). "17:00" → { clock: "5:00", meridiem: "PM" }.
+ * (e.g. the dashboard schedule timeline). "17:00" → { clock: "5", meridiem: "PM" };
+ * "09:30" → { clock: "9.30", meridiem: "AM" }.
  */
 export function to12hParts(time: string): { clock: string; meridiem: "AM" | "PM" } {
   if (!time || !time.includes(":")) return { clock: time || "", meridiem: "AM" };
   const [h, m] = time.split(":").map(Number);
   const meridiem: "AM" | "PM" = h < 12 ? "AM" : "PM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
-  return { clock: `${h12}:${String(Number.isNaN(m) ? 0 : m).padStart(2, "0")}`, meridiem };
+  const mm = Number.isNaN(m) ? 0 : m;
+  return { clock: mm === 0 ? `${h12}` : `${h12}.${String(mm).padStart(2, "0")}`, meridiem };
 }
 
 /**

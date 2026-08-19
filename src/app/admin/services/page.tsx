@@ -43,6 +43,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { BulkBarDock } from "@/components/patterns/BulkBarDock";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
@@ -196,7 +197,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
 }) {
     if (count === 0) return null;
     return (
-        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+        <BulkBarDock>
             <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
@@ -238,7 +239,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                     )}
                 </div>
             </div>
-        </div>
+        </BulkBarDock>
     );
 }
 
@@ -445,8 +446,8 @@ function ListView({
                         <th className={cn(TH, "w-[160px]")}>
                             <SortableHeader sortKey="type" currentSort={sortKey} dir={sortDir} onSort={onSort}>Type</SortableHeader>
                         </th>
-                        <th className={cn(TH, "w-[120px]")}>
-                            <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort}>Price</SortableHeader>
+                        <th className={cn(TH, "w-[120px]", "!text-right")}>
+                            <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort} align="right">Price</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[120px]")}>
                             <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
@@ -482,7 +483,7 @@ function ListView({
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationMin} minutes</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.branchName || "—"}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.type === "recovery" ? "Recovery" : "Private session"}</td>
-                                <td className={cn(TD, "whitespace-nowrap")}>AED {r.price.toLocaleString()}</td>
+                                <td className={cn(TD, "whitespace-nowrap text-right")}>AED {r.price.toLocaleString()}</td>
                                 <td className={TD}><StatusBadge type="service" status={r.status} /></td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions items={[

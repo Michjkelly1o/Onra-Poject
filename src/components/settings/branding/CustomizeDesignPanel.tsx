@@ -23,14 +23,15 @@
 //   • Body — 2-column: form (flex-1) + preview panel (320 px, sticky)
 //   • Footer — Cancel (left) + Save changes (right)
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-    XClose, ChevronRight,
+    XClose,
     UploadCloud02, Image01, Mail01, MessageChatCircle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { PanelStepper } from "@/components/ui/PanelStepper";
 import { useAppStore, type BrandTypeface } from "@/lib/store";
 import { brandTypefaceFontFamily, brandTypefaceLabel, brandTypefaceTagline } from "@/app/branding-fonts";
 
@@ -137,29 +138,9 @@ export function CustomizeDesignPanel({ open, onClose }: {
                 </button>
             </div>
 
-            {/* Breadcrumb stepper — horizontal, chevron-separated. Any step
-                click jumps directly (per Figma). */}
-            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4 flex items-center gap-2">
-                {STEPS.map((s, i) => (
-                    <Fragment key={s.n}>
-                        <button
-                            type="button"
-                            onClick={() => setStep(s.n as 1 | 2 | 3)}
-                            className={cn(
-                                "text-[14px] font-semibold py-1 px-1 transition-colors",
-                                step === s.n
-                                    ? "text-[#164e52]"
-                                    : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
-                            )}
-                        >
-                            {s.label}
-                        </button>
-                        {i < STEPS.length - 1 && (
-                            <ChevronRight className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
-                        )}
-                    </Fragment>
-                ))}
-            </div>
+            {/* Numbered-circle horizontal stepper (shared PanelStepper —
+                Figma 8223:23016). Any step click jumps directly. */}
+            <PanelStepper steps={STEPS} current={step} onStep={(n) => setStep(n as 1 | 2 | 3)} />
 
             {/* Body — 2-column: form + preview. Scrolls inside. */}
             <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">

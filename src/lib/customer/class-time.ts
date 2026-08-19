@@ -41,7 +41,16 @@ function wallClockInstant(dateISO: string, startTime: string, zone: string): num
     return naiveUtc - zoneOffsetMinutes(zone, naiveUtc) * 60000;
 }
 
-/** "Sun, 20 Feb 2025 · 10:00 AM" for an instant, rendered in `zone`. */
+/** Normalize an Intl "h:mm AM/PM" string to the Onra convention (client 2026-08):
+ *  drop ":00" on whole hours, use a dot for non-zero minutes.
+ *  "10:00 AM" → "10 AM" · "10:30 AM" → "10.30 AM". */
+function onraTime(intlTime: string): string {
+    return intlTime
+        .replace(/:00(?=\s?[AP]M)/i, "")   // whole hour → drop the minutes
+        .replace(/:(\d{2})/, ".$1");        // non-zero minutes → dot separator
+}
+
+/** "Sun, 20 Feb 2025 · 10 AM" for an instant, rendered in `zone`. */
 function formatInZone(instant: number, zone: string): string {
     const date = new Intl.DateTimeFormat("en-GB", {
         timeZone: zone,
@@ -50,12 +59,12 @@ function formatInZone(instant: number, zone: string): string {
         month: "short",
         year: "numeric",
     }).format(instant);
-    const time = new Intl.DateTimeFormat("en-US", {
+    const time = onraTime(new Intl.DateTimeFormat("en-US", {
         timeZone: zone,
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
-    }).format(instant);
+    }).format(instant));
     return `${date} · ${time}`;
 }
 
@@ -72,12 +81,12 @@ export function timeInZoneLabel(
     const branchZone = branchTimezone(branch);
     const customerZone = zoneForCity(customerCity) ?? branchZone;
     const instant = wallClockInstant(dateISO, startTime, branchZone);
-    return new Intl.DateTimeFormat("en-US", {
+    return onraTime(new Intl.DateTimeFormat("en-US", {
         timeZone: customerZone,
         hour: pad ? "2-digit" : "numeric",
         minute: "2-digit",
         hour12: true,
-    }).format(instant);
+    }).format(instant));
 }
 
 export interface ClassTimeDisplay {

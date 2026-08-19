@@ -91,7 +91,8 @@ function fmtTime12(t: string): string {
     const [h, m] = t.split(":").map(Number);
     const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
     const ampm = h < 12 ? "AM" : "PM";
-    return `${String(hh).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    return mm === 0 ? `${hh} ${ampm}` : `${hh}.${String(mm).padStart(2, "0")} ${ampm}`;
 }
 
 function daysSummary(workingDays: boolean[]): string {

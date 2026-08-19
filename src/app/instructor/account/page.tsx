@@ -80,9 +80,9 @@ function fmt12h(hhmm: string | undefined): string {
     if (!hhmm) return "—";
     const [h, m] = hhmm.split(":").map(s => parseInt(s, 10));
     if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
-    const period = h >= 12 ? "PM" : "AM";
-    const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${String(hh).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+    const period = h < 12 ? "AM" : "PM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return m === 0 ? `${h12} ${period}` : `${h12}.${String(m).padStart(2, "0")} ${period}`;
 }
 
 export default function InstructorAccountPage() {
@@ -683,7 +683,7 @@ const SEED_INSTRUCTOR_SESSIONS: ActiveSession[] = [
         device: "MacBook Pro",
         browser: "Chrome 126",
         location: "Dubai, UAE",
-        lastActiveLabel: "Today at 1:34 PM",
+        lastActiveLabel: "Today at 1.34 PM",
         isCurrent: true,
     },
     {
@@ -691,7 +691,7 @@ const SEED_INSTRUCTOR_SESSIONS: ActiveSession[] = [
         device: "iPhone 15",
         browser: "Safari",
         location: "Dubai, UAE",
-        lastActiveLabel: "Today at 1:34 PM",
+        lastActiveLabel: "Today at 1.34 PM",
         isCurrent: false,
     },
 ];

@@ -19,6 +19,7 @@
 // `blockedTimes`, `classCategories` — so every caller picks live data.
 
 import type { Staff, Shift, ShiftAssignment, BlockedTime, ClassCategory } from "@/lib/store";
+import { currentWeekMondayISO } from "@/lib/week";
 
 // ─── Shift-window resolver ────────────────────────────────────────────────
 //
@@ -48,13 +49,19 @@ function resolveShiftWindows(
     const shiftById = new Map(shifts.map(s => [s.id, s] as const));
     const windows: ShiftWindow[] = [];
     let matched = false;
+    // This week's Monday — a shift un-assigned forward at/before it is history.
+    const nowMonday = currentWeekMondayISO();
     if (shiftAssignments && shiftAssignments.length > 0) {
         for (const a of shiftAssignments) {
             if (a.staff_id !== staff.id) continue;
+            // Skip capped-forward history rows and empty week-tombstones — they
+            // no longer bind the staff to a shift (client 2026-08-19).
+            if (a.end_week_start && a.end_week_start <= nowMonday) continue;
+            if (!a.days_of_week.some(Boolean)) continue;
             matched = true;
             if (!a.days_of_week[dow]) continue;
             const sh = shiftById.get(a.shift_id);
-            if (!sh || sh.status !== "active") continue;
+            if (!sh || sh.status !== "active" || sh.deleted_at) continue;
             windows.push({ start: sh.start_time, end: sh.end_time });
         }
     }

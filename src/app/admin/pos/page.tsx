@@ -119,9 +119,10 @@ function formatShortDate(iso: string): string {
 /** "HH:MM" (24h) → "9:00 AM" for the session cart line. */
 function fmt12(hhmm: string): string {
     const [h, m] = hhmm.split(":").map(Number);
+    const mm = Number.isNaN(m) ? 0 : m;
     const period = h < 12 ? "AM" : "PM";
     const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+    return mm === 0 ? `${h12} ${period}` : `${h12}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 /** The one-line "when + who" summary shown on a session cart line. */

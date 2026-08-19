@@ -207,7 +207,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = (() => {
         const h12 = h % 12 || 12;
         out.push({
             value: `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`,
-            label: `${h12}:${String(mm).padStart(2, "0")} ${ampm}`,
+            label: Number(mm) === 0 ? `${h12} ${ampm}` : `${h12}.${String(mm).padStart(2, "0")} ${ampm}`,
         });
     }
     return out;
@@ -1048,7 +1048,7 @@ function formatPreviewDate(date: string, time: string): string {
         const [hRaw, mRaw] = time.split(":").map(Number);
         const ampm = hRaw >= 12 ? "PM" : "AM";
         const h12 = hRaw % 12 || 12;
-        label += `, ${h12}:${String(mRaw).padStart(2, "0")} ${ampm}`;
+        label += Number(mRaw) === 0 ? `, ${h12} ${ampm}` : `, ${h12}.${String(mRaw).padStart(2, "0")} ${ampm}`;
     }
     return label;
 }

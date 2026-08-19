@@ -48,6 +48,7 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { BulkBarDock } from "@/components/patterns/BulkBarDock";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
@@ -449,7 +450,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
 }) {
     if (count === 0) return null;
     return (
-        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+        <BulkBarDock>
             <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 {/* Selection counter pill (click to clear) — whitespace-nowrap so
                     the "N selected" label stays on one line even when the
@@ -498,7 +499,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                     )}
                 </div>
             </div>
-        </div>
+        </BulkBarDock>
     );
 }
 
@@ -609,14 +610,14 @@ function ListView({
                         <th className={cn(TH, "w-[320px]")}>
                             <SortableHeader sortKey="name" currentSort={sortKey} dir={sortDir} onSort={onSort}>Name</SortableHeader>
                         </th>
-                        <th className={cn(TH, "w-[120px]")}>
-                            <div className="flex flex-col gap-0.5">
-                                <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort}>Price</SortableHeader>
+                        <th className={cn(TH, "w-[120px]", "!text-right")}>
+                            <div className="flex flex-col gap-0.5 items-end">
+                                <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort} align="right">Price</SortableHeader>
                                 <PriceColumnHeaderTaxLine rows={rows} />
                             </div>
                         </th>
-                        <th className={cn(TH, "w-[140px] !text-center")}>
-                            <SortableHeader sortKey="credits" currentSort={sortKey} dir={sortDir} onSort={onSort} className="whitespace-nowrap">Credit amount</SortableHeader>
+                        <th className={cn(TH, "w-[140px] !text-right")}>
+                            <SortableHeader sortKey="credits" currentSort={sortKey} dir={sortDir} onSort={onSort} align="right" className="whitespace-nowrap">Credit amount</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[200px]")}>
                             <SortableHeader sortKey="branches" currentSort={sortKey} dir={sortDir} onSort={onSort}>Location</SortableHeader>
@@ -653,8 +654,8 @@ function ListView({
                                         <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                     </div>
                                 </td>
-                                <td className={cn(TD, "whitespace-nowrap")}><PriceCell priceAed={r.priceAed} /></td>
-                                <td className={cn(TD, "whitespace-nowrap text-center")}>{r.creditsLabel}</td>
+                                <td className={cn(TD, "whitespace-nowrap text-right")}><PriceCell priceAed={r.priceAed} /></td>
+                                <td className={cn(TD, "whitespace-nowrap text-right")}>{r.creditsLabel}</td>
                                 <td className={TD}>{r.branchesLabel}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationLabel}</td>
                                 <td className={TD}><StatusBadge type="product" status={r.status} /></td>
