@@ -29,6 +29,7 @@ const K = {
     refundType:           "refundType",
     reason:               "reason",
     salesChannel:         "salesChannel",
+    staffName:            "staffName",
     staffId:              "staffId",
     branchId:             "branchId",
     location:             "location",
@@ -59,6 +60,7 @@ export const REFUNDS_REPORT: ReportDefinition = {
         { key: K.refundType,           label: "Refund type",           kind: "text",     minWidth: 140 },
         { key: K.reason,               label: "Reason",                kind: "text",     minWidth: 240 },
         { key: K.salesChannel,         label: "Sales channel",         kind: "text",     minWidth: 160, hiddenByDefault: true },
+        { key: K.staffName,            label: "Staff Name",            kind: "text",     minWidth: 180 },
         { key: K.staffId,              label: "Staff ID",              kind: "id",       minWidth: 160 },
     ],
 

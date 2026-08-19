@@ -30,6 +30,7 @@ interface RefundsDisplayRow {
     refundType:           "Full" | "Partial";
     reason:               string;
     salesChannel:         string;
+    staffName:            string;
     staffId:              string;
     branchId:             string;
     location:             string;
@@ -61,11 +62,13 @@ export default function RefundsReportPage() {
     const transactions = useAppStore(s => s.customerTransactions);
     const customers    = useAppStore(s => s.customers);
     const branches     = useAppStore(s => s.branches);
+    const staff        = useAppStore(s => s.staff);
 
     const report = getReportById("refunds");
 
     const rows = useMemo<RefundsDisplayRow[]>(() => {
         const custById = new Map(customers.map(c => [c.id, c]));
+        const staffById = new Map(staff.map(s => [s.id, s.fullName] as const));
         const loc = (id: string) => branches.find(b => b.id === id)?.name ?? id;
         // Resolve the WHOLE transaction table (every kind — retail, gift card,
         // private, recovery, membership, package) through the void-vs-refund
@@ -103,12 +106,13 @@ export default function RefundsReportPage() {
                 // word "Other"). A reason is mandatory, so this is always set.
                 reason:               r.refundReason ?? "—",
                 salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "POS",
+                staffName:            r.staffId ? (staffById.get(r.staffId) ?? "—") : "—",
                 staffId:              r.staffId ?? "",
                 branchId:             r.branchId,
                 location:             loc(r.branchId),
             } satisfies RefundsDisplayRow;
         });
-    }, [transactions, customers, branches]);
+    }, [transactions, customers, branches, staff]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),

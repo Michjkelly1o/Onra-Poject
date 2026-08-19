@@ -32,6 +32,7 @@ interface DiscountsDisplayRow {
     discountPct:          number;
     netAfterDiscount:     number;
     salesChannel:         string;
+    staffName:            string;
     staffId:              string;
     branchId:             string;
     location:             string;
@@ -94,6 +95,7 @@ export default function DiscountsReportPage() {
                 discountPct:          pct,
                 netAfterDiscount:     net,
                 salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "POS",
+                staffName:            r.staffName ?? "—",
                 staffId:              r.staffId ?? "",
                 branchId:             r.branchId,
                 location:             r.location,

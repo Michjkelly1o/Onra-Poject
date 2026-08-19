@@ -307,6 +307,8 @@ export interface CustomerPlanRow {
     freezeStartISO?: string;
     freezeEndISO?: string;
     freezeSource?: "customer_portal" | "admin" | "front_desk";
+    /** Reason recorded when the plan was frozen (blank when not frozen). */
+    freezeReason?: string;
     /** Days frozen so far (0 when the plan is not frozen). */
     freezeDays: number;
     cancelledAtISO?: string;
@@ -625,6 +627,7 @@ export function selectMemberships(state: AppState): CustomerPlanRow[] {
                 freezeStartISO: p.freezeStartISO,
                 freezeEndISO:   p.freezeEndISO,
                 freezeSource:   p.freezeSource,
+                freezeReason:   p.freezeReason,
                 freezeDays,
                 cancelledAtISO: p.cancelledAtISO,
                 cancelReason:   p.cancelReason,

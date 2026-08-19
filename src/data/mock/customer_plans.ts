@@ -130,6 +130,7 @@ export const customer_plans: CustomerPlan[] = [
         expiry_iso: "2026-08-09T22:00:00Z",
         freeze_start_iso: "2026-05-01",
         freeze_end_iso: "2026-05-31",
+        freeze_reason: "Travelling abroad",
     },
     {
         id: "cp_bosa_3",

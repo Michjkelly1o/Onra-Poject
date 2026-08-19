@@ -3214,6 +3214,7 @@ function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
         freezeStartISO: p.freeze_start_iso,
         freezeEndISO: p.freeze_end_iso,
         freezeSource: p.freeze_source,
+        freezeReason: p.freeze_reason,
         freeCredits: p.free_credits,
         grantReason: p.grant_reason,
         grantIssuedBy: p.grant_issued_by,

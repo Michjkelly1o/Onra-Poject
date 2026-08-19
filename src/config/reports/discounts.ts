@@ -26,6 +26,7 @@ const K = {
     discountPct:          "discountPct",
     netAfterDiscount:     "netAfterDiscount",
     salesChannel:         "salesChannel",
+    staffName:            "staffName",
     staffId:              "staffId",
     branchId:             "branchId",
     location:             "location",
@@ -57,6 +58,7 @@ export const DISCOUNTS_REPORT: ReportDefinition = {
         { key: K.discountPct,          label: "Discount %",              kind: "percent",  minWidth: 130, calc: "Discount ÷ Gross sales" },
         { key: K.netAfterDiscount,     label: "Net sales after discount", kind: "currency", minWidth: 200, calc: "Gross − Discount", hiddenByDefault: true },
         { key: K.salesChannel,         label: "Sales channel",           kind: "text",     minWidth: 160, hiddenByDefault: true },
+        { key: K.staffName,            label: "Staff Name",              kind: "text",     minWidth: 180 },
         { key: K.staffId,              label: "Staff ID",                kind: "id",       minWidth: 160 },
     ],
 

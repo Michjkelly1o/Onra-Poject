@@ -136,7 +136,7 @@ const CATEGORIES: ReportCategory[] = [
         icon: Users01,
         items: [
             { slug: "instructor-performance", label: "Instructor Performance" },
-            { slug: "staff-attendance",       label: "Staff Attendance"       },
+            { slug: "staff-attendance",       label: "Hours & Sessions"       },
         ],
     },
     {

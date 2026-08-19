@@ -33,7 +33,7 @@ const K = {
 export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
     id:          "staff-attendance",
     category:    "staff",
-    title:       "Staff Attendance",
+    title:       "Hours & Sessions",
     description: "Whether staff taught their scheduled classes — attendance, substitutions, no-shows, late starts and hours worked. Access-restricted.",
     type:        "lookback",
     route:       "/reports/staff-attendance",
@@ -43,7 +43,7 @@ export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.staffName,        label: "Staff name",        kind: "text",   minWidth: 200 },
-        { key: K.staffId,          label: "Staff ID",          kind: "id",     minWidth: 160, hiddenByDefault: true },
+        { key: K.staffId,          label: "Staff ID",          kind: "id",     minWidth: 160 },
         { key: K.role,             label: "Role",              kind: "text",   minWidth: 160 },
         { key: K.classDateISO,     label: "Class date",        kind: "date",   minWidth: 140 },
         { key: K.location,         label: "Location",          kind: "text",   minWidth: 180 },
@@ -55,9 +55,9 @@ export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
         { key: K.attendanceStatus, label: "Attendance status", kind: "status", minWidth: 170 },
         { key: K.coveredBy,        label: "Covered by",        kind: "text",   minWidth: 180 },
         { key: K.lateStartMin,     label: "Late start",        kind: "number", minWidth: 130 },
-        { key: K.scheduledHours,   label: "Scheduled hours",   kind: "number", minWidth: 160 },
-        { key: K.actualHours,      label: "Actual hours",      kind: "number", minWidth: 140 },
-        { key: K.hoursVariance,    label: "Hours variance",    kind: "number", minWidth: 150, calc: "Actual hours − Scheduled hours" },
+        { key: K.scheduledHours,   label: "Hours scheduled",   kind: "number", minWidth: 160 },
+        { key: K.actualHours,      label: "Hours worked",      kind: "number", minWidth: 140 },
+        { key: K.hoursVariance,    label: "Variance",          kind: "number", minWidth: 150, calc: "Hours worked − Hours scheduled" },
     ],
 
     // Sheet 1 defaults: staff · role · location.

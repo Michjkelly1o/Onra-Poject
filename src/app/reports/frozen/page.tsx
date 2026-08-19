@@ -25,6 +25,7 @@ interface FrozenDisplayRow {
     daysFrozen:      number;
     originalExpISO:  string;
     newExpiryISO:    string;
+    reason:          string;
     branchId:        string;
     location:        string;
 }
@@ -73,6 +74,7 @@ export default function FrozenReportPage() {
                     daysFrozen,
                     originalExpISO:  originalExp,
                     newExpiryISO:    newExpiry,
+                    reason:          r.freezeReason ?? "—",
                     branchId:        r.branchId,
                     location:        r.location,
                 } satisfies FrozenDisplayRow;

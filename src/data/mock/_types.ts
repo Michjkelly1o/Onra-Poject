@@ -699,6 +699,9 @@ export interface CustomerPlan {
     /** Origin surface that initiated the freeze. Drives the All frozen
      *  packages + Freeze impact "Freeze source" column. */
     freeze_source?: "customer_portal" | "admin" | "front_desk";
+    /** Reason recorded when the plan was frozen. Feeds the Frozen Plans
+     *  report "Reason" column. */
+    freeze_reason?: string;
     // ── Complimentary grant ──
     /** Number of free credits granted — complimentary plans only. */
     free_credits?: number;

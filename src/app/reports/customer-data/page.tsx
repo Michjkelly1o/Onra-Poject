@@ -20,6 +20,7 @@ interface CustomerDataDisplayRow {
     customerEmail:      string;
     phone:              string;
     status:             string;
+    monthsWith:         number;
     currentPlan:        string;
     planType:           string;
     joinedDateISO:      string;
@@ -71,6 +72,14 @@ export default function CustomerDataReportPage() {
                 + (today.getMonth() - joined.getMonth()),
             );
             const avgVisits = c.totalVisits / monthsActive;
+            // "Months with us" — active: today − joined; inactive/lapsed: their
+            // leave date (last visit) − joined (how long they stayed).
+            const gone = c.status === "Inactive";
+            const endDate = gone && c.lastVisitISO ? new Date(c.lastVisitISO) : today;
+            const monthsWith = Math.max(0,
+                (endDate.getFullYear() - joined.getFullYear()) * 12
+                + (endDate.getMonth() - joined.getMonth()),
+            );
             const newOrReturning = c.totalVisits > 1 ? "Returning" : c.totalVisits === 1 ? "First-time" : "New";
             const planTypeLabel = c.planKind ? (PLAN_TYPE_LABEL[c.planKind] ?? c.planKind) : "";
 
@@ -80,6 +89,7 @@ export default function CustomerDataReportPage() {
                 customerEmail:      c.email,
                 phone:              c.phone ?? "",
                 status:             STATUS_LABEL[c.status] ?? c.status,
+                monthsWith,
                 currentPlan:        c.currentPlan ?? "",
                 planType:           planTypeLabel,
                 joinedDateISO:      c.joinedDateISO.slice(0, 10),

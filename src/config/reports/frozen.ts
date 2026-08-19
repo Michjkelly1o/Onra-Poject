@@ -18,6 +18,7 @@ const K = {
     daysFrozen:      "daysFrozen",
     originalExpISO:  "originalExpISO",
     newExpiryISO:    "newExpiryISO",
+    reason:          "reason",
     branchId:        "branchId",
     location:        "location",
 } as const;
@@ -44,6 +45,7 @@ export const FROZEN_REPORT: ReportDefinition = {
         { key: K.daysFrozen,     label: "Days frozen",     kind: "number", minWidth: 130, calc: "Freeze end − Freeze start" },
         { key: K.originalExpISO, label: "Original expiry", kind: "date",   minWidth: 150 },
         { key: K.newExpiryISO,   label: "New expiry",      kind: "date",   minWidth: 130, calc: "Original expiry + Days frozen" },
+        { key: K.reason,         label: "Reason",          kind: "text",   minWidth: 220 },
     ],
 
     // Sheet 1 default: plan type.
