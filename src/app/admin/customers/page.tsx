@@ -121,10 +121,6 @@ function daysBetween(fromISO: string, toISO: string): number {
     return Math.round((b - a) / 86_400_000);
 }
 
-function planTypeOf(planKind: Customer["planKind"]): PlanType {
-    return planKind === "membership" ? "membership" : planKind === "package" ? "package" : "none";
-}
-
 // ─── Action modal config (tone matrix mirrors /admin/products) ───────────────
 
 const DESTRUCTIVE_ACTIONS = new Set<RowActionKind>(["delete"]);
@@ -598,6 +594,20 @@ export default function CustomersPage() {
             ...customerTransactions.map(t => t.customerId),
         ]);
         const liveState = { customers, classBookings, customerPlans, customerTransactions };
+        // Plan column reads the customer's ACTUAL held plans (customerPlans is
+        // the source of truth) so the table always matches the profile detail.
+        // The denormalized `c.planKind` can drift out of sync (client-reported
+        // 2026-08-19: table said "Membership" while the profile showed a package).
+        // A customer holds one membership OR one-or-more packages, so membership
+        // wins when resolving the single column value.
+        const activePlanByCustomer = new Map<string, PlanType>();
+        for (const p of customerPlans) {
+            if (p.status !== "active" && p.status !== "frozen") continue;
+            if (p.kind === "membership") activePlanByCustomer.set(p.customerId, "membership");
+            else if (p.kind === "package" && activePlanByCustomer.get(p.customerId) !== "membership") {
+                activePlanByCustomer.set(p.customerId, "package");
+            }
+        }
         // Newest customers first so a just-created customer lands at the top.
         return [...customers]
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -615,7 +625,7 @@ export default function CustomersPage() {
                     email: c.email,
                     phone: c.phone ?? "",
                     joinedISO: c.createdAt,
-                    planType: planTypeOf(c.planKind),
+                    planType: activePlanByCustomer.get(c.id) ?? "none",
                     status: c.status,
                     lastVisitISO: c.lastVisitISO,
                     planExpiryISO: c.planExpiryISO,

@@ -4147,6 +4147,37 @@ const INITIAL_CUSTOMERS: Customer[] = reconcileCreditsRemaining(
     SEED_CUSTOMERS.map(customerFromSeed),
     INITIAL_CUSTOMER_PLANS,
 );
+
+/** Sync each customer's DENORMALIZED plan fields (`planKind` / `planName` /
+ *  `membershipId` / `packageIds`) from their ACTUAL held plans, so the whole
+ *  app (customers table, class-booking flow, badges) reads one truth. Fixes a
+ *  seed drift where a customer's stored `planKind` disagreed with their real
+ *  plan rows (client-reported 2026-08-19: table "Membership" vs profile
+ *  "Package"). A customer holds ONE membership OR one-or-more packages, so a
+ *  membership wins when both somehow exist. Mirrors how `applyPurchase` stamps
+ *  these fields on a live purchase. Idempotent for already-consistent rows. */
+function reconcileDenormPlan(customers: Customer[], plans: CustomerPlan[]): Customer[] {
+    const held = new Map<string, CustomerPlan[]>();
+    for (const p of plans) {
+        if (p.kind !== "membership" && p.kind !== "package") continue;
+        if (p.status !== "active" && p.status !== "frozen" && p.status !== "freeze_requested") continue;
+        const arr = held.get(p.customerId);
+        if (arr) arr.push(p); else held.set(p.customerId, [p]);
+    }
+    return customers.map(c => {
+        const active = held.get(c.id) ?? [];
+        const membership = active.find(p => p.kind === "membership");
+        if (membership) {
+            return { ...c, planKind: "membership" as const, membershipId: membership.productId, packageIds: undefined, planName: membership.name };
+        }
+        const packages = active.filter(p => p.kind === "package");
+        if (packages.length > 0) {
+            const ids = packages.map(p => p.productId).filter((id): id is string => !!id);
+            return { ...c, planKind: "package" as const, packageIds: ids, membershipId: undefined, planName: packages.length === 1 ? packages[0].name : `${packages.length} packages` };
+        }
+        return { ...c, planKind: null, membershipId: undefined, packageIds: undefined, planName: undefined };
+    });
+}
 const INITIAL_CUSTOMER_TRANSACTIONS: CustomerTransaction[] = SEED_CUSTOMER_TRANSACTIONS.map(customerTransactionFromSeed);
 
 // Gift-card SALE transactions, derived 1:1 from the seeded issued cards
@@ -6364,7 +6395,12 @@ export const useAppStore = create<AppState>()(persist(
     classSchedules: INITIAL_SCHEDULES,
     classBookings: [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS, ...FOLLOWUP_SHOWCASE.bookings, ...BULK_SHOWCASE.bookings],
     classRatings: INITIAL_RATINGS,
-    customers: [...SHOWCASE_CUSTOMERS, ...FOLLOWUP_SHOWCASE.customers, ...BULK_SHOWCASE.customers, ...INITIAL_CUSTOMERS],
+    // Denorm plan fields synced from the actual plan rows so the table, badges,
+    // and booking flow all agree with the profile (reconcileDenormPlan).
+    customers: reconcileDenormPlan(
+        [...SHOWCASE_CUSTOMERS, ...FOLLOWUP_SHOWCASE.customers, ...BULK_SHOWCASE.customers, ...INITIAL_CUSTOMERS],
+        [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...FOLLOWUP_SHOWCASE.plans, ...BULK_SHOWCASE.plans],
+    ),
     customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...FOLLOWUP_SHOWCASE.plans, ...BULK_SHOWCASE.plans],
     customerTransactions: [...INITIAL_ALL_TRANSACTIONS],
     customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
@@ -13639,7 +13675,7 @@ export const useAppStore = create<AppState>()(persist(
         // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
         //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
         //   demos re-seed with the 1-credit package instead of the old 3-credit one.
-        version: 119,
+        version: 120,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
