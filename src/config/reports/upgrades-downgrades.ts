@@ -19,6 +19,7 @@ const K = {
     newPrice:      "newPrice",
     delta:         "delta",
     salesChannel:  "salesChannel",
+    staffName:     "staffName",
     staffId:       "staffId",
     branchId:      "branchId",
     location:      "location",
@@ -47,12 +48,14 @@ export const UPGRADES_DOWNGRADES_REPORT: ReportDefinition = {
         { key: K.newPrice,      label: "New price",      kind: "currency", minWidth: 130 },
         { key: K.delta,         label: "Delta",          kind: "currency", minWidth: 130, calc: "New price − Old price" },
         { key: K.salesChannel,  label: "Sales channel",  kind: "text",     minWidth: 160, hiddenByDefault: true },
+        { key: K.staffName,     label: "Staff Name",     kind: "text",     minWidth: 180 },
         { key: K.staffId,       label: "Staff ID",       kind: "id",       minWidth: 160 },
     ],
 
     // Sheet 1 default: change type.
     dimensions: [
         { key: "change_type",   label: "Change type",   extract: r => String(r[K.changeType]   ?? "—") },
+        { key: "staff",         label: "Staff",         extract: r => String(r[K.staffName]    ?? "—") },
         { key: "sales_channel", label: "Sales channel", extract: r => String(r[K.salesChannel] ?? "—") },
         { key: "location",      label: "Location",      extract: r => String(r[K.location]     ?? "—") },
     ],

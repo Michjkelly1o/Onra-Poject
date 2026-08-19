@@ -14,6 +14,9 @@ const K = {
     staffName:       "staffName",
     staffId:         "staffId",
     role:            "role",
+    sessionsTaught:  "sessionsTaught",
+    coveredBySomeone:"coveredBySomeone",
+    coveredForOthers:"coveredForOthers",
     classDateISO:    "classDateISO",
     classDay:        "classDay",
     startTime:       "startTime",
@@ -45,6 +48,7 @@ export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
         { key: K.staffName,        label: "Staff name",        kind: "text",   minWidth: 200 },
         { key: K.staffId,          label: "Staff ID",          kind: "id",     minWidth: 160 },
         { key: K.role,             label: "Role",              kind: "text",   minWidth: 160 },
+        { key: K.sessionsTaught,   label: "Sessions taught",   kind: "number", minWidth: 150, calc: "Count of sessions taught (sum when grouped by Staff)" },
         { key: K.classDateISO,     label: "Class date",        kind: "date",   minWidth: 140 },
         { key: K.location,         label: "Location",          kind: "text",   minWidth: 180 },
         { key: K.classDay,         label: "Class day",         kind: "text",   minWidth: 120 },
@@ -58,6 +62,8 @@ export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
         { key: K.scheduledHours,   label: "Hours scheduled",   kind: "number", minWidth: 160 },
         { key: K.actualHours,      label: "Hours worked",      kind: "number", minWidth: 140 },
         { key: K.hoursVariance,    label: "Variance",          kind: "number", minWidth: 150, calc: "Hours worked − Hours scheduled" },
+        { key: K.coveredBySomeone, label: "Covered by someone", kind: "number", minWidth: 170, calc: "Shifts covered by a colleague (sum when grouped by Staff)" },
+        { key: K.coveredForOthers, label: "Covered for others", kind: "number", minWidth: 170, calc: "Shifts this staff covered for others (sum when grouped by Staff)" },
     ],
 
     // Sheet 1 defaults: staff · role · location.

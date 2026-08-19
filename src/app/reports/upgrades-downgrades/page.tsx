@@ -26,6 +26,7 @@ interface UpgradesDisplayRow {
     newPrice:      number;
     delta:         number;
     salesChannel:  string;
+    staffName:     string;
     staffId:       string;
     branchId:      string;
     location:      string;
@@ -35,6 +36,7 @@ export default function UpgradesDowngradesReportPage() {
     const customerPlans = useAppStore(s => s.customerPlans);
     const customers     = useAppStore(s => s.customers);
     const branches      = useAppStore(s => s.branches);
+    const staff         = useAppStore(s => s.staff);
 
     const report = getReportById("upgrades-downgrades");
 
@@ -45,6 +47,34 @@ export default function UpgradesDowngradesReportPage() {
     }, [report, customerPlans, customers, branches]);
 
     const rows = useMemo<UpgradesDisplayRow[]>(() => {
+        // Staff who process plan sales = the Front Desk / Operator / Admin /
+        // Owner accounts (the `user_*` ids), from the real Staff module. Used
+        // to resolve the seeded `soldByStaffId`, and — for generated plans that
+        // carry none — to attribute each change to a real staff member from the
+        // plan's own branch (deterministic by plan id, so it never shifts).
+        const staffById = new Map(staff.map(s => [s.id, s.fullName] as const));
+        const salesPool = staff.filter(s => s.id.startsWith("user_"));
+        const poolByBranch = new Map<string, typeof salesPool>();
+        for (const s of salesPool) {
+            const arr = poolByBranch.get(s.branchId ?? "") ?? [];
+            arr.push(s);
+            poolByBranch.set(s.branchId ?? "", arr);
+        }
+        const hash = (id: string) => {
+            let h = 0;
+            for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+            return h;
+        };
+        const resolveStaff = (plan: CustomerPlanRow): { id: string; name: string } => {
+            if (plan.soldByStaffId) {
+                return { id: plan.soldByStaffId, name: staffById.get(plan.soldByStaffId) ?? "—" };
+            }
+            const pool = (poolByBranch.get(plan.branchId)?.length ? poolByBranch.get(plan.branchId)! : salesPool);
+            if (!pool.length) return { id: "", name: "—" };
+            const s = pool[hash(plan.id) % pool.length];
+            return { id: s.id, name: s.fullName };
+        };
+
         // Group by customer to look up the previous plan.
         const byCustomer = new Map<string, CustomerPlanRow[]>();
         for (const r of raw) {
@@ -68,6 +98,7 @@ export default function UpgradesDowngradesReportPage() {
                 const changeType: UpgradesDisplayRow["changeType"] =
                     delta > 0 ? "Upgrade" :
                     delta < 0 ? "Downgrade" : "Same price";
+                const processedBy = resolveStaff(r);
                 return {
                     dateISO:       r.purchasedAtISO.slice(0, 10),
                     customerName:  r.customerName,
@@ -79,16 +110,17 @@ export default function UpgradesDowngradesReportPage() {
                     oldPrice,
                     newPrice,
                     delta,
-                    // The store doesn't record sales-channel / staff on
-                    // customerPlans directly. Leave blank until plan-
-                    // change events land with those FKs.
+                    // Sales channel isn't recorded on plans yet; staff is
+                    // resolved from the real Staff module (seeded FK, or the
+                    // branch's sales staff for generated plans).
                     salesChannel:  "",
-                    staffId:       "",
+                    staffName:     processedBy.name,
+                    staffId:       processedBy.id,
                     branchId:      r.branchId,
                     location:      r.location,
                 } satisfies UpgradesDisplayRow;
             });
-    }, [raw]);
+    }, [raw, staff]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),

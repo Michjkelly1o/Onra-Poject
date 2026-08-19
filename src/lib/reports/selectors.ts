@@ -189,6 +189,14 @@ export interface StaffAttendanceLogRow {
     className: string;
     attendanceStatus: string;
     coveredBy: string;
+    /** True on the substitute's own row (they covered for a colleague). */
+    isSubstitute: boolean;
+    /** 1 when this staff actually taught the session (status "taught"). */
+    sessionsTaught: number;
+    /** 1 when this staff's shift was covered by someone else. */
+    coveredBySomeone: number;
+    /** 1 when this row is the staff covering someone else's shift. */
+    coveredForOthers: number;
     lateStartMin: number;
     scheduledHours: number;
     actualHours: number;
@@ -309,6 +317,8 @@ export interface CustomerPlanRow {
     freezeSource?: "customer_portal" | "admin" | "front_desk";
     /** Reason recorded when the plan was frozen (blank when not frozen). */
     freezeReason?: string;
+    /** Staff member who processed the purchase / plan change (FK → staff.id). */
+    soldByStaffId?: string;
     /** Days frozen so far (0 when the plan is not frozen). */
     freezeDays: number;
     cancelledAtISO?: string;
@@ -628,6 +638,7 @@ export function selectMemberships(state: AppState): CustomerPlanRow[] {
                 freezeEndISO:   p.freezeEndISO,
                 freezeSource:   p.freezeSource,
                 freezeReason:   p.freezeReason,
+                soldByStaffId:  p.soldByStaffId,
                 freezeDays,
                 cancelledAtISO: p.cancelledAtISO,
                 cancelReason:   p.cancelReason,
@@ -1078,6 +1089,10 @@ export function selectStaffAttendanceLog(state: AppState): StaffAttendanceLogRow
             className: sched?.name ?? "—",
             attendanceStatus: STATUS_LABEL[l.attendance_status] ?? l.attendance_status,
             coveredBy,
+            isSubstitute: l.is_substitute === true,
+            sessionsTaught:   l.attendance_status === "taught" ? 1 : 0,
+            coveredBySomeone: l.attendance_status === "substituted" && l.covered_by_staff_id ? 1 : 0,
+            coveredForOthers: l.is_substitute === true ? 1 : 0,
             lateStartMin: l.late_start_minutes,
             scheduledHours: l.scheduled_hours,
             actualHours: l.actual_hours,

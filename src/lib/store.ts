@@ -2139,6 +2139,9 @@ export interface CustomerPlan {
      *  allowed reasons). Surfaced admin-side so the studio sees WHY the
      *  membership was paused. Cleared on unfreeze. */
     freezeReason?: string;
+    /** Staff member who processed the purchase / plan change (FK → staff.id).
+     *  Feeds the Plan Changes report "Staff Name" column. */
+    soldByStaffId?: string;
     /** Idempotency stamp for the "freeze reminder" customer notification.
      *  Set to the local ISO day when the reminder fired so a second hydrate
      *  the same day doesn't spam the bell. Cleared on unfreeze so a future
@@ -3215,6 +3218,7 @@ function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
         freezeEndISO: p.freeze_end_iso,
         freezeSource: p.freeze_source,
         freezeReason: p.freeze_reason,
+        soldByStaffId: p.sold_by_staff_id,
         freeCredits: p.free_credits,
         grantReason: p.grant_reason,
         grantIssuedBy: p.grant_issued_by,
@@ -3366,7 +3370,18 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
 // cancelled → no-show. actual_hours matches scheduled_hours until real
 // clock-in/out data lands post-demo.
 function deriveStaffAttendanceLog(schedules: ClassSchedule[]): StaffAttendanceLog[] {
-    return schedules.map(s => {
+    // Substitute pool per branch — the real instructors who teach at that
+    // branch, so a covered shift is always handed to a genuine colleague from
+    // the same location (feeds the Hours & Sessions "Covered by someone" /
+    // "Covered for others" columns with real, synced data).
+    const instructorsByBranch = new Map<string, string[]>();
+    for (const s of schedules) {
+        const arr = instructorsByBranch.get(s.branchId) ?? [];
+        if (!arr.includes(s.instructorId)) arr.push(s.instructorId);
+        instructorsByBranch.set(s.branchId, arr);
+    }
+    const out: StaffAttendanceLog[] = [];
+    for (const s of schedules) {
         const [sh, sm] = s.startTime.split(":").map(Number);
         const [eh, em] = s.endTime.split(":").map(Number);
         const durationMin = Math.max(0, (eh || 0) * 60 + (em || 0) - ((sh || 0) * 60 + (sm || 0)));
@@ -3376,17 +3391,40 @@ function deriveStaffAttendanceLog(schedules: ClassSchedule[]): StaffAttendanceLo
         const lateStart = !isCancelled && cancelledIdHash % 7 === 0
             ? 1 + (cancelledIdHash % 10)      // 1-10 min late on ~15% of classes
             : 0;
-        return {
+        // ~12% of non-cancelled sessions are covered by a substitute — pick a
+        // real, different instructor from the same branch (deterministic by id).
+        const pool = (instructorsByBranch.get(s.branchId) ?? []).filter(id => id !== s.instructorId);
+        const isCovered = !isCancelled && pool.length > 0 && cancelledIdHash % 8 === 3;
+        const coveredBy = isCovered ? pool[cancelledIdHash % pool.length] : undefined;
+        // Row 1 — the scheduled instructor. When covered, they didn't teach it
+        // (status "substituted") and covered_by names the colleague who did.
+        out.push({
             id: `sat_${s.id}`,
             staff_id: s.instructorId,
             class_schedule_id: s.id,
-            attendance_status: isCancelled ? "no-show" : "taught",
-            covered_by_staff_id: undefined,
+            attendance_status: isCancelled ? "no-show" : (isCovered ? "substituted" : "taught"),
+            covered_by_staff_id: coveredBy,
             late_start_minutes: lateStart,
             scheduled_hours: scheduled,
-            actual_hours: isCancelled ? 0 : scheduled - (lateStart / 60),
-        };
-    });
+            actual_hours: isCancelled ? 0 : (isCovered ? 0 : scheduled - (lateStart / 60)),
+        });
+        // Row 2 — the substitute actually taught the session, so they get a
+        // "taught" row flagged as a substitution (feeds "Covered for others").
+        if (isCovered && coveredBy) {
+            out.push({
+                id: `sat_${s.id}_sub`,
+                staff_id: coveredBy,
+                class_schedule_id: s.id,
+                attendance_status: "taught",
+                covered_by_staff_id: undefined,
+                is_substitute: true,
+                late_start_minutes: 0,
+                scheduled_hours: scheduled,
+                actual_hours: scheduled,
+            });
+        }
+    }
+    return out;
 }
 
 function ratingFromSeed(r: SeedClassRating): ClassRating {
@@ -13676,7 +13714,7 @@ export const useAppStore = create<AppState>()(persist(
         // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
         //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
         //   demos re-seed with the 1-credit package instead of the old 3-credit one.
-        version: 120,
+        version: 121,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

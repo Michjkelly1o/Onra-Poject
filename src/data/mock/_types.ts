@@ -702,6 +702,9 @@ export interface CustomerPlan {
     /** Reason recorded when the plan was frozen. Feeds the Frozen Plans
      *  report "Reason" column. */
     freeze_reason?: string;
+    /** Staff member who processed the purchase / plan change. FK →
+     *  staff.id. Feeds the Plan Changes report "Staff Name" column. */
+    sold_by_staff_id?: string;
     // ── Complimentary grant ──
     /** Number of free credits granted — complimentary plans only. */
     free_credits?: number;
@@ -3051,6 +3054,9 @@ export interface StaffAttendanceLog {
     attendance_status: "taught" | "substituted" | "no-show";
     /** When substituted, the staff id who covered. */
     covered_by_staff_id?: string;
+    /** True on the substitute's own row — the session they covered for a
+     *  colleague. Feeds the Hours & Sessions "Covered for others" column. */
+    is_substitute?: boolean;
     /** Minutes late to class (0 = on time). */
     late_start_minutes: number;
     /** Scheduled hours for the shift (from class duration). */

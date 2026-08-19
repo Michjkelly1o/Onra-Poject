@@ -72,6 +72,7 @@ export const customer_plans: CustomerPlan[] = [
         purchased_at: "2026-01-09",
         expiry_iso: "2026-06-30T22:00:00Z",
         price_aed: 400,
+        sold_by_staff_id: "user_jordan_ops",
     },
     {
         id: "cp_ava_2",
@@ -100,6 +101,7 @@ export const customer_plans: CustomerPlan[] = [
         cancel_mode: "today",
         cancel_reason: "Customer request",
         cancelled_at: "2025-12-20",
+        sold_by_staff_id: "user_sam_admin",
     },
 
     // ── Bosa Ahmed — multi-package ───────────────────────────────────────────
@@ -114,6 +116,7 @@ export const customer_plans: CustomerPlan[] = [
         status: "active",
         purchased_at: "2026-01-10",
         expiry_iso: "2026-06-10T22:00:00Z",
+        sold_by_staff_id: "user_casey_desk",
     },
     {
         // Frozen 2026-05-01 → 2026-05-31 (30 days) — expiry extended +30 days
@@ -131,6 +134,7 @@ export const customer_plans: CustomerPlan[] = [
         freeze_start_iso: "2026-05-01",
         freeze_end_iso: "2026-05-31",
         freeze_reason: "Travelling abroad",
+        sold_by_staff_id: "user_jordan_ops",
     },
     {
         id: "cp_bosa_3",
@@ -223,6 +227,7 @@ export const customer_plans: CustomerPlan[] = [
         cancel_mode: "today",
         cancel_reason: "Switched to package",
         cancelled_at: "2026-05-14",
+        sold_by_staff_id: "user_sam_admin",
     },
     {
         // Expired package — past history. Fatima later moved to an unlimited
