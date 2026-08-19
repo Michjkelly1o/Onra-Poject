@@ -3043,7 +3043,10 @@ export interface MarketingSpend {
     id: string;
     /** YYYY-MM — the calendar month the spend applies to. */
     month: string;
-    channel: "Instagram" | "Referral" | "Walk-in" | "Website" | "Google" | "WhatsApp";
+    /** Acquisition channel — sourced from the managed Lead sources list
+     *  (Settings → Lead Lifecycle), so spend lines up with how leads are
+     *  tagged. Free string to accept any studio-defined source. */
+    channel: string;
     spend_aed: number;
     branch_id: string;
 }

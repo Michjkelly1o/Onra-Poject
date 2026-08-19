@@ -21,7 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Plus, Edit02, Trash01, Trash02, XClose,
-    CurrencyDollarCircle, Calendar, Announcement01,
+    CurrencyDollarCircle, Announcement01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,17 +36,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { SelectInput } from "@/components/ui/select-input";
-import { Section, FormField, TextInput, BranchSingleSelect } from "@/components/marketing/form-kit";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumericStringInput } from "@/components/ui/NumericInput";
+import { Section, FormField, BranchSingleSelect } from "@/components/marketing/form-kit";
 import { usePersistedListState } from "@/lib/list-ui-cache";
 import { useAppStore } from "@/lib/store";
-import type { MarketingSpend } from "@/data/mock/_types";
-
-// Channels the Acquisition Efficiency report joins spend↔leads on. Keeping this
-// list in lock-step with the lead sources is what makes CPL / CAC / ROAS
-// resolve per channel.
-const CHANNELS: MarketingSpend["channel"][] = [
-    "Instagram", "Google", "Website", "Walk-in", "Referral", "WhatsApp",
-];
 
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -56,19 +50,27 @@ function monthLabel(ym: string): string {
     return `${MONTH_ABBR[Number(m) - 1] ?? m} ${y}`;
 }
 
-/** Last 18 calendar months, newest first — the Month picker options. */
-function recentMonthOptions(): { value: string; label: string }[] {
-    const out: { value: string; label: string }[] = [];
-    const now = new Date();
-    for (let i = 0; i < 18; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        out.push({ value: ym, label: monthLabel(ym) });
-    }
-    return out;
-}
-
 const AED = new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 });
+
+// AED-inside currency input — same chrome as the products/plans Price field
+// (AED prefix + numeric stepper).
+function AedInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    return (
+        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all h-10">
+            <div className="flex items-center pl-[14px] text-[16px] font-medium text-[var(--colors-text-quaternary)] shrink-0">AED</div>
+            <div className="flex-1 min-w-0">
+                <NumericStringInput
+                    value={value}
+                    onChange={onChange}
+                    min={0}
+                    step={1}
+                    className="!border-0 !shadow-none !rounded-none !ring-0 focus-within:!ring-0 focus-within:!border-0"
+                    inputClassName="!text-[16px]"
+                />
+            </div>
+        </div>
+    );
+}
 
 // ─── Row VM ────────────────────────────────────────────────────────────────
 
@@ -150,18 +152,25 @@ function SpendTable({
 // ─── Form state ──────────────────────────────────────────────────────────────
 
 interface FormState {
-    month: string;
-    channel: MarketingSpend["channel"] | "";
+    month: string;   // YYYY-MM
+    channel: string;
     branchId: string;
     amount: string;
 }
 const EMPTY_FORM: FormState = { month: "", channel: "", branchId: "", amount: "" };
+
+/** Current month as YYYY-MM. */
+function currentMonth(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function MarketingSpendPage() {
     const marketingSpend       = useAppStore(s => s.marketingSpend);
     const branches             = useAppStore(s => s.branches);
+    const leadSources          = useAppStore(s => s.leadSources);
     const addMarketingSpend    = useAppStore(s => s.addMarketingSpend);
     const updateMarketingSpend = useAppStore(s => s.updateMarketingSpend);
     const deleteMarketingSpend = useAppStore(s => s.deleteMarketingSpend);
@@ -178,7 +187,12 @@ export default function MarketingSpendPage() {
 
     const activeBranches = useMemo(() => branches.filter(b => b.status !== "archived"), [branches]);
     const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
-    const monthOptions = useMemo(recentMonthOptions, []);
+    // Channel options come from the managed Lead sources (Settings → Lead
+    // Lifecycle) — same list the customer/lead source picker uses.
+    const channelOptions = useMemo(
+        () => leadSources.map(s => ({ value: s.label, label: s.label })),
+        [leadSources],
+    );
 
     // Reset to page 1 when the search changes (skip initial mount).
     const didMount = useRef(false);
@@ -224,7 +238,7 @@ export default function MarketingSpendPage() {
     // ─── Panel + actions ───────────────────────────────────────────────────
     function openAdd() {
         setEditingId(null);
-        setForm({ ...EMPTY_FORM, month: monthOptions[0]?.value ?? "", branchId: activeBranches[0]?.id ?? "" });
+        setForm({ ...EMPTY_FORM, month: currentMonth(), branchId: activeBranches[0]?.id ?? "" });
         setPanelOpen(true);
     }
     function openEdit(row: SpendRow) {
@@ -305,25 +319,22 @@ export default function MarketingSpendPage() {
                         <div className="flex flex-col gap-8">
                             <Section title="Spend details">
                                 <FormField label="Month">
-                                    <SelectInput
-                                        triggerIcon={<Calendar className="w-5 h-5" />}
+                                    <DatePicker
+                                        value={form.month ? `${form.month}-01` : ""}
+                                        onChange={iso => setForm(f => ({ ...f, month: iso.slice(0, 7) }))}
                                         placeholder="Select month"
-                                        options={monthOptions}
-                                        value={form.month}
-                                        onChange={v => setForm(f => ({ ...f, month: v }))}
-                                        width="w-full"
-                                        searchable
                                     />
                                 </FormField>
                                 <FormField label="Channel"
-                                    hint="Matches the acquisition channels the report uses, so spend lines up with leads.">
+                                    hint="Sourced from your Lead sources (Settings → Lead Lifecycle), so spend lines up with how leads are tagged.">
                                     <SelectInput
                                         triggerIcon={<Announcement01 className="w-5 h-5" />}
                                         placeholder="Select channel"
-                                        options={CHANNELS.map(c => ({ value: c, label: c }))}
+                                        options={channelOptions}
                                         value={form.channel}
-                                        onChange={v => setForm(f => ({ ...f, channel: v as MarketingSpend["channel"] }))}
+                                        onChange={v => setForm(f => ({ ...f, channel: v }))}
                                         width="w-full"
+                                        searchable
                                     />
                                 </FormField>
                                 <FormField label="Branch">
@@ -333,11 +344,10 @@ export default function MarketingSpendPage() {
                                         branches={activeBranches}
                                     />
                                 </FormField>
-                                <FormField label="Amount (AED)">
-                                    <TextInput
-                                        value={form.amount === "0" ? "" : form.amount}
-                                        onChange={v => setForm(f => ({ ...f, amount: v.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "") }))}
-                                        placeholder="0"
+                                <FormField label="Amount">
+                                    <AedInput
+                                        value={form.amount}
+                                        onChange={v => setForm(f => ({ ...f, amount: v }))}
                                     />
                                 </FormField>
                             </Section>
