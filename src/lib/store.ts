@@ -4861,7 +4861,7 @@ export interface AppState {
     // ── Customer transactions (customer-detail Payments tab) ───────────────
     /** Refund a completed transaction — status → refunded, with the refund
      *  method + timestamp recorded. Only `complete` transactions are eligible. */
-    refundTransaction: (id: string, method: "cash" | "card") => void;
+    refundTransaction: (id: string, method: "cash" | "card", reason?: string) => void;
     /** Append a customer transaction — used by the AI Agent migration importer
      *  to bring across historical payments. Auto id + createdAtISO. */
     addCustomerTransaction: (
@@ -9293,7 +9293,7 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({ staffAttendanceLog: [...state.staffAttendanceLog, next] }));
         return id;
     },
-    refundTransaction: (id, method) => {
+    refundTransaction: (id, method, reason) => {
         const target = get().customerTransactions.find(t => t.id === id);
         // Belt-and-braces guard — even if a future UI surface skips
         // its own `isRefundable` check, the store rejects the refund
@@ -9322,6 +9322,10 @@ export const useAppStore = create<AppState>()(persist(
                         status: "refunded" as const,
                         refundedAtISO: new Date().toISOString(),
                         refundMethod: method,
+                        // Standardised refund reason (or the "Other" note) — surfaces
+                        // in the Refunds report's Reason column. Keeps any existing
+                        // reason if the caller didn't pass one.
+                        refundReason: reason && reason.trim() ? reason.trim() : t.refundReason,
                         // `transactionType: "refund"` is what
                         // `commissionForPeriod`'s `categoryStats` uses to net
                         // this row out of the seller's commission base

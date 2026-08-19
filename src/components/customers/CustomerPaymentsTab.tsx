@@ -42,6 +42,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { RowActions } from "@/components/patterns/RowActions";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { SelectInput } from "@/components/ui/select-input";
 import {
     useAppStore, PAYMENT_METHODS,
     type CustomerTransaction, type IssuedGiftCard, type GiftCardDesign, type PaymentMethod,
@@ -362,12 +363,30 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
 
 // ─── Refund modal (Figma 2481:21452) ──────────────────────────────────────────
 
+// Standardised refund reasons (client-specified). "Other" opens a required
+// free-text note. The chosen value (or the note, for "Other") is stored on the
+// transaction as `refundReason` and surfaces in the Refunds report.
+const REFUND_REASONS = [
+    "Studio cancelled",
+    "Billing error",
+    "Booked by mistake",
+    "Medical",
+    "Not satisfied",
+    "Retail return",
+    "Other",
+] as const;
+
 function RefundModal({ txn, onClose, onConfirm }: {
     txn: CustomerTransaction;
     onClose: () => void;
-    onConfirm: (method: "cash" | "card") => void;
+    onConfirm: (method: "cash" | "card", reason: string) => void;
 }) {
     const [method, setMethod] = useState<"cash" | "card">("cash");
+    const [reason, setReason] = useState("");
+    const [otherText, setOtherText] = useState("");
+    const resolvedReason = reason === "Other" ? otherText.trim() : reason;
+    // Proceed is gated until a reason is chosen (and, for "Other", a note typed).
+    const canProceed = reason !== "" && (reason !== "Other" || otherText.trim() !== "");
 
     useEffect(() => {
         function h(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -432,13 +451,37 @@ function RefundModal({ txn, onClose, onConfirm }: {
                             <MethodOption value="card" label="Card on file" Icon={CreditCard01} />
                         </div>
                     </div>
+                    {/* Refund reason — standardised list; "Other" opens a required note. */}
+                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Refund reason</p>
+                        <SelectInput
+                            value={reason}
+                            onChange={v => { setReason(v); if (v !== "Other") setOtherText(""); }}
+                            placeholder="Select a reason"
+                            options={REFUND_REASONS.map(r => ({ value: r, label: r }))}
+                            width="w-full"
+                        />
+                        {reason === "Other" && (
+                            <div className="flex flex-col gap-1.5">
+                                <label htmlFor="refund-other" className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Reason note</label>
+                                <textarea
+                                    id="refund-other"
+                                    value={otherText}
+                                    onChange={e => setOtherText(e.target.value)}
+                                    placeholder="Describe the refund reason..."
+                                    rows={3}
+                                    className="w-full resize-none rounded-[8px] border-1 border-[var(--colors-border-primary)] px-[14px] py-[10px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:border-[var(--colors-secondary-300)] focus:ring-4 focus:ring-[var(--colors-secondary-100)]"
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
                 {/* Footer */}
                 <div className="shrink-0">
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                     <div className="px-6 pt-6 pb-6 flex gap-3">
                         <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
-                        <Button variant="primary" size="lg" className="flex-1" onClick={() => onConfirm(method)}>Proceed refund</Button>
+                        <Button variant="primary" size="lg" className="flex-1" disabled={!canProceed} onClick={() => onConfirm(method, resolvedReason)}>Proceed refund</Button>
                     </div>
                 </div>
             </div>
@@ -641,8 +684,8 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
         applied.dateStart !== "" || applied.dateEnd !== "";
 
     // ─── Refund handler ─────────────────────────────────────────────────────
-    function handleRefund(txn: CustomerTransaction, method: "cash" | "card") {
-        refundTransaction(txn.id, method);
+    function handleRefund(txn: CustomerTransaction, method: "cash" | "card", reason: string) {
+        refundTransaction(txn.id, method, reason);
         setRefundTxn(null);
         showToast(
             "Refund payment successfully",
@@ -866,7 +909,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
 
             {refundTxn && (
                 <RefundModal txn={refundTxn} onClose={() => setRefundTxn(null)}
-                    onConfirm={method => handleRefund(refundTxn, method)} />
+                    onConfirm={(method, reason) => handleRefund(refundTxn, method, reason)} />
             )}
         </div>
     );

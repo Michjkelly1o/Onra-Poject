@@ -363,7 +363,7 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                     <Button
                         variant="primary"
                         size="md"
-                        disabled={touched && !canSubmit}
+                        disabled={!canSubmit}
                         onClick={handleSubmit}
                     >
                         {isEdit ? "Save changes" : "Create tax rate"}
