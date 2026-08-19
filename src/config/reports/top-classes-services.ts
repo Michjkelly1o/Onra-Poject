@@ -39,7 +39,7 @@ export const TOP_CLASSES_SERVICES_REPORT: ReportDefinition = {
         { key: K.sessionsRun,     label: "Sessions run",         kind: "number",  minWidth: 140 },
         { key: K.totalBookings,   label: "Total bookings",       kind: "number",  minWidth: 150 },
         { key: K.totalAttended,   label: "Total attended",       kind: "number",  minWidth: 150 },
-        { key: K.noShows,         label: "No-shows",             kind: "number",  minWidth: 130 },
+        { key: K.noShows,         label: "No-shows",             kind: "number",  minWidth: 130, calc: "Booked − Attended − Late cancellations" },
         { key: K.avgFillPct,      label: "Fill rate %",          kind: "percent", minWidth: 130, calc: "Booked ÷ Capacity" },
         { key: K.uniqueCustomers, label: "Unique customers",     kind: "number",  minWidth: 170 },
         { key: K.location,        label: "Location",             kind: "text",    minWidth: 180 },

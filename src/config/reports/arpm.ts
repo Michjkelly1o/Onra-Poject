@@ -37,7 +37,7 @@ export const ARPM_REPORT: ReportDefinition = {
     columns: [
         { key: K.segment,         label: "Segment",           kind: "text",     minWidth: 220 },
         { key: K.activeMembers,   label: "Active members",    kind: "number",   minWidth: 150 },
-        { key: K.netRevenue,      label: "Revenue",           kind: "currency", minWidth: 160 },
+        { key: K.netRevenue,      label: "Revenue",           kind: "currency", minWidth: 160, calc: "Net revenue — after discounts & refunds, at price paid" },
         { key: K.arpm,            label: "ARPM",              kind: "currency", minWidth: 130, calc: "Net revenue ÷ Active members" },
         { key: K.priorPeriodArpm, label: "Prior-period ARPM", kind: "currency", minWidth: 180 },
         { key: K.pctChange,       label: "% change",          kind: "percent",  minWidth: 130, calc: "(Current − Prior) ÷ Prior" },
