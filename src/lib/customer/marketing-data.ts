@@ -42,8 +42,9 @@ function formatValidUntil(iso?: string): string {
     let h = d.getUTCHours();
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
-    const mm = String(d.getUTCMinutes()).padStart(2, "0");
-    return `${dd}/${mo}/${d.getUTCFullYear()}, ${h}:${mm} ${ampm}`;
+    const minutes = d.getUTCMinutes();
+    const time = minutes === 0 ? `${h} ${ampm}` : `${h}.${String(minutes).padStart(2, "0")} ${ampm}`;
+    return `${dd}/${mo}/${d.getUTCFullYear()}, ${time}`;
 }
 
 export interface MarketingDetailVM {

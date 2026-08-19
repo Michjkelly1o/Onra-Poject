@@ -66,12 +66,13 @@ export function formatLongDate(iso: string): string {
     return parseLocal(iso).toLocaleString("en-US", { weekday: "short", day: "numeric", month: "short" });
 }
 
-/** "10:00" → "10:00 AM", "14:30" → "2:30 PM". */
+/** "10:00" → "10 AM", "14:30" → "2.30 PM" (Onra convention: dot minutes, drop :00). */
 export function to12h(time: string): string {
     const [h, m] = time.split(":").map(Number);
     const period = h < 12 ? "AM" : "PM";
     const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    return mm === 0 ? `${h12} ${period}` : `${h12}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 /** Minutes between two "HH:MM" times. */

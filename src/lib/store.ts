@@ -83,6 +83,7 @@ import { account_profile as adminUser } from "@/data/mock/account_profile";
 import { capitalizeName } from "./format-name";
 import { formatTimeRange12 } from "./utils";
 import { commissionForPeriod } from "./payroll-calc";
+import { currentWeekMondayISO, addWeeksISO } from "./week";
 import { evaluateReferralRewards } from "./referral-helpers";
 import { getFrozenActiveMembership } from "./customer/freeze-eligibility";
 import {
@@ -4080,6 +4081,31 @@ function projectStaffAsInstructor(
     };
 }
 
+// `currentWeekMondayISO` + `addWeeksISO` now live in the shared `@/lib/week`
+// helper (audit 2026-08-19) so store writes and the week-view agree on the
+// current-week boundary.
+
+/** Cap a set of shift assignments "from `fromWeekISO` forward", preserving past
+ *  weeks as history. A row that only ever applied in the future (its `week_start`
+ *  is ≥ the cutoff) is dropped entirely; any row still live at the cutoff gets an
+ *  `end_week_start = fromWeekISO` so it stops showing from that week on. Rows that
+ *  already ended before the cutoff are untouched. Returns the next assignments. */
+function capAssignmentsForward(
+    assignments: ShiftAssignment[],
+    match: (a: ShiftAssignment) => boolean,
+    fromWeekISO: string,
+): ShiftAssignment[] {
+    return assignments.flatMap(a => {
+        if (!match(a)) return [a];
+        // Already ended at/before the cutoff → nothing to do.
+        if (a.end_week_start && a.end_week_start <= fromWeekISO) return [a];
+        // Purely-future row → remove it (no past history to keep).
+        if (a.week_start && a.week_start >= fromWeekISO) return [];
+        // Live at the cutoff → freeze it there so past weeks stay as history.
+        return [{ ...a, end_week_start: fromWeekISO }];
+    });
+}
+
 /** Recompute the `instructors` slice for a list of affected staff ids.
  *  Rows whose role flipped from / to instructor are added or removed. */
 function syncInstructorsFromStaff(
@@ -4541,6 +4567,14 @@ export interface AppState {
     addShiftAssignment: (input: { shift_id: string; staff_id: string; days_of_week?: boolean[]; week_start?: string; weeks?: number }) => string;
     /** Remove a staff → shift assignment by id. */
     removeShiftAssignment: (id: string) => void;
+    /** Un-assign a staff↔shift "from the current week forward" — past weeks keep
+     *  the assignment as read-only history. Caps every matching row (all of the
+     *  staff's shifts, or just `shiftId`) at this week's Monday. Client 2026-08-19. */
+    endShiftAssignmentsForward: (input: { staffId: string; shiftId?: string }) => void;
+    /** Un-assign a staff↔shift for SPECIFIC week(s) only — each listed week's
+     *  Monday gets an empty override that suppresses the recurring baseline for
+     *  that week, leaving all other weeks (and history) intact. Client 2026-08-19. */
+    unassignShiftForWeeks: (input: { staffId: string; shiftId: string; weeks: string[] }) => void;
     /** Update the per-assignment days-of-week subset. */
     updateShiftAssignmentDays: (id: string, days: boolean[]) => void;
     /** Patch an existing shift — name / branch / hours / days / status. */
@@ -8713,7 +8747,8 @@ export const useAppStore = create<AppState>()(persist(
             const hasHistory =
                 state.classBookings.some(b => b.customerId === id) ||
                 state.appointmentBookings.some(b => b.customerId === id) ||
-                state.customerTransactions.some(t => t.customerId === id);
+                state.customerTransactions.some(t => t.customerId === id) ||
+                state.customerPlans.some(p => p.customerId === id);
             if (hasHistory) blocked.push(id);
             else deleted.push(id);
         }
@@ -11577,10 +11612,18 @@ export const useAppStore = create<AppState>()(persist(
     },
     setShiftsStatus: (ids, status) => {
         const before = get().shifts.filter(s => ids.includes(s.id));
+        const idSet = new Set(ids);
+        const from = currentWeekMondayISO();
         set(state => ({
             shifts: state.shifts.map(s =>
                 ids.includes(s.id) ? { ...s, status } : s,
             ),
+            // Archiving a shift also un-assigns it current-week-forward — past
+            // weeks keep their cards as history (client 2026-08-19). Deactivate /
+            // Reactivate leave assignments untouched.
+            shiftAssignments: status === "archived"
+                ? capAssignmentsForward(state.shiftAssignments, a => idSet.has(a.shift_id), from)
+                : state.shiftAssignments,
         }));
         // Audit verb mirrors the toast — keeps the activity feed legible.
         const verb = status === "archived"  ? "Archived shift"
@@ -11589,22 +11632,18 @@ export const useAppStore = create<AppState>()(persist(
         for (const s of before) get().recordAudit(verb, "shift", s.id, s.name);
     },
     deleteShifts: (ids) => {
-        // Deleting a shift CASCADES (client 2026-08): the shift is removed along
-        // with every `shiftAssignments` row pointing at it, AND any staff whose
-        // legacy primary `staff.shiftId` referenced it has that cleared — then
-        // instructors re-sync from the patched staff so no dangling reference
-        // survives. Attendance / schedules key off `instructorId` (never a shift
-        // id), so they stay consistent automatically.
-        //
-        // Archive/Delete policy Phase 3 decision (2026-08-12): shifts are
-        // delete-only scheduling config (Bucket B) and this cascade is the
-        // client's intended behaviour — assignments are a live wiring, not
-        // historical records, so deletion is NOT history-guarded (unlike
-        // branches / rooms / class templates). The `blocked` array stays for a
-        // uniform return shape; nothing is ever blocked here.
+        // Soft-delete (client 2026-08-19): a deleted shift is KEPT as a row
+        // (stamped `deleted_at`) so PAST week cards can still resolve its name +
+        // time as read-only history. Its assignments are capped "current week
+        // forward" — past weeks stay populated, this week onward is cleared. The
+        // legacy `staff.shiftId` pointer is cleared for anyone who held it, and
+        // instructors re-sync. Deleted shifts are filtered out of every list /
+        // picker (see `deleted_at` guards) but stay resolvable in the week grid.
         const idSet = new Set(ids);
-        const before = get().shifts.filter(s => idSet.has(s.id));
+        const before = get().shifts.filter(s => idSet.has(s.id) && !s.deleted_at);
         if (before.length === 0) return { deleted: [], blocked: [] };
+        const from = currentWeekMondayISO();
+        const nowISO = new Date().toISOString();
         // Staff whose primary shift pointer is about to dangle → clear + resync.
         const affectedStaffIds = get().staff.filter(s => s.shiftId && idSet.has(s.shiftId)).map(s => s.id);
         set(state => {
@@ -11612,8 +11651,8 @@ export const useAppStore = create<AppState>()(persist(
                 s.shiftId && idSet.has(s.shiftId) ? { ...s, shiftId: undefined } : s,
             );
             return {
-                shifts: state.shifts.filter(s => !idSet.has(s.id)),
-                shiftAssignments: state.shiftAssignments.filter(a => !idSet.has(a.shift_id)),
+                shifts: state.shifts.map(s => idSet.has(s.id) ? { ...s, deleted_at: nowISO } : s),
+                shiftAssignments: capAssignmentsForward(state.shiftAssignments, a => idSet.has(a.shift_id), from),
                 staff: nextStaff,
                 instructors: affectedStaffIds.length
                     ? syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, affectedStaffIds)
@@ -11677,6 +11716,82 @@ export const useAppStore = create<AppState>()(persist(
                 staff: nextStaff,
                 instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [row.staff_id]),
             };
+        });
+    },
+    endShiftAssignmentsForward: ({ staffId, shiftId }) => {
+        const from = currentWeekMondayISO();
+        set(state => {
+            const match = (a: ShiftAssignment) =>
+                a.staff_id === staffId && (shiftId ? a.shift_id === shiftId : true);
+            const shiftAssignments = capAssignmentsForward(state.shiftAssignments, match, from);
+            // Clear the legacy primary pointer if we just ended the staff's
+            // primary shift going forward, so availability readers (customer
+            // slot picker, instructor gating) stop honouring it. Skip when a
+            // specific, non-primary shift was unassigned.
+            const owner = state.staff.find(s => s.id === staffId);
+            if (!owner?.shiftId || (shiftId && owner.shiftId !== shiftId)) {
+                return { shiftAssignments };
+            }
+            const nextStaff = state.staff.map(s => s.id === staffId ? { ...s, shiftId: undefined } : s);
+            return {
+                shiftAssignments,
+                staff: nextStaff,
+                instructors: syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, [staffId]),
+            };
+        });
+    },
+    unassignShiftForWeeks: ({ staffId, shiftId, weeks }) => {
+        if (weeks.length === 0) return;
+        set(state => {
+            const emptyDays = [false, false, false, false, false, false, false];
+            const hasBaseline = state.shiftAssignments.some(a => a.staff_id === staffId && a.shift_id === shiftId && !a.week_start);
+            let rows = state.shiftAssignments;
+            const mine = (a: ShiftAssignment) => a.staff_id === staffId && a.shift_id === shiftId;
+            for (const wk of weeks) {
+                // If wk falls INSIDE a multi-week span override, expand that span
+                // into single-week rows first so we can carve out just this week
+                // (otherwise a subset-week unassign of a "1 month" run silently
+                // no-ops — audit finding, client 2026-08-19).
+                const spanIdx = rows.findIndex(a => mine(a) && a.week_start
+                    && (a.weeks ?? 1) > 1 && a.week_start <= wk && wk < addWeeksISO(a.week_start, a.weeks ?? 1));
+                if (spanIdx >= 0) {
+                    const span = rows[spanIdx];
+                    const expanded: ShiftAssignment[] = [];
+                    for (let i = 0; i < (span.weeks ?? 1); i++) {
+                        const ws = addWeeksISO(span.week_start!, i);
+                        expanded.push({
+                            id: `sa_${shiftId}_${staffId}_${ws}`,
+                            shift_id: shiftId, staff_id: staffId,
+                            days_of_week: [...span.days_of_week],
+                            week_start: ws,
+                            created_at: span.created_at,
+                        });
+                    }
+                    rows = [...rows.slice(0, spanIdx), ...expanded, ...rows.slice(spanIdx + 1)];
+                }
+                const idx = rows.findIndex(a => mine(a) && a.week_start === wk);
+                if (idx >= 0) {
+                    // Existing week override → empty it (keep as a tombstone when a
+                    // recurring baseline exists so it doesn't re-appear that week),
+                    // else drop the row entirely.
+                    rows = hasBaseline
+                        ? rows.map((a, i) => i === idx ? { ...a, days_of_week: [...emptyDays] } : a)
+                        : rows.filter((_, i) => i !== idx);
+                } else if (hasBaseline) {
+                    // No override yet → add an empty tombstone that hides the
+                    // baseline for just this week.
+                    rows = [...rows, {
+                        id: `sa_${shiftId}_${staffId}_${wk}`,
+                        shift_id: shiftId,
+                        staff_id: staffId,
+                        days_of_week: [...emptyDays],
+                        week_start: wk,
+                        created_at: new Date().toISOString(),
+                    }];
+                }
+                // (No baseline + no override that week → nothing to unassign.)
+            }
+            return { shiftAssignments: rows };
         });
     },
     updateShiftAssignmentDays: (id, days) => {
@@ -13739,7 +13854,7 @@ export const useAppStore = create<AppState>()(persist(
         // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
         //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
         //   demos re-seed with the 1-credit package instead of the old 3-credit one.
-        version: 121,
+        version: 122,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -13795,13 +13910,20 @@ export const useAppStore = create<AppState>()(persist(
                     return reason === bt.reason ? bt : { ...bt, reason };
                 });
             }
+            // Re-derive the denormalized `displayTime` from the raw 24h times on
+            // every rehydrate so the canonical 12-hour convention (AM/PM, no
+            // ":00" on whole hours, dot-minutes — client 2026-08) always wins,
+            // refreshing any snapshot written with an older format. Idempotent;
+            // no version bump / state wipe.
             state.classSchedules = state.classSchedules.map((c) => ({
                 ...c,
                 status: liveScheduleStatus(c.dateISO, c.startTime, c.endTime, c.status),
+                displayTime: formatTimeRange12(c.startTime, c.endTime),
             }));
             state.appointments = state.appointments.map((a) => ({
                 ...a,
                 status: liveScheduleStatus(a.dateISO, a.startTime, a.endTime, a.status),
+                displayTime: formatTimeRange12(a.startTime, a.endTime),
             }));
             // v83.1 (2026-07-24) — "Preference: Flexible" backfill. Pre-existing
             // snapshots have no `flexible` flag on their appointment rows, so the

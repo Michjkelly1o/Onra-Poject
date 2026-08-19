@@ -120,17 +120,23 @@ export function computeAvailableSlots(
             // reading `st.shiftId` only; a second shift assignment (e.g.
             // Afternoon Tue+Thu on top of Morning Mon–Sat) was ignored.
             const dow = utcDow(dateISO);
-            const myAssignments = st ? shiftAssignments.filter(a => a.staff_id === st.id) : [];
+            // Only LIVE assignments for THIS date's week — a shift un-assigned
+            // forward (end_week_start ≤ this date's Monday) or an empty week-
+            // tombstone (all-false days) no longer offers slots (client 2026-08-19).
+            const myAssignments = st ? shiftAssignments.filter(a =>
+                a.staff_id === st.id
+                && (!a.end_week_start || mondayOfISO(dateISO) < a.end_week_start)
+                && a.days_of_week.some(Boolean)) : [];
             const hasShift = myAssignments.length > 0 || !!st?.shiftId;
             if (myAssignments.length > 0) {
                 for (const a of myAssignments) {
                     if (!a.days_of_week[dow]) continue;
-                    const sh = shifts.find(x => x.id === a.shift_id && x.status === "active");
+                    const sh = shifts.find(x => x.id === a.shift_id && x.status === "active" && !x.deleted_at);
                     if (!sh) continue;
                     shiftWindows.push({ start: toMin(sh.start_time), end: toMin(sh.end_time) });
                 }
             } else if (st?.shiftId) {
-                const sh = shifts.find(x => x.id === st.shiftId && x.status === "active");
+                const sh = shifts.find(x => x.id === st.shiftId && x.status === "active" && !x.deleted_at);
                 if (sh && sh.working_days[dow]) {
                     shiftWindows.push({ start: toMin(sh.start_time), end: toMin(sh.end_time) });
                 }

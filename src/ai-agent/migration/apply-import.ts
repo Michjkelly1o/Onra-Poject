@@ -539,7 +539,7 @@ function to12h(hhmm: string): string {
     const [h, m] = hhmm.split(":").map(Number);
     const mer = h < 12 ? "AM" : "PM";
     const hh = h % 12 === 0 ? 12 : h % 12;
-    return `${hh}:${String(m).padStart(2, "0")} ${mer}`;
+    return m === 0 ? `${hh} ${mer}` : `${hh}.${String(m).padStart(2, "0")} ${mer}`;
 }
 
 /** "7:00 AM – 8:00 AM" display range. */

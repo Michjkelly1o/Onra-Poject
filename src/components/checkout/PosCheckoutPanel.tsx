@@ -14,12 +14,12 @@
 // reset needed. On complete it writes the sale + fires the toast, then signals
 // the POS page (onComplete) to wipe the cart; cancel just drops the pending sale.
 
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { XClose, ChevronRight } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { useEffect, useMemo, useState } from "react";
+import { XClose } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { useAppStore, walletBalanceAed } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { PanelStepper } from "@/components/ui/PanelStepper";
 
 // The 2-step checkout, shown as a branding-style breadcrumb stepper.
 const CHECKOUT_STEPS = [
@@ -238,27 +238,10 @@ function PosCheckoutBody({ onCancel, onComplete }: {
                     <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
             </div>
-            {/* Breadcrumb stepper — same chrome as the branding Customize
-                panel. Only backward navigation (can't skip ahead to Receipt). */}
-            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4 flex items-center gap-2">
-                {CHECKOUT_STEPS.map((s, i) => (
-                    <Fragment key={s.n}>
-                        <button
-                            type="button"
-                            onClick={() => { if (s.n <= step) setStep(s.n as 1 | 2); }}
-                            className={cn(
-                                "text-[14px] font-semibold py-1 px-1 transition-colors",
-                                step === s.n ? "text-[#164e52]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
-                            )}
-                        >
-                            {s.label}
-                        </button>
-                        {i < CHECKOUT_STEPS.length - 1 && (
-                            <ChevronRight className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
-                        )}
-                    </Fragment>
-                ))}
-            </div>
+            {/* Numbered-circle horizontal stepper (shared PanelStepper —
+                Figma 8223:23016). Backward-only navigation (can't skip ahead
+                to Receipt before payment confirms). */}
+            <PanelStepper steps={CHECKOUT_STEPS} current={step} onStep={(n) => { if (n <= step) setStep(n as 1 | 2); }} />
             <div className="flex-1 min-h-0 flex flex-col px-6 py-5">
                 {body}
             </div>

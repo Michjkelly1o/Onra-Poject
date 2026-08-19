@@ -93,10 +93,11 @@ function fmtDateTime(iso: string): string {
     const m = String(d.getUTCMonth() + 1).padStart(2, "0");
     const day = String(d.getUTCDate()).padStart(2, "0");
     let h = d.getUTCHours();
-    const min = String(d.getUTCMinutes()).padStart(2, "0");
+    const minutes = d.getUTCMinutes();
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
-    return `${y}-${m}-${day}, ${h}:${min} ${ampm}`;
+    const time = minutes === 0 ? `${h} ${ampm}` : `${h}.${String(minutes).padStart(2, "0")} ${ampm}`;
+    return `${y}-${m}-${day}, ${time}`;
 }
 
 /** "Apr 15, 2026" — gift-card expiry label. */
@@ -832,8 +833,8 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                             <th className={cn(TH, "w-[160px]")}>
                                                 <SortableHeader sortKey="planType" currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Products</SortableHeader>
                                             </th>
-                                            <th className={cn(TH, "w-[120px]")}>
-                                                <SortableHeader sortKey="amount"   currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Amount</SortableHeader>
+                                            <th className={cn(TH, "w-[120px]", "!text-right")}>
+                                                <SortableHeader sortKey="amount"   currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort} align="right">Amount</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[140px]")}>
                                                 <SortableHeader sortKey="status"   currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Status</SortableHeader>
@@ -870,7 +871,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                     ledger convention): without the abs, `+` on
                                                     top of a stored `-1800` reads as
                                                     `+ AED −1,800`. */}
-                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>
                                                     {t.status === "refunded"
                                                         ? `+ ${fmtAed(Math.abs(t.amountAed))}`
                                                         : fmtAed(t.amountAed)}

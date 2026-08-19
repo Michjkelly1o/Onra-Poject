@@ -2053,6 +2053,10 @@ export interface Shift {
      *  when the migration backfills a pre-v82 row. */
     staffing_target: number;
     status: ShiftStatusSeed;
+    /** Soft-delete stamp. A deleted shift is hidden from every list + picker but
+     *  KEPT as a row so past week-view cards can still resolve its name/time as
+     *  read-only history (client 2026-08-19). Absent → live. */
+    deleted_at?: string;
     created_at: string;       // ISO 8601
 }
 
@@ -2090,6 +2094,12 @@ export interface ShiftAssignment {
      *  4 (1 month), 52 (1 year). Absent → 1 week (or the legacy baseline).
      *  Client 2026-08. */
     weeks?: number;
+    /** Effective-END week (that week's Monday ISO), EXCLUSIVE. Set when the
+     *  assignment is un-assigned "from the current week forward" (or when its
+     *  shift is deleted/archived): the row stops showing on this week and every
+     *  later week, but PAST weeks keep rendering it as read-only history.
+     *  Absent → open-ended. Client 2026-08-19. */
+    end_week_start?: string;
     created_at: string;       // ISO 8601
 }
 

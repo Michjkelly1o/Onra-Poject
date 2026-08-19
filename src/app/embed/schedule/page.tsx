@@ -64,9 +64,10 @@ function genderLabel(g: string): string {
 function to12h(hhmm: string): string {
     const [h, m] = (hhmm || "").split(":").map(Number);
     if (Number.isNaN(h)) return hhmm;
-    const period = h >= 12 ? "PM" : "AM";
+    const mm = Number.isNaN(m) ? 0 : m;
+    const period = h < 12 ? "AM" : "PM";
     const hh = h % 12 === 0 ? 12 : h % 12;
-    return `${hh}:${String(m ?? 0).padStart(2, "0")} ${period}`;
+    return mm === 0 ? `${hh} ${period}` : `${hh}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 function EmbedScheduleInner() {

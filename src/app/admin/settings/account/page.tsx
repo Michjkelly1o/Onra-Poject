@@ -483,7 +483,7 @@ const SEED_ACTIVE_SESSIONS: ActiveSession[] = [
         device: "MacBook Pro",
         browser: "Chrome 126",
         location: "Dubai, UAE",
-        lastActiveLabel: "Today at 1:34 PM",
+        lastActiveLabel: "Today at 1.34 PM",
         isCurrent: true,
     },
     {
@@ -491,7 +491,7 @@ const SEED_ACTIVE_SESSIONS: ActiveSession[] = [
         device: "Windows PC",
         browser: "Chrome 126",
         location: "Dubai, UAE",
-        lastActiveLabel: "Today at 1:34 PM",
+        lastActiveLabel: "Today at 1.34 PM",
         isCurrent: false,
     },
 ];

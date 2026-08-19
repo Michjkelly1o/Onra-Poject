@@ -258,9 +258,10 @@ function heightFromTime(startTime: string, endTime: string, hourHeight: number =
 }
 function fmt12(time: string): string {
     const [h, m] = time.split(":").map(Number);
-    const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    const ampm = h < 12 ? "AM" : "PM";
-    return `${hh}:${String(m).padStart(2, "0")} ${ampm}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    const period = h < 12 ? "AM" : "PM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return mm === 0 ? `${h12} ${period}` : `${h12}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 // ─── Class card — admin's ScheduleClassCard visual chrome WITHOUT the

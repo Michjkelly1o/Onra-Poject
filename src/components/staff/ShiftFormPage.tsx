@@ -47,7 +47,7 @@ function buildTimeOptions(min: string, max: string): { value: string; label: str
         const value = `${String(h).padStart(2, "0")}:${mm}`;
         const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
         const period = h < 12 ? "AM" : "PM";
-        const label = `${String(h12).padStart(2, "0")}:${mm} ${period}`;
+        const label = m === 0 ? `${h12} ${period}` : `${h12}.${mm} ${period}`;
         out.push({ value, label });
     }
     return out;
@@ -161,7 +161,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
                 const [h, m] = t.split(":").map(Number);
                 const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
                 const period = h < 12 ? "AM" : "PM";
-                opts.push({ value: t, label: `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}` });
+                opts.push({ value: t, label: m === 0 ? `${h12} ${period}` : `${h12}.${String(m).padStart(2, "0")} ${period}` });
             }
         }
         return opts.sort((a, b) => a.value.localeCompare(b.value));

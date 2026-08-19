@@ -9,7 +9,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ClockFastForward, ChevronUp, ChevronDown } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, to12h } from "@/lib/utils";
 
 export const DAY_FULL: Record<string, string> = {
     Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday",
@@ -27,10 +27,7 @@ for (let h = 6; h <= 22; h++) {
 }
 
 export function fmtTime(t: string): string {
-    const [h, m] = t.split(":").map(Number);
-    const ap = h >= 12 ? "PM" : "AM";
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ap}`;
+    return to12h(t);
 }
 
 /** "09:00 - 10:00 AM" when start and end share AM/PM; falls back to full "09:00 AM - 12:30 PM" across periods. */

@@ -38,6 +38,7 @@ import { getCategoryColor } from "@/components/schedule/ScheduleGridViews";
 import { useAppStore, type Staff, type Shift, type ShiftAssignment, type SessionType } from "@/lib/store";
 import { timeRangesOverlap } from "@/lib/staff/shift-conflict";
 import { decideAssign } from "@/lib/staff/shift-assign-logic";
+import { isoDayLocal, mondayOf as mondayOfWeek } from "@/lib/week";
 import { timeOffDuration } from "@/lib/staff/time-off";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
@@ -46,19 +47,8 @@ import { timeOffDuration } from "@/lib/staff/time-off";
 // week boundaries never split across a UTC midnight in a way that would
 // misplace a class from the perspective of the picking admin.
 
-function isoDayLocal(d: Date): string {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Monday-first week start for a given Date (returns midnight local). */
-function mondayOfWeek(d: Date): Date {
-    const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    // JS: Sunday = 0 .. Saturday = 6. Convert to Monday=0..Sunday=6.
-    const monIdx = (out.getDay() + 6) % 7;
-    out.setDate(out.getDate() - monIdx);
-    out.setHours(0, 0, 0, 0);
-    return out;
-}
+// `isoDayLocal` + `mondayOfWeek` (mondayOf) come from the shared `@/lib/week`
+// helper (audit 2026-08-19) so the grid and the store agree on week boundaries.
 
 function addDays(d: Date, n: number): Date {
     const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -77,12 +67,13 @@ const TIME_OFF_REASON_LABEL: Record<"sick" | "vacation" | "training" | "other", 
     other:    "Other",
 };
 
-/** "07:00" → "07:00 AM"; "12:00" → "12:00 PM". */
+/** "07:00" → "7 AM"; "12:00" → "12 PM" (Onra convention: drop :00, dot minutes). */
 function to12h(hhmm: string): string {
     const [h, m] = hhmm.split(":").map(Number);
     const period = h < 12 ? "AM" : "PM";
     const hr = h % 12 === 0 ? 12 : h % 12;
-    return `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    return mm === 0 ? `${hr} ${period}` : `${hr}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 /** Range label from a 7-bit [Sun..Sat] working-days array → "Monday - Saturday". */
@@ -138,16 +129,13 @@ function hoursOf(t: string): number {
     return (h || 0) + (m || 0) / 60;
 }
 
-/** "07:00 – 12:00 AM" — 12-hour HH:MM range with a single trailing meridiem
- *  taken from the start (Figma 8175:507703 / Today's-schedule convention). */
+/** "7 AM – 12 PM" — 12-hour range (Onra convention: drop :00, dot minutes) with
+ *  a single trailing meridiem when both ends share AM/PM. */
 function sliceTimeLabel(start: string, end: string): string {
-    const to12 = (t: string) => {
-        const [h, m] = (t || "0").split(":").map(Number);
-        const hh = (h || 0) % 12 === 0 ? 12 : (h || 0) % 12;
-        return `${String(hh).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`;
-    };
-    const mer = parseInt(start.split(":")[0] || "0", 10) < 12 ? "AM" : "PM";
-    return `${to12(start)} – ${to12(end)} ${mer}`;
+    const sMer = parseInt(start.split(":")[0] || "0", 10) < 12 ? "AM" : "PM";
+    const eMer = parseInt(end.split(":")[0] || "0", 10) < 12 ? "AM" : "PM";
+    const startLabel = sMer === eMer ? to12h(start).replace(/\s(AM|PM)$/, "") : to12h(start);
+    return `${startLabel} – ${to12h(end)}`;
 }
 
 /** Slice-style shift card. `sessions` are the instructor's active class/appt
@@ -200,7 +188,7 @@ function ShiftSliceCard({ shift, sessions, partialOffs, onUnassign, onCardClick 
             {/* Text overlay — shift TIME only, in the title font (client 2026-08-14;
                 the shift name moved to the native tooltip + the popover header). */}
             <div className="relative pl-[10px] pr-2 py-1.5">
-                <p className="truncate text-[12px] font-semibold leading-4 pr-4 text-[#101828]">{time}</p>
+                <p className="whitespace-nowrap text-[12px] font-semibold leading-4 pr-5 text-[#101828]">{time}</p>
             </div>
             {onUnassign && (
                 <button type="button" aria-label="Unassign shift"
@@ -258,12 +246,10 @@ function ShiftHoverPopover({ shift, items, anchor, dayISO, onOpenDay, onClose }:
                 {items.length === 0 ? (
                     <p className="px-2 py-6 text-center text-[13px] text-[var(--colors-fg-quaternary)]">No schedule for this shift.</p>
                 ) : items.map(it => it.kind === "off" ? (
-                    <div key={it.id} className="flex items-start gap-3 px-2 py-2 rounded-[8px]">
-                        <span className="mt-1.5 w-2 h-2 rounded-full shrink-0 bg-[#f79009]" aria-hidden />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">{it.label}</p>
-                            <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate">{it.sub}</p>
-                        </div>
+                    <div key={it.id} className="w-full flex items-center gap-3 px-2 py-2 rounded-[8px]">
+                        <span className="w-2 h-2 rounded-full shrink-0 bg-[#f79009]" aria-hidden />
+                        <span className="flex-1 text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">{it.label}</span>
+                        <span className="text-[13px] text-[var(--colors-text-quaternary)] shrink-0">{it.sub}</span>
                     </div>
                 ) : (
                     <button key={it.id} type="button"
@@ -333,7 +319,7 @@ function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShi
     // weekday; single/one-off shifts have no weekday pattern so they always show
     // (they're assigned to this specific day). Client 2026-08-11.
     const branchDayShifts = shifts.filter(sh =>
-        sh.status === "active"
+        sh.status === "active" && !sh.deleted_at
         && ((sh.type ?? "recurring") === "single" || sh.working_days[dayIdx]),
     );
     // Offer every active shift running THIS day that the staff doesn't already
@@ -462,7 +448,7 @@ function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShi
         return () => document.removeEventListener("keydown", onKey);
     }, [open]);
 
-    const pickList = shifts.filter(sh => sh.status === "active" && (sh.type ?? "recurring") === "recurring" && !assignedShiftIds.has(sh.id));
+    const pickList = shifts.filter(sh => sh.status === "active" && !sh.deleted_at && (sh.type ?? "recurring") === "recurring" && !assignedShiftIds.has(sh.id));
     const MENU_W = 184, CARD_W = 380, GAP = 8;
     const vw = typeof window !== "undefined" ? window.innerWidth : 1440;
     const pickerLeft = menuPos
@@ -596,9 +582,11 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     // The active week key — shift assignments are scoped to it so a staff member
     // can hold different shifts each week (client 2026-08).
     const weekStartISO = isoDayLocal(weekStart);
-    // The real current week. Existing seeded assignments (no `week_start`) are
-    // scoped to THIS week only, so they don't repeat on past/future weeks.
+    // The real current week — the boundary between editable weeks and read-only
+    // history.
     const currentWeekISO = isoDayLocal(mondayOfWeek(new Date()));
+    // Past weeks are frozen HISTORY: no assign / unassign / drag (client 2026-08-19).
+    const isPastWeek = weekStartISO < currentWeekISO;
 
     // Role type lookup so we can group staff into Front Desk & Ops vs
     // Instructors. Owner rows are excluded — they have no branch/shift
@@ -653,27 +641,43 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     // ── Cell-content selectors ────────────────────────────────────────────
     const shiftsById = useMemo(() => new Map(shifts.map(sh => [sh.id, sh] as const)), [shifts]);
     const assignmentsByStaff = useMemo(() => {
-        const m = new Map<string, ShiftAssignment[]>();
+        const weekMs = new Date(`${weekStartISO}T00:00:00`).getTime();
+        // Rows visible on this week — effective-end + week-scope span applied.
+        const visible: ShiftAssignment[] = [];
         for (const a of shiftAssignments) {
-            // Week-scoped rows show only on their own week. A baseline row (no
-            // week_start — the existing seeded assignments) is scoped to THIS
-            // week only, so it disappears when you navigate to another week.
+            // Effective-end: an assignment un-assigned "from week X forward"
+            // (or whose shift was deleted/archived) carries `end_week_start` and
+            // no longer shows on that week or later — but PAST weeks keep it as
+            // read-only history (client 2026-08-19).
+            if (a.end_week_start && weekStartISO >= a.end_week_start) continue;
             if (a.week_start) {
-                // Multi-week span: the row shows on every week within
+                // Week-scoped row: shows on every week within
                 // [week_start, week_start + weeks) — so "2 weeks" appears on this
                 // week AND the next (client 2026-08-11).
                 const span = a.weeks ?? 1;
-                const off = Math.round((new Date(`${weekStartISO}T00:00:00`).getTime() - new Date(`${a.week_start}T00:00:00`).getTime()) / (7 * 86400000));
+                const off = Math.round((weekMs - new Date(`${a.week_start}T00:00:00`).getTime()) / (7 * 86400000));
                 if (off < 0 || off >= span) continue;
-            } else if (weekStartISO !== currentWeekISO) {
-                continue;
             }
+            // Baseline row (no week_start) — the recurring schedule: shows on
+            // EVERY week (past = history, current + future = live) until an
+            // effective-end caps it (client 2026-08-19, was current-week-only).
+            visible.push(a);
+        }
+        // A week-scoped OVERRIDE fully defines its (staff, shift) for this week,
+        // so suppress the recurring baseline for that pair — this is what lets a
+        // per-day edit apply to ONE week without touching the recurring pattern
+        // on other weeks (client 2026-08-19).
+        const overridden = new Set<string>();
+        for (const a of visible) if (a.week_start) overridden.add(`${a.staff_id}|${a.shift_id}`);
+        const m = new Map<string, ShiftAssignment[]>();
+        for (const a of visible) {
+            if (!a.week_start && overridden.has(`${a.staff_id}|${a.shift_id}`)) continue;
             const list = m.get(a.staff_id) ?? [];
             list.push(a);
             m.set(a.staff_id, list);
         }
         return m;
-    }, [shiftAssignments, weekStartISO, currentWeekISO]);
+    }, [shiftAssignments, weekStartISO]);
 
     /** The staff member's Time Off entry covering `day`, if any — used to block
      *  shift assignment on that day (range-inclusive, mirrors the availability
@@ -797,7 +801,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     // matches the Day view + Add-shift panel: dedup toast, conflict → replace
     // confirm, single → immediate, recurring → period modal.
     function requestAssign(staffMember: Staff, shiftId: string) {
-        const decision = decideAssign(shiftId, staffMember.id, shifts, shiftAssignments);
+        const decision = decideAssign(shiftId, staffMember.id, shifts, shiftAssignments, currentWeekISO);
         if (!decision) return;
         if (decision.kind === "duplicate") {
             showToast("Shift already assigned", `${staffMember.fullName} is already on ${decision.shift.name}.`, "warning", "alert");
@@ -880,9 +884,14 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
         if (existing) {
             updateShiftAssignmentDays(existing.id, existing.days_of_week.map((v, i) => i === dayIdx ? true : v));
         } else {
-            const singleDay = [false, false, false, false, false, false, false];
-            singleDay[dayIdx] = true;
-            addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, days_of_week: singleDay, week_start: weekStartISO });
+            // Fork from the recurring baseline (if any) so the new week-override
+            // carries the shift's OTHER recurring days too — the override
+            // suppresses the baseline this week, so seeding a single day would
+            // drop the rest (client 2026-08-19).
+            const baseline = shiftAssignments.find(a => a.staff_id === staffMember.id && a.shift_id === shiftId && !a.week_start);
+            const seed = baseline ? [...baseline.days_of_week] : [false, false, false, false, false, false, false];
+            seed[dayIdx] = true;
+            addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, days_of_week: seed, week_start: weekStartISO });
         }
         showToast("Shift assigned", `${shift.name} assigned to ${staffMember.fullName} on ${dayLabel}.`, "success", "check");
     }
@@ -895,8 +904,19 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
         const a = shiftAssignments.find(x => x.id === unassignDay.assignmentId);
         if (a) {
             const nextDays = a.days_of_week.map((v, i) => i === unassignDay.dayIdx ? false : v);
-            if (nextDays.some(Boolean)) updateShiftAssignmentDays(a.id, nextDays);
-            else removeShiftAssignment(a.id);
+            if (!a.week_start) {
+                // Baseline (recurring) → fork a week-scoped override for THIS week
+                // only, with the day removed. Past + future weeks keep the
+                // recurring pattern (client 2026-08-19 — the "one day only" fix).
+                addShiftAssignment({ shift_id: a.shift_id, staff_id: a.staff_id, days_of_week: nextDays, week_start: weekStartISO });
+            } else {
+                // Override row → drop the day. Keep an emptied override as a
+                // tombstone when a recurring baseline still exists (so it doesn't
+                // re-appear this week); otherwise remove the row.
+                const hasBaseline = shiftAssignments.some(x => x.staff_id === a.staff_id && x.shift_id === a.shift_id && !x.week_start);
+                if (nextDays.some(Boolean) || hasBaseline) updateShiftAssignmentDays(a.id, nextDays);
+                else removeShiftAssignment(a.id);
+            }
         }
         showToast("Shift unassigned", `${unassignDay.shiftName} removed from ${unassignDay.staffName} on ${unassignDay.dayLabel}.`, "error", "trash");
         setUnassignDay(null);
@@ -1030,13 +1050,19 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                         </div>
                                         {(() => {
                                             const myAssignments = shiftAssignments.filter(a => a.staff_id === s.id);
-                                            const assignedShiftIds = new Set(myAssignments.map(a => a.shift_id));
+                                            // A shift counts as "live" only if it isn't ended before the
+                                            // current week AND still has working days — capped history rows
+                                            // and empty week-tombstones don't (client 2026-08-19).
+                                            const liveAssignments = myAssignments.filter(a =>
+                                                (!a.end_week_start || a.end_week_start > currentWeekISO)
+                                                && a.days_of_week.some(Boolean));
+                                            const assignedShiftIds = new Set(liveAssignments.map(a => a.shift_id));
                                             const isInstructor = roleTypeById.get(s.roleId) === "instructor";
                                             return (
                                                 <StaffShiftMenu
                                                     staffName={s.fullName}
                                                     isInstructor={isInstructor}
-                                                    hasShift={myAssignments.length > 0}
+                                                    hasShift={liveAssignments.length > 0}
                                                     shifts={shifts}
                                                     assignedShiftIds={assignedShiftIds}
                                                     onPick={(shiftId) => requestAssign(s, shiftId)}
@@ -1068,8 +1094,8 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                         return (
                                             <div
                                                 key={isoDayLocal(day)}
-                                                onDragOver={allDayOff ? undefined : (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-                                                onDrop={allDayOff ? undefined : (e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/shift-id"); if (id) assignShiftForDay(s, id, day); }}
+                                                onDragOver={(allDayOff || isPastWeek) ? undefined : (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                                                onDrop={(allDayOff || isPastWeek) ? undefined : (e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/shift-id"); if (id) assignShiftForDay(s, id, day); }}
                                                 className="group/cell relative px-2 py-3 border-l border-[var(--colors-border-secondary)] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
                                                 {allDayOff ? (
@@ -1091,7 +1117,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                                 sessions={sessionsForStaffOnDay(s.id, day)}
                                                                 partialOffs={partialOffsForStaffOnDay(s.id, day)}
                                                                 onCardClick={(rect) => toggleHover(assignment.id, shift, scheduleItemsForShift(s.id, day, shift), rect, isoDayLocal(day))}
-                                                                onUnassign={isoDayLocal(day) >= todayISO ? () => setUnassignDay({
+                                                                onUnassign={!isPastWeek ? () => setUnassignDay({
                                                                     assignmentId: assignment.id,
                                                                     shiftName: shift.name,
                                                                     staffName: s.fullName,
@@ -1099,6 +1125,8 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                                     dayLabel,
                                                                 }) : undefined} />
                                                         ))}
+                                                        {/* Add-shift affordance hidden on read-only history weeks. */}
+                                                        {!isPastWeek && (
                                                         <DayAddShiftMenu
                                                             staffName={s.fullName}
                                                             staffBranchId={s.branchId}
@@ -1110,6 +1138,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                             onOpen={onFlyoutOpen}
                                                             mainPanelOpen={mainPanelOpen}
                                                         />
+                                                        )}
                                                     </>
                                                 )}
                                             </div>

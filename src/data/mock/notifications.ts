@@ -49,7 +49,7 @@ export const notifications: NotificationSeed[] = [
         event: "booking_confirmation",
         title: "Booking Confirmation",
         // → bk_018 / class_sched_2026_05_15_1830 (Barre, Fri 6:30 PM)
-        body: "Sophia Lee booked Barre on Friday at 6:30 PM.",
+        body: "Sophia Lee booked Barre on Friday at 6.30 PM.",
         icon: "calendar-check",
         source_module: "booking",
         source_id: "bk_018",
@@ -85,7 +85,7 @@ export const notifications: NotificationSeed[] = [
         // → class_sched_2026_05_13_1800 (Reformer Pilates, Wed 6:00 PM) — 3
         //   bookings (bk_011/012/013) all have status="cancelled" with reason
         //   "Class cancelled" so the roster reflects this notification.
-        body: "Reformer Pilates on Wednesday at 6:00 PM was cancelled. 3 bookings were affected.",
+        body: "Reformer Pilates on Wednesday at 6 PM was cancelled. 3 bookings were affected.",
         icon: "calendar-x",
         source_module: "class",
         source_id: "class_sched_2026_05_13_1800",
@@ -102,7 +102,7 @@ export const notifications: NotificationSeed[] = [
         // → bk_035 / class_sched_2026_05_20_0630 (Hot Yoga, Wed 6:30 AM).
         //   bk_035 carries status="cancelled" + attendance_status="late_cancel"
         //   so the roster's Cancelled tab shows James as a late cancel.
-        body: "James Taylor late cancelled Hot Yoga on Wednesday at 6:30 AM. 1 class session was forfeited.",
+        body: "James Taylor late cancelled Hot Yoga on Wednesday at 6.30 AM. 1 class session was forfeited.",
         icon: "calendar-minus",
         source_module: "booking",
         source_id: "bk_035",
@@ -120,7 +120,7 @@ export const notifications: NotificationSeed[] = [
         title: "No-Show",
         // → bk_008 / class_sched_2026_05_11_0700 (Hot Yoga, Mon 7:00 AM).
         //   bk_008 has attendance_status="no_show" — roster reflects this.
-        body: "Bosa Ahmed did not attend Hot Yoga on Monday at 7:00 AM.",
+        body: "Bosa Ahmed did not attend Hot Yoga on Monday at 7 AM.",
         icon: "user-x",
         source_module: "booking",
         source_id: "bk_008",
@@ -136,7 +136,7 @@ export const notifications: NotificationSeed[] = [
         event: "booking_confirmation",
         title: "Booking Confirmation",
         // → bk_034 / class_sched_2026_05_22_1700 (Reformer Pilates, Fri 5:00 PM)
-        body: "Lucas Brown booked Reformer Pilates on Friday at 5:00 PM.",
+        body: "Lucas Brown booked Reformer Pilates on Friday at 5 PM.",
         icon: "calendar-check",
         source_module: "booking",
         source_id: "bk_034",
@@ -170,7 +170,7 @@ export const notifications: NotificationSeed[] = [
         event: "booking_confirmation",
         title: "Booking Confirmation",
         // → bk_028 / class_sched_2026_05_19_1730 (Barre, Tue 5:30 PM)
-        body: "Rosale Martin booked Barre on Tuesday at 5:30 PM.",
+        body: "Rosale Martin booked Barre on Tuesday at 5.30 PM.",
         icon: "calendar-check",
         source_module: "booking",
         source_id: "bk_028",

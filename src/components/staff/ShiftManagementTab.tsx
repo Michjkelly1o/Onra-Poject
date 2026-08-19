@@ -12,8 +12,11 @@
 //            Shift hours, Staff (assigned count), Status badge,
 //            Enabled toggle (drives active ↔ inactive), Actions.
 //   Bulk:    Same set as row actions — Archive · Deactivate / Delete ·
-//            Reactivate · Recover. Delete only available when EVERY
-//            selected row has zero assigned staff (mirrors role + service).
+//            Reactivate · Recover. Delete is offered when EVERY selected row
+//            is Active. Shifts are delete-only scheduling config (store
+//            §deleteShifts, 2026-08-12): assignments are LIVE wiring, not
+//            historical records, so deletion cascades and is NOT usage-guarded
+//            (unlike role + service, which block delete while in use).
 //
 // Cross-module sync — `shifts` slice persists via Zustand `persist` to
 // localStorage and propagates cross-tab. Staff-form Assign shift dropdown
@@ -83,7 +86,8 @@ function fmtTime12(t: string): string {
     const [h, m] = t.split(":").map(Number);
     const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
     const ampm = h < 12 ? "AM" : "PM";
-    return `${String(hh).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    return mm === 0 ? `${hh} ${ampm}` : `${hh}.${String(mm).padStart(2, "0")} ${ampm}`;
 }
 
 // ─── Shift days summary (e.g. "Mon - Sat", "Wed, Fri, Sat") ───────────────
@@ -679,7 +683,19 @@ export function ShiftManagementTab({
     const staffCountByShift = useMemo(() => {
         const m = new Map<string, number>();
         if (shiftAssignments.length > 0) {
-            for (const a of shiftAssignments) m.set(a.shift_id, (m.get(a.shift_id) ?? 0) + 1);
+            // Count DISTINCT staff currently assigned — a staffer can hold the
+            // recurring baseline PLUS week-scoped override rows for the same
+            // shift, so counting rows would double-count. Skip capped history
+            // rows (end_week_start) and empty week-tombstones (all-false days).
+            const byShiftStaff = new Map<string, Set<string>>();
+            for (const a of shiftAssignments) {
+                if (a.end_week_start) continue;
+                if (!a.days_of_week.some(Boolean)) continue;
+                const set = byShiftStaff.get(a.shift_id) ?? new Set<string>();
+                set.add(a.staff_id);
+                byShiftStaff.set(a.shift_id, set);
+            }
+            byShiftStaff.forEach((set, shiftId) => m.set(shiftId, set.size));
         } else {
             for (const s of staff) {
                 if (!s.shiftId) continue;
@@ -711,6 +727,7 @@ export function ShiftManagementTab({
         const q = search.trim().toLowerCase();
         // Shifts are branch-agnostic (client 2026-08) — no branch scoping here.
         return shifts.filter(s => {
+            if (s.deleted_at) return false; // soft-deleted → hidden from the list (kept for history)
             if (appliedList.statuses.length && !appliedList.statuses.includes(s.status)) return false;
             // Working-days filter — shift qualifies if it runs on ANY selected day.
             if (appliedList.days.length && !appliedList.days.some(d => s.working_days[d])) return false;
@@ -741,7 +758,7 @@ export function ShiftManagementTab({
     );
     const weekShiftNameOptions = useMemo(
         () => shifts
-            .filter(sh => sh.status === "active")
+            .filter(sh => sh.status === "active" && !sh.deleted_at)
             .map(sh => ({ id: sh.id, name: sh.name })),
         [shifts],
     );

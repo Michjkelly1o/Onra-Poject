@@ -140,7 +140,7 @@ function fmt12(time: string): string {
     const [h, m] = time.split(":").map(Number);
     const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
     const ampm = h < 12 ? "AM" : "PM";
-    return `${hh}:${String(m).padStart(2, "0")} ${ampm}`;
+    return m === 0 ? `${hh} ${ampm}` : `${hh}.${String(m).padStart(2, "0")} ${ampm}`;
 }
 
 function instructorShortName(full: string): string {

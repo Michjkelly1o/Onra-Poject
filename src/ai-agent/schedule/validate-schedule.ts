@@ -61,7 +61,7 @@ function fmt12(t: string): string {
     const [h, m] = t.split(":").map(Number);
     const ap = h >= 12 ? "PM" : "AM";
     const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${h12}:${String(m).padStart(2, "0")} ${ap}`;
+    return m === 0 ? `${h12} ${ap}` : `${h12}.${String(m).padStart(2, "0")} ${ap}`;
 }
 
 /** Branch open window for a weekday, or null when closed. Mirrors the store's

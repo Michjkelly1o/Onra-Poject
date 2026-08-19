@@ -45,7 +45,7 @@ const TIME_OPTIONS: { value: string; label: string }[] = (() => {
             const value = `${hh}:${mm}`;
             const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
             const period = h < 12 ? "AM" : "PM";
-            const label = `${String(h12).padStart(2, "0")}:${mm} ${period}`;
+            const label = m === 0 ? `${h12} ${period}` : `${h12}.${mm} ${period}`;
             out.push({ value, label });
         }
     }

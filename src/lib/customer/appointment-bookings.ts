@@ -10,7 +10,9 @@
 // can surface in the Bookings list + its own booking-detail page, surviving
 // refresh, without touching the shared seed/store.
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import { useAppStore, type Appointment, type Service, type Branch, type AppointmentBooking as AdminAppointmentBooking } from "@/lib/store";
+import { useAuthSession } from "@/lib/customer/auth";
 
 export type AppointmentBookingStatus = "booked" | "cancelled";
 
@@ -186,8 +188,77 @@ function snapshot(): AppointmentBooking[] {
     return bookings;
 }
 
+// ── Admin POS appointments (client 2026-08) ──────────────────────────────────
+//
+// Appointments booked for a customer from the ADMIN POS live only in the shared
+// store (`appointmentBookings` → `appointments`), so they never reached the
+// customer's local list. Map those rows into the customer booking shape and
+// merge them in — deduped against the customer's OWN bookings (which are already
+// mirrored to the shared store, linked via `adminAppointmentId`) so nothing is
+// listed twice. Read-only: cancel still cascades through `adminAppointmentId`.
+function sharedToCustomerBooking(
+    ab: AdminAppointmentBooking,
+    appt: Appointment,
+    svc: Service | undefined,
+    branch: Branch | undefined,
+): AppointmentBooking {
+    return {
+        id: `pos_${ab.id}`,
+        appointmentId: appt.serviceId,
+        name: appt.serviceName,
+        type: appt.openSession ? "open" : "private",
+        description: svc?.description ?? "",
+        category: appt.serviceCategory,
+        durationMins: svc?.durationMin ?? 60,
+        capacity: appt.capacity,
+        price: svc?.price ?? 0,
+        coverImage: appt.coverImage,
+        coverColor: appt.coverColor,
+        branchName: appt.branchName,
+        branchAddress: branch ? [branch.address, branch.city, branch.country].filter(Boolean).join(", ") : undefined,
+        slotISO: appt.dateISO,
+        slotTime: appt.startTime,
+        instructorId: appt.instructorId ?? null,
+        flexible: appt.flexible,
+        instructorName: appt.instructorName,
+        instructorImageUrl: appt.instructorImageUrl,
+        instructorInitials: appt.instructorInitials,
+        adminAppointmentId: appt.id,
+        bookingTime: ab.bookedAt,
+        status: ab.status === "Cancelled" ? "cancelled" : "booked",
+        cancelledAt: ab.cancelledAt,
+    };
+}
+
 export function useAppointmentBookings(): AppointmentBooking[] {
-    return useSyncExternalStore(subscribe, snapshot, () => bookings);
+    const local = useSyncExternalStore(subscribe, snapshot, () => bookings);
+    // Context-free (auth session, not the customer-context hook) so this hook is
+    // safe outside the CurrentCustomerProvider — the admin POS SessionPickerModal
+    // also calls it. Guest → null → local list only.
+    const meId = useAuthSession().customerId;
+    const appointments = useAppStore((s) => s.appointments);
+    const apptBookings = useAppStore((s) => s.appointmentBookings);
+    const services = useAppStore((s) => s.services);
+    const branches = useAppStore((s) => s.branches);
+    return useMemo(() => {
+        if (!meId) return local;
+        // Appointment instances already represented by a LOCAL booking (the
+        // customer's own bookings, mirrored to the shared store) — skip so they
+        // aren't duplicated.
+        const localApptIds = new Set(local.map((b) => b.adminAppointmentId).filter(Boolean));
+        const apptById = new Map(appointments.map((a) => [a.id, a]));
+        const svcById = new Map(services.map((sv) => [sv.id, sv]));
+        const branchById = new Map(branches.map((b) => [b.id, b]));
+        const pos = apptBookings
+            .filter((ab) => ab.customerId === meId && !localApptIds.has(ab.appointmentId))
+            .map((ab) => {
+                const appt = apptById.get(ab.appointmentId);
+                if (!appt) return null;
+                return sharedToCustomerBooking(ab, appt, svcById.get(appt.serviceId), branchById.get(appt.branchId));
+            })
+            .filter((b): b is AppointmentBooking => b !== null);
+        return pos.length ? [...local, ...pos] : local;
+    }, [local, meId, appointments, apptBookings, services, branches]);
 }
 export function useAppointmentBookingById(id: string): AppointmentBooking | null {
     return useAppointmentBookings().find((b) => b.id === id) ?? null;

@@ -923,22 +923,22 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                         <th className={cn(TH, "w-[180px]")}>
                                             <SortableHeader sortKey="payRate" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Default pay rate</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="classes" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Completed classes</SortableHeader>
+                                        <th className={cn(TH, "w-[140px]", "!text-right")}>
+                                            <SortableHeader sortKey="classes" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Completed classes</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[120px]")}>
-                                            <SortableHeader sortKey="hours"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Total time (hour)</SortableHeader>
+                                        <th className={cn(TH, "w-[120px]", "!text-right")}>
+                                            <SortableHeader sortKey="hours"   currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Total time (hour)</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="gross"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class revenue base</SortableHeader>
+                                        <th className={cn(TH, "w-[140px]", "!text-right")}>
+                                            <SortableHeader sortKey="gross"   currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Class revenue base</SortableHeader>
                                         </th>
                                         {/* Tax annotation sits in the column
                                             header rather than on every row —
                                             matches the Memberships & Packages
                                             list pattern so the table doesn't
                                             repeat "Inc. X% tax" per instructor. */}
-                                        <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="payout" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>
+                                        <th className={cn(TH, "w-[140px]", "!text-right")}>
+                                            <SortableHeader sortKey="payout" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">
                                                 <div className="flex flex-col gap-0.5">
                                                     <span>Staff payout</span>
                                                     {showPayrollTax && (
@@ -972,10 +972,10 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                                 </td>
                                                 <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{branch?.name ?? "—"}</td>
                                                 <td className={TD}>{r.payRateName}</td>
-                                                <td className={TD}>{r.classesCount}</td>
-                                                <td className={TD}>{r.totalHours}h</td>
-                                                <td className={TD}>{aed(r.grossRevenue)}</td>
-                                                <td className={TD}>{aed(r.payout)}</td>
+                                                <td className={cn(TD, "text-right")}>{r.classesCount}</td>
+                                                <td className={cn(TD, "text-right")}>{r.totalHours}h</td>
+                                                <td className={cn(TD, "text-right")}>{aed(r.grossRevenue)}</td>
+                                                <td className={cn(TD, "text-right")}>{aed(r.payout)}</td>
                                                 <td className={TD}><StatusBadge type="payroll" status={r.status} /></td>
                                                 <td className={TD}>
                                                     <RowActions

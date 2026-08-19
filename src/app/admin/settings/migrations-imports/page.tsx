@@ -430,14 +430,14 @@ export default function MigrationsImportsPage() {
                                     <th className={TH}>
                                         <SortableHeader sortKey="file" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Imported file</SortableHeader>
                                     </th>
-                                    <th className={TH}>
-                                        <SortableHeader sortKey="totalRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Total rows</SortableHeader>
+                                    <th className={cn(TH, "!text-right")}>
+                                        <SortableHeader sortKey="totalRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Total rows</SortableHeader>
                                     </th>
-                                    <th className={TH}>
-                                        <SortableHeader sortKey="importedRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Imported rows</SortableHeader>
+                                    <th className={cn(TH, "!text-right")}>
+                                        <SortableHeader sortKey="importedRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Imported rows</SortableHeader>
                                     </th>
-                                    <th className={TH}>
-                                        <SortableHeader sortKey="invalidRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Invalid rows</SortableHeader>
+                                    <th className={cn(TH, "!text-right")}>
+                                        <SortableHeader sortKey="invalidRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Invalid rows</SortableHeader>
                                     </th>
                                     <th className={TH}>
                                         <span className="text-[12px] font-medium text-[#475467]">Invalid rows data</span>
@@ -462,13 +462,13 @@ export default function MigrationsImportsPage() {
                                                 <span className="text-[14px] font-medium text-[#101828]">{row.file_name}</span>
                                             </div>
                                         </td>
-                                        <td className={cn(TD, "text-[14px] font-medium text-[#101828]")}>
+                                        <td className={cn(TD, "text-[14px] font-medium text-[#101828]", "text-right")}>
                                             {row.total_rows.toLocaleString("en-US")}
                                         </td>
-                                        <td className={cn(TD, "text-[14px] font-medium text-[#164e52]")}>
+                                        <td className={cn(TD, "text-[14px] font-medium text-[#164e52]", "text-right")}>
                                             {row.imported_rows > 0 ? row.imported_rows.toLocaleString("en-US") : "-"}
                                         </td>
-                                        <td className={cn(TD, "text-[14px] font-medium")}>
+                                        <td className={cn(TD, "text-[14px] font-medium", "text-right")}>
                                             {row.invalid_rows > 0
                                                 ? <span className="text-[#b42318]">{row.invalid_rows.toLocaleString("en-US")}</span>
                                                 : <span className="text-[#101828]">-</span>}

@@ -211,7 +211,7 @@ export function TodaySalesModal({ open, onClose, branchIds, todayISO, variant, t
                         <tr>
                             <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
                             <th className={TH}><SortableHeader sortKey="product" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Products or service</SortableHeader></th>
-                            <th className={TH}><SortableHeader sortKey="amount" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Amount</SortableHeader></th>
+                            <th className={cn(TH, "!text-right")}><SortableHeader sortKey="amount" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Amount</SortableHeader></th>
                             <th className={TH}><SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; Time</SortableHeader></th>
                         </tr>
                     </thead>
@@ -226,7 +226,7 @@ export function TodaySalesModal({ open, onClose, branchIds, todayISO, variant, t
                                     <td className={TD}>
                                         <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{r.txn.name}</p>
                                     </td>
-                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]")}>{aed(r.txn.amountAed)}</td>
+                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]", "text-right")}>{aed(r.txn.amountAed)}</td>
                                     <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(r.txn.createdAtISO)}</td>
                                 </tr>
                             );
@@ -334,7 +334,7 @@ export function TodayRevenueModal({ open, onClose, branchIds, todayISO, typeFilt
                         <tr>
                             <th className={TH}>Customer</th>
                             <th className={TH}>Detail</th>
-                            <th className={TH}>Earned</th>
+                            <th className={cn(TH, "!text-right")}>Earned</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -346,7 +346,7 @@ export function TodayRevenueModal({ open, onClose, branchIds, todayISO, typeFilt
                                     className={cn("transition-colors", clickable && "hover:bg-[var(--colors-bg-secondary)]/50 cursor-pointer")}>
                                     <td className={TD}><PersonCell {...r.person} /></td>
                                     <td className={TD}><p className="text-[14px] text-[var(--colors-text-primary)] leading-[20px]">{r.item.label}</p></td>
-                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]")}>{aed(r.item.amountAed)}</td>
+                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]", "text-right")}>{aed(r.item.amountAed)}</td>
                                 </tr>
                             );
                         })}

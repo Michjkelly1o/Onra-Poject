@@ -62,7 +62,7 @@ function fmtDisplay(start: string, end: string): string {
         const [h, m] = t.split(":").map(Number);
         const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
         const period = h < 12 ? "AM" : "PM";
-        return `${hh}:${String(m ?? 0).padStart(2, "0")} ${period}`;
+        return (m ?? 0) === 0 ? `${hh} ${period}` : `${hh}.${String(m ?? 0).padStart(2, "0")} ${period}`;
     };
     // Drop the AM/PM suffix on the start when both halves share it for
     // brevity ("9:00 - 10:00 AM") — otherwise show both ("11:00 AM - 12:00 PM").

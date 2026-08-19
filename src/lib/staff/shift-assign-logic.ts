@@ -43,17 +43,25 @@ export type AssignDecision =
     | { kind: "assign"; shift: Shift; immediate: boolean };
 
 /** Decide what to do when `shiftId` is assigned to `staffId`. `immediate` is
- *  true for single/one-off shifts (skip the 1w/1m/1y period modal). */
+ *  true for single/one-off shifts (skip the 1w/1m/1y period modal).
+ *  `currentWeekISO` is this week's Monday — only LIVE assignments (still active
+ *  this week onward, with real working days) count toward duplicate/conflict, so
+ *  a shift un-assigned forward — which lives on only as read-only past history —
+ *  can be re-assigned again this week onward (client 2026-08-19). */
 export function decideAssign(
     shiftId: string,
     staffId: string,
     shifts: Shift[],
     assignments: ShiftAssignment[],
+    currentWeekISO: string,
 ): AssignDecision | null {
     const shift = shifts.find(s => s.id === shiftId);
     if (!shift) return null;
     const byId = (id: string) => shifts.find(s => s.id === id);
-    const mine = assignments.filter(a => a.staff_id === staffId);
+    const mine = assignments.filter(a =>
+        a.staff_id === staffId
+        && (!a.end_week_start || a.end_week_start > currentWeekISO)
+        && a.days_of_week.some(Boolean));
     if (mine.some(a => a.shift_id === shiftId)) return { kind: "duplicate", shift };
     const clash = findAssignClash(shift, mine, byId);
     if (clash) {

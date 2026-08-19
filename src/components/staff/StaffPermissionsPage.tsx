@@ -41,6 +41,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { BulkBarDock } from "@/components/patterns/BulkBarDock";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
@@ -1622,8 +1623,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         <th className={TH}>
                                             <SortableHeader sortKey="name" currentSort={roleSortKey} dir={roleSortDir} onSort={toggleRoleSort}>Role name</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[100px]")}>
-                                            <SortableHeader sortKey="staffs" currentSort={roleSortKey} dir={roleSortDir} onSort={toggleRoleSort}>Staff</SortableHeader>
+                                        <th className={cn(TH, "w-[100px]", "!text-right")}>
+                                            <SortableHeader sortKey="staffs" currentSort={roleSortKey} dir={roleSortDir} onSort={toggleRoleSort} align="right">Staff</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={roleSortKey} dir={roleSortDir} onSort={toggleRoleSort}>Status</SortableHeader>
@@ -1657,7 +1658,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className={TD}>{staffCount}</td>
+                                            <td className={cn(TD, "text-right")}>{staffCount}</td>
                                             <td className={TD}>
                                                 <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", ROLE_STATUS_BADGE[r.status])}>
                                                     {ROLE_STATUS_LABEL[r.status]}
@@ -1836,7 +1837,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             {/* Floating bulk-action bar — mirrors the gift-card chrome.
                 Visible only when the active tab has at least one selection. */}
             {tab === "roles" && selectedRoleRows.length > 0 && (
-                <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+                <BulkBarDock>
                     <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                         <button type="button" onClick={() => setSelectedRoleIds(new Set())}
                             className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
@@ -1871,11 +1872,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             )}
                         </div>
                     </div>
-                </div>
+                </BulkBarDock>
             )}
 
             {tab === "staff" && selectedStaffRows.length > 0 && (
-                <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+                <BulkBarDock>
                     <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                         <button type="button" onClick={() => setSelectedStaffIds(new Set())}
                             className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
@@ -1923,7 +1924,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             )}
                         </div>
                     </div>
-                </div>
+                </BulkBarDock>
             )}
 
             {changingRoleFor && (

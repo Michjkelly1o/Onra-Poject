@@ -395,7 +395,8 @@ function to12h(hhmm: string): string {
     const [h, m] = hhmm.split(":").map(Number);
     const period = h < 12 ? "AM" : "PM";
     const hr = h % 12 === 0 ? 12 : h % 12;
-    return `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    return mm === 0 ? `${hr} ${period}` : `${hr}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 /** 7-bit [Sun..Sat] mask → "Mon - Sat" / "Mon, Wed, Fri" / "Every day". */

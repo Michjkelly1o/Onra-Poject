@@ -423,7 +423,7 @@ function formatConnectedAt(iso?: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
     const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
-    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/:00(?=\s?[AP]M)/i, "").replace(/:(\d{2})/, ".$1");
     return `${date} - ${time}`;
 }
 

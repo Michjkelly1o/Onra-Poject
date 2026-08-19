@@ -31,9 +31,10 @@ const TODAY_DOW = new Date(`${DEMO_TODAY_ISO}T00:00:00Z`).getUTCDay();
 function to12h(time: string): string {
     const [hStr, mStr] = time.split(":");
     const h = Number(hStr);
+    const mm = Number(mStr) || 0;
     const period = h < 12 ? "AM" : "PM";
     const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${String(h12).padStart(2, "0")}:${mStr} ${period}`;
+    return mm === 0 ? `${h12} ${period}` : `${h12}.${String(mm).padStart(2, "0")} ${period}`;
 }
 
 /** Today's open/closed + hours for a branch, from the `business_hours` seed. */

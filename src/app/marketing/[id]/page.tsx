@@ -73,7 +73,7 @@ function formatDateTime(iso?: string): string {
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
     const mm = String(d.getUTCMinutes()).padStart(2, "0");
-    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${h}:${mm} ${ampm}`;
+    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${mm === "00" ? `${h}` : `${h}.${mm}`} ${ampm}`;
 }
 
 const TYPE_LABEL: Record<MarketingItem["type"], string> = {

@@ -27,7 +27,8 @@ function fmt12(time: string): string {
     const [h, m] = time.split(":").map(Number);
     const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
     const ampm = h < 12 ? "AM" : "PM";
-    return `${hh}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
+    const mm = Number.isNaN(m) ? 0 : m;
+    return mm === 0 ? `${hh} ${ampm}` : `${hh}.${String(mm).padStart(2, "0")} ${ampm}`;
 }
 
 /** Card subtext — "All day" or the "07:00 – 09:00 AM" time range. */

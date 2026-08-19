@@ -32,6 +32,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { BulkBarDock } from "@/components/patterns/BulkBarDock";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
@@ -203,7 +204,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
 }) {
     if (count === 0) return null;
     return (
-        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+        <BulkBarDock>
             <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
@@ -231,7 +232,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
                     )}
                 </div>
             </div>
-        </div>
+        </BulkBarDock>
     );
 }
 
@@ -334,8 +335,8 @@ function PayRateTable({
                         <th className={cn(TH, "w-[160px]")}>
                             <SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Pay rate type</SortableHeader>
                         </th>
-                        <th className={cn(TH, "w-[260px]")}>
-                            <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Rate</SortableHeader>
+                        <th className={cn(TH, "w-[260px]", "!text-right")}>
+                            <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={onSort} align="right">Rate</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[220px]")}>
                             <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={onSort}>Branch location</SortableHeader>
@@ -368,11 +369,11 @@ function PayRateTable({
                                         {TYPE_LABEL[r.type]}
                                     </span>
                                 </td>
-                                <td className={TD}>
+                                <td className={cn(TD, "text-right")}>
                                     {(() => {
                                         const d = computePayRateDisplay(r);
                                         return (
-                                            <div className="flex flex-col">
+                                            <div className="flex flex-col items-end">
                                                 <span className="text-[14px] text-[#101828]">{d.main}</span>
                                                 <span className="text-[13px] text-[#667085]">{d.subtitle}</span>
                                             </div>

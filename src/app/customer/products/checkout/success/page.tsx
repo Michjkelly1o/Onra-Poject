@@ -2,7 +2,7 @@
 
 // Customer — Products Payment Success (`/customer/products/checkout/success`) — Figma 3298-70578
 // Shared <PaymentSuccess>; a single, purchase-type-agnostic action —
-// "View purchase history" — routes to the customer's Payment history so it reads
+// "View payment history" — routes to the customer's Payment history so it reads
 // consistently for memberships, packages, gift cards, and any future product.
 
 import { useRouter } from "next/navigation";
@@ -26,7 +26,7 @@ export default function ProductsSuccessPage() {
                         router.replace("/customer/profile/payment-history?back=/customer/profile")
                     }
                 >
-                    View purchase history
+                    View payment history
                 </Button>
             }
         />

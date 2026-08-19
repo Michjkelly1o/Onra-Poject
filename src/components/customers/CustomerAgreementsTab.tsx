@@ -66,7 +66,7 @@ function fmtDateTime(iso?: string): string {
     const min = String(d.getUTCMinutes()).padStart(2, "0");
     const ampm = h >= 12 ? "PM" : "AM";
     h = h % 12 || 12;
-    return `${y}-${m}-${day}, ${h}:${min} ${ampm}`;
+    return `${y}-${m}-${day}, ${min === "00" ? `${h}` : `${h}.${min}`} ${ampm}`;
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────

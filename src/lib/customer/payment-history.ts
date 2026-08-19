@@ -12,6 +12,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { useAppStore, type CustomerTransaction } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
+import { formatTime12 } from "@/lib/customer/format";
 
 export type PaymentType = "products" | "service";
 export type PaymentMethod = "apple" | "google" | "gift_card" | "card";
@@ -83,7 +84,7 @@ function mapTransaction(t: CustomerTransaction): PaymentRecord {
     const dateISO = (t.createdAtISO ?? "").slice(0, 10);
     const d = new Date(t.createdAtISO ?? "");
     const pad = (n: number) => String(n).padStart(2, "0");
-    const timeLabel = Number.isNaN(d.getTime()) ? "" : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const timeLabel = Number.isNaN(d.getTime()) ? "" : formatTime12(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
     const isService = t.kind === "private" || t.kind === "recovery";
     const methodLabel = t.paymentMethod === "cash"
         ? "Cash"

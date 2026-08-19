@@ -20,7 +20,7 @@ function fmtTime(t: string): string {
     const [h, m] = t.split(":").map(Number);
     const ap = h >= 12 ? "PM" : "AM";
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ap}`;
+    return m === 0 ? `${h12} ${ap}` : `${h12}.${String(m).padStart(2, "0")} ${ap}`;
 }
 
 // ── The studio data the questions are built from (mirrors list_class_options) ─

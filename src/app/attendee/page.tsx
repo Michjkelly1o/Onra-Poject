@@ -47,9 +47,10 @@ import {
 function to12h(time: string): string {
     if (!time || !time.includes(":")) return time || "";
     const [h, m] = time.split(":").map(Number);
+    const mm = Number.isNaN(m) ? 0 : m;
     const mer = h < 12 ? "AM" : "PM";
     const hh = h % 12 === 0 ? 12 : h % 12;
-    return `${hh}:${String(m ?? 0).padStart(2, "0")} ${mer}`;
+    return mm === 0 ? `${hh} ${mer}` : `${hh}.${String(mm).padStart(2, "0")} ${mer}`;
 }
 
 // Week-range label reuses the Schedule module's `formatWeekRange` (imported

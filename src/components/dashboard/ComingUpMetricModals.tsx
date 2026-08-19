@@ -96,8 +96,8 @@ export function ComingRevenueModal({ open, onClose, rangeLabel, typeFilter, rows
                     <thead><tr>
                         <th className={TH}><SortableHeader sortKey="session" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Session</SortableHeader></th>
                         <th className={TH}><SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date</SortableHeader></th>
-                        <th className={TH}><SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Booked</SortableHeader></th>
-                        <th className={TH}><SortableHeader sortKey="revenue" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Revenue</SortableHeader></th>
+                        <th className={cn(TH, "!text-right")}><SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Booked</SortableHeader></th>
+                        <th className={cn(TH, "!text-right")}><SortableHeader sortKey="revenue" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Revenue</SortableHeader></th>
                     </tr></thead>
                     <tbody>
                         {paged.map(r => (
@@ -109,8 +109,8 @@ export function ComingRevenueModal({ open, onClose, rangeLabel, typeFilter, rows
                                     <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{TYPE_LABEL[r.session.type]} · {r.session.displayTime}</p>
                                 </td>
                                 <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{r.session.dateISO.slice(0, 10)}</td>
-                                <td className={cn(TD, "whitespace-nowrap tabular-nums")}>{r.session.booked ?? 0}/{r.session.capacity ?? 0}</td>
-                                <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]")}>{aed(Math.round(r.revenueAed))}</td>
+                                <td className={cn(TD, "whitespace-nowrap tabular-nums", "text-right")}>{r.session.booked ?? 0}/{r.session.capacity ?? 0}</td>
+                                <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]", "text-right")}>{aed(Math.round(r.revenueAed))}</td>
                             </tr>
                         ))}
                         {paged.length === 0 && <tr><td colSpan={4} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">No sessions in this window.</td></tr>}
@@ -330,8 +330,8 @@ export function ComingCapacityModal({ open, onClose, rangeLabel, typeFilter, ses
                     <thead><tr>
                         <th className={TH}><SortableHeader sortKey="session" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Session</SortableHeader></th>
                         <th className={TH}><SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date</SortableHeader></th>
-                        <th className={TH}>Booked</th>
-                        <th className={TH}><SortableHeader sortKey="fill" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Fill</SortableHeader></th>
+                        <th className={cn(TH, "!text-right")}>Booked</th>
+                        <th className={cn(TH, "!text-right")}><SortableHeader sortKey="fill" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Fill</SortableHeader></th>
                     </tr></thead>
                     <tbody>
                         {paged.map(({ session: s, fill }) => (
@@ -343,8 +343,8 @@ export function ComingCapacityModal({ open, onClose, rangeLabel, typeFilter, ses
                                     <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{TYPE_LABEL[s.type]} · {s.displayTime}</p>
                                 </td>
                                 <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{s.dateISO.slice(0, 10)}</td>
-                                <td className={cn(TD, "whitespace-nowrap tabular-nums")}>{s.booked ?? 0}/{s.capacity ?? 0}</td>
-                                <td className={cn(TD, "whitespace-nowrap font-medium", fill < 50 ? "text-[#b54708]" : "text-[var(--colors-text-primary)]")}>{fill}%</td>
+                                <td className={cn(TD, "whitespace-nowrap tabular-nums", "text-right")}>{s.booked ?? 0}/{s.capacity ?? 0}</td>
+                                <td className={cn(TD, "whitespace-nowrap font-medium", fill < 50 ? "text-[#b54708]" : "text-[var(--colors-text-primary)]", "text-right")}>{fill}%</td>
                             </tr>
                         ))}
                         {paged.length === 0 && <tr><td colSpan={4} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">No sessions in this window.</td></tr>}
@@ -382,7 +382,7 @@ export function ComingTopServicesModal({ open, onClose, rangeLabel, typeFilter, 
                 <table className="w-full border-collapse">
                     <thead><tr>
                         <th className={TH}><SortableHeader sortKey="service" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Service</SortableHeader></th>
-                        <th className={TH}><SortableHeader sortKey="count" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Bookings</SortableHeader></th>
+                        <th className={cn(TH, "!text-right")}><SortableHeader sortKey="count" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Bookings</SortableHeader></th>
                     </tr></thead>
                     <tbody>
                         {paged.map(s => (
@@ -390,7 +390,7 @@ export function ComingTopServicesModal({ open, onClose, rangeLabel, typeFilter, 
                                 <td className={TD}>
                                     <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{s.name}</p>
                                 </td>
-                                <td className={cn(TD, "whitespace-nowrap tabular-nums font-medium text-[var(--colors-text-primary)]")}>{s.count}</td>
+                                <td className={cn(TD, "whitespace-nowrap tabular-nums font-medium text-[var(--colors-text-primary)]", "text-right")}>{s.count}</td>
                             </tr>
                         ))}
                         {paged.length === 0 && <tr><td colSpan={2} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">No recovery bookings in this window.</td></tr>}

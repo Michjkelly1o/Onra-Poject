@@ -495,11 +495,11 @@ export default function CompensationPage() {
                                         <th className={cn(TH, "w-[200px]")}>
                                             <SortableHeader sortKey="payRate"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Default pay rate</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[160px]")}>
-                                            <SortableHeader sortKey="classes"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Completed classes</SortableHeader>
+                                        <th className={cn(TH, "w-[160px]", "!text-right")}>
+                                            <SortableHeader sortKey="classes"  currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Completed classes</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[160px]")}>
-                                            <SortableHeader sortKey="earnings" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Earnings</SortableHeader>
+                                        <th className={cn(TH, "w-[160px]", "!text-right")}>
+                                            <SortableHeader sortKey="earnings" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Earnings</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[52px]")} />
                                     </tr>
@@ -525,8 +525,8 @@ export default function CompensationPage() {
                                                 <td className={cn(TD, "text-[#475467]")}>{branch?.name ?? "—"}</td>
                                                 <td className={TD}>{role ? <RoleBadge label={role.name} type={role.type} /> : "—"}</td>
                                                 <td className={TD}>{r.payRateName}</td>
-                                                <td className={TD}>{r.classesCount}</td>
-                                                <td className={TD}>{aed(r.earnings)}</td>
+                                                <td className={cn(TD, "text-right")}>{r.classesCount}</td>
+                                                <td className={cn(TD, "text-right")}>{aed(r.earnings)}</td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions
                                                         minWidth={200}

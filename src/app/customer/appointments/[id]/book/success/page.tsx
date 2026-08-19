@@ -145,7 +145,7 @@ export default function AppointmentSuccessPage() {
             </div>
 
             <div
-                className={`sticky bottom-0 z-10 px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${
+                className={`sticky bottom-0 z-10 flex flex-col gap-3 px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${
                     scrollable ? "bg-white" : ""
                 }`}
             >
@@ -160,6 +160,16 @@ export default function AppointmentSuccessPage() {
                     }
                 >
                     View bookings
+                </Button>
+                {/* Secondary — jump straight to the appointment's paid invoice in
+                    Payment history (the sale is recorded via applyPurchase). */}
+                <Button
+                    variant="secondary-gray"
+                    size="xl"
+                    className="w-full rounded-full"
+                    onClick={() => router.push("/customer/profile/payment-history?back=/customer/bookings/upcoming")}
+                >
+                    View payment history
                 </Button>
             </div>
         </div>

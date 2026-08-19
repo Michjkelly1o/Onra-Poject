@@ -138,7 +138,7 @@ export function PerfSalesModal({ open, onClose, branchIds, period }: PerfModalPr
                         <tr>
                             <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
                             <th className={TH}><SortableHeader sortKey="product" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Products or service</SortableHeader></th>
-                            <th className={TH}><SortableHeader sortKey="amount" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Amount</SortableHeader></th>
+                            <th className={cn(TH, "!text-right")}><SortableHeader sortKey="amount" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Amount</SortableHeader></th>
                             <th className={TH}><SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; Time</SortableHeader></th>
                         </tr>
                     </thead>
@@ -153,7 +153,7 @@ export function PerfSalesModal({ open, onClose, branchIds, period }: PerfModalPr
                                     <td className={TD}>
                                         <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{r.txn.name}</p>
                                     </td>
-                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]")}>{aed(r.txn.amountAed)}</td>
+                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]", "text-right")}>{aed(r.txn.amountAed)}</td>
                                     <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(r.txn.createdAtISO)}</td>
                                 </tr>
                             );
@@ -262,8 +262,8 @@ export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModal
                         <tr>
                             <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
                             <th className={TH}><SortableHeader sortKey="product" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Products</SortableHeader></th>
-                            <th className={TH}>Basis</th>
-                            <th className={TH}><SortableHeader sortKey="accrued" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Earned</SortableHeader></th>
+                            <th className={cn(TH, "!text-right")}>Basis</th>
+                            <th className={cn(TH, "!text-right")}><SortableHeader sortKey="accrued" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Earned</SortableHeader></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -277,8 +277,8 @@ export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModal
                                     <td className={TD}>
                                         <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{r.product}</p>
                                     </td>
-                                    <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{r.basis}</td>
-                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]")}>{aed(Math.round(r.accruedAed))}</td>
+                                    <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>{r.basis}</td>
+                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]", "text-right")}>{aed(Math.round(r.accruedAed))}</td>
                                 </tr>
                             );
                         })}
