@@ -21,7 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Plus, Edit02, Trash01, Trash02, XClose,
-    CurrencyDollarCircle, Announcement01,
+    CurrencyDollarCircle, Announcement01, MarkerPin01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,8 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import type { ExportColumn, ExportData } from "@/lib/export/export-data";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -80,6 +82,7 @@ type SpendRow = {
     monthText: string;
     channel: string;
     branch: string;
+    branchId: string;
     amount: number;
 };
 
@@ -177,6 +180,7 @@ export default function MarketingSpendPage() {
     const showToast            = useAppStore(s => s.showToast);
 
     const [search, setSearch]     = usePersistedListState("marketingSpend:search", "");
+    const [branchId, setBranchId] = usePersistedListState("marketingSpend:branch", "");
     const [page, setPage]         = usePersistedListState("marketingSpend:page", 1);
     const [pageSize, setPageSize] = usePersistedListState("marketingSpend:pageSize", 10);
 
@@ -186,6 +190,7 @@ export default function MarketingSpendPage() {
     const [confirmDelete, setConfirmDelete] = useState<SpendRow | null>(null);
 
     const activeBranches = useMemo(() => branches.filter(b => b.status !== "archived"), [branches]);
+    const branchOptions = useMemo(() => activeBranches.map(b => ({ value: b.id, label: b.name })), [activeBranches]);
     const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
     // Channel options come from the managed Lead sources (Settings → Lead
     // Lifecycle) — same list the customer/lead source picker uses.
@@ -199,7 +204,7 @@ export default function MarketingSpendPage() {
     useEffect(() => {
         if (!didMount.current) { didMount.current = true; return; }
         setPage(1);
-    }, [search, setPage]);
+    }, [search, branchId, setPage]);
 
     // ─── Rows + search + sort + paginate ───────────────────────────────────
     const allRows = useMemo<SpendRow[]>(
@@ -209,19 +214,23 @@ export default function MarketingSpendPage() {
             monthText: monthLabel(s.month),
             channel: s.channel,
             branch: branchName(s.branch_id),
+            branchId: s.branch_id,
             amount: s.spend_aed,
         })),
         [marketingSpend, branches],
     );
     const filteredRows = useMemo(() => {
         const q = search.trim().toLowerCase();
-        if (!q) return allRows;
-        return allRows.filter(r =>
-            r.monthText.toLowerCase().includes(q) ||
-            r.channel.toLowerCase().includes(q) ||
-            r.branch.toLowerCase().includes(q),
-        );
-    }, [allRows, search]);
+        return allRows.filter(r => {
+            if (branchId && r.branchId !== branchId) return false;
+            if (q && !(
+                r.monthText.toLowerCase().includes(q) ||
+                r.channel.toLowerCase().includes(q) ||
+                r.branch.toLowerCase().includes(q)
+            )) return false;
+            return true;
+        });
+    }, [allRows, search, branchId]);
 
     const comparators: Record<string, (a: SpendRow, b: SpendRow) => number> = {
         month:   (a, b) => a.month.localeCompare(b.month),
@@ -275,10 +284,38 @@ export default function MarketingSpendPage() {
 
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">
-            {/* ── Toolbar (same as Gift Cards) ── */}
+            {/* ── Toolbar (Location · Search · Export · Add, like Products) ── */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={sorted.length} entitySingular="entry" entityPlural="entries" />
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...branchOptions]}
+                    value={branchId}
+                    onChange={setBranchId}
+                    width="w-[220px]"
+                />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search spend..." />
+                <ToolbarExport
+                    disabled={filteredRows.length === 0}
+                    exportData={() => {
+                        if (filteredRows.length === 0) return null;
+                        const columns: ExportColumn<SpendRow>[] = [
+                            { key: "Month",        value: r => r.monthText },
+                            { key: "Channel",      value: r => r.channel },
+                            { key: "Branch",       value: r => r.branch },
+                            { key: "Amount (AED)", value: r => r.amount },
+                        ];
+                        return { entity: "marketing-spend", columns, rows: filteredRows } satisfies ExportData<SpendRow>;
+                    }}
+                    onExported={(fmt) => {
+                        showToast(
+                            "Marketing spend exported",
+                            `${filteredRows.length} ${filteredRows.length === 1 ? "entry" : "entries"} exported to ${fmt.toUpperCase()}.`,
+                            "success", "check",
+                        );
+                    }}
+                />
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={openAdd}>
                     Add
                 </Button>
