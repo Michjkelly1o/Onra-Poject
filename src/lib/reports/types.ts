@@ -72,6 +72,11 @@ export interface ColumnDef {
     /** Column width hint (px) — the shell uses it as a min-width. Wide
      *  columns (customer name, item description) can specify > 200. */
     minWidth?: number;
+    /** When the list is grouped by a break-down dimension, compute this
+     *  column from the SUMMED group row (+ all grouped rows, for cross-group
+     *  totals) instead of summing it — for ratio columns like a refund rate or
+     *  "% of total". Only applied to grouped rows; flat rows use their own value. */
+    groupCalc?: (row: Record<string, unknown>, allRows: Record<string, unknown>[]) => number;
 }
 
 /** Breakdown dimension — becomes the rows-down-the-side when Period != "none".
@@ -159,6 +164,9 @@ export interface ReportDefinition {
     /** Which field to bucket by period. Defaults to "createdAtISO" but
      *  reports over `paymentDateISO` / `dateISO` etc. override this. */
     periodField?: string;
+    /** Break-down key to pre-select on open, so the default list view is
+     *  already grouped (e.g. Sales Breakdown → "item"). Omit = None (flat list). */
+    defaultDimensionKey?: string;
 }
 
 // ─── Pivot result shape (what pivotRows() returns) ────────────────────────

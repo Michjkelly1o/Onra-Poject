@@ -208,9 +208,11 @@ function groupListRows(
         if (!arr) { arr = []; groups.set(key, arr); }
         arr.push(r);
     }
-    return Array.from(groups.values()).map(groupRows => {
+    // Pass 1 — sum numeric, keep uniform text, blank plain ratios.
+    const summed = Array.from(groups.values()).map(groupRows => {
         const out: Record<string, unknown> = {};
         for (const c of columns) {
+            if (c.groupCalc) { out[c.key] = 0; continue; } // derived — filled in pass 2
             if (c.kind === "currency" || c.kind === "number") {
                 let sum = 0; let any = false;
                 for (const r of groupRows) { const n = Number(r[c.key]); if (Number.isFinite(n)) { sum += n; any = true; } }
@@ -224,6 +226,13 @@ function groupListRows(
         }
         return out;
     });
+    // Pass 2 — derived columns (ratios) computed from the summed rows, with
+    // access to all groups for cross-group totals (e.g. "% of total").
+    const calcCols = columns.filter(c => c.groupCalc);
+    for (const row of summed) {
+        for (const c of calcCols) { row[c.key] = c.groupCalc!(row, summed); }
+    }
+    return summed;
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -243,7 +252,11 @@ export function PivotableReportShell({
         report.periods.includes("none") ? "none" : report.periods[0] ?? "none";
 
     const [period, setPeriod] = useState<PeriodKey>(defaultPeriod);
-    const [dimIdx, setDimIdx] = useState<number>(-1);   // -1 = None
+    const [dimIdx, setDimIdx] = useState<number>(() =>   // -1 = None
+        report.defaultDimensionKey
+            ? report.dimensions.findIndex(d => d.key === report.defaultDimensionKey)
+            : -1,
+    );
     // Measure is always the report's primary measure. The measure dropdown was
     // removed (client 2026-08 — switching it changed nothing on screen).
     const meaIdx = 0;
