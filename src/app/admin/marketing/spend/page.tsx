@@ -363,7 +363,7 @@ export default function MarketingSpendPage() {
                                     />
                                 </FormField>
                                 <FormField label="Channel"
-                                    hint="Sourced from your Lead sources (Settings → Lead Lifecycle), so spend lines up with how leads are tagged.">
+                                    hint="From your Lead sources (Settings → Lead Lifecycle).">
                                     <SelectInput
                                         triggerIcon={<Announcement01 className="w-5 h-5" />}
                                         placeholder="Select channel"
