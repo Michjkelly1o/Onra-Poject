@@ -5076,6 +5076,13 @@ export interface AppState {
         | { deleted: false; reason: "locked" }
         | { deleted: false; reason: "in_use"; usageCount: number };
 
+    /** Marketing spend CRUD — one row per (month × channel × branch). Feeds
+     *  the Acquisition Efficiency report's CPL / CAC / ROAS. Managed from the
+     *  Marketing → Marketing Spend module. */
+    addMarketingSpend: (row: Omit<MarketingSpend, "id">) => string;
+    updateMarketingSpend: (id: string, patch: Partial<Omit<MarketingSpend, "id">>) => void;
+    deleteMarketingSpend: (id: string) => void;
+
     /** Append a new follow-up stage. Blocked when total stages reached
      *  the plan's max (8 per PDF §4.2 "keep it tight"). Returns the id
      *  on success, null when blocked. */
@@ -9943,6 +9950,24 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({ leadSources: state.leadSources.filter(s => s.id !== id) }));
         get().recordAudit("Deleted lead source", "settings", id, target.label);
         return { deleted: true };
+    },
+
+    addMarketingSpend: (row) => {
+        const id = `spend_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        set(state => ({ marketingSpend: [...state.marketingSpend, { id, ...row }] }));
+        get().recordAudit("Added marketing spend", "settings", id, `${row.channel} · ${row.month}`);
+        return id;
+    },
+    updateMarketingSpend: (id, patch) => {
+        set(state => ({
+            marketingSpend: state.marketingSpend.map(s => (s.id === id ? { ...s, ...patch } : s)),
+        }));
+        get().recordAudit("Updated marketing spend", "settings", id, "");
+    },
+    deleteMarketingSpend: (id) => {
+        const target = get().marketingSpend.find(s => s.id === id);
+        set(state => ({ marketingSpend: state.marketingSpend.filter(s => s.id !== id) }));
+        get().recordAudit("Deleted marketing spend", "settings", id, target ? `${target.channel} · ${target.month}` : "");
     },
     // v83 Phase 6 — studio-editable follow-up stages (PDF §4.2). Max 8
     // stages so the funnel stays scannable.

@@ -84,6 +84,7 @@ const NAV_ITEMS: NavItemDef[] = [
             // (Events removed — bookable events live in Schedule, not Marketing.)
             { label: "Announcements", href: "/admin/marketing/announcements" },
             { label: "Referrals",     href: "/admin/settings/referral"       },
+            { label: "Marketing Spend", href: "/admin/marketing/spend"       },
         ],
     },
     {

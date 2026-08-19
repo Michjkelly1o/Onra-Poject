@@ -57,6 +57,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/products/promo-codes":     "Promotions",
     "/admin/marketing":                "Campaigns",
     "/admin/marketing/announcements":  "Announcements",
+    "/admin/marketing/spend":          "Marketing Spend",
     "/admin/staff":                    "Staff & permissions",
     "/admin/staff/roles":              "Roles & permissions",
     "/admin/staff/pay-rate":           "Pay rates",
