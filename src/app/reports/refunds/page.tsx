@@ -98,9 +98,10 @@ export default function RefundsReportPage() {
                 revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind,
                 refundAmount:         -grossAbs,   // shown negative per Excel spec
                 refundType,
-                // A reason is mandatory on every refund; if a legacy row somehow
-                // lacks one, fall back to the "Other" category (never blank).
-                reason:               r.refundReason && r.refundReason.trim() ? r.refundReason : "Other",
+                // The stored reason IS the value to show — for an "Other"
+                // selection that's the custom typed note (never the literal
+                // word "Other"). A reason is mandatory, so this is always set.
+                reason:               r.refundReason ?? "—",
                 salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "POS",
                 staffId:              r.staffId ?? "",
                 branchId:             r.branchId,

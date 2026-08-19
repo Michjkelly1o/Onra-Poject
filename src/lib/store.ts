@@ -12443,39 +12443,35 @@ export const useAppStore = create<AppState>()(persist(
             });
 
             // ─── Plan-exclusivity cascade (Jul 2026 client feedback) ──────
-            // The customer either holds ONE active membership OR one or
-            // more active packages — never both. Buying a
-            // membership must therefore cancel any previously-held
-            // packages, and buying a package must cancel any
-            // previously-held membership. `complimentary` plans are
-            // exempt (free credits, not a membership/package). Only
-            // active + frozen rows count as "held"; historical
-            // (cancelled/expired/removed) rows are untouched. Ignored
-            // when the current purchase is gift-card-only (planKind ===
-            // null) — that path never displaces the current plan.
+            // A customer holds EITHER exactly ONE membership OR one-or-more
+            // packages — never both, and never two memberships. So buying a
+            // MEMBERSHIP cancels any active/frozen packages AND any existing
+            // membership (the new one REPLACES the old — this is the fix for
+            // the "customer ended up with two memberships" bug). Buying a
+            // PACKAGE cancels any existing membership but leaves other packages
+            // (multiple packages are allowed). `complimentary` plans (free
+            // credits) are exempt; only active + frozen rows count as "held";
+            // historical (cancelled/expired/removed) rows are untouched. A
+            // gift-card-only purchase (planKind === null) never displaces.
             const cascadeReason = planKind === "membership"
-                ? "Switched to membership"
+                ? "Replaced by a new membership"
                 : "Switched to package";
-            const shouldCascade = planKind !== null && (
+            const isDisplacedByPurchase = (p: CustomerPlan): boolean =>
                 planKind === "membership"
-                    ? state.customerPlans.some(p =>
-                        p.customerId === customerId
-                        && p.kind === "package"
-                        && (p.status === "active" || p.status === "frozen"))
-                    : state.customerPlans.some(p =>
-                        p.customerId === customerId
-                        && p.kind === "membership"
-                        && (p.status === "active" || p.status === "frozen"))
+                    ? (p.kind === "package" || p.kind === "membership")
+                    : p.kind === "membership";
+            const shouldCascade = planKind !== null && state.customerPlans.some(p =>
+                p.customerId === customerId
+                && p.kind !== "complimentary"
+                && (p.status === "active" || p.status === "frozen")
+                && isDisplacedByPurchase(p),
             );
             const cascadedPlans: CustomerPlan[] = shouldCascade
                 ? state.customerPlans.map(p => {
                     if (p.customerId !== customerId) return p;
                     if (p.kind === "complimentary") return p;
                     if (p.status !== "active" && p.status !== "frozen") return p;
-                    const displaced = planKind === "membership"
-                        ? p.kind === "package"
-                        : p.kind === "membership";
-                    if (!displaced) return p;
+                    if (!isDisplacedByPurchase(p)) return p;
                     return {
                         ...p,
                         status: "cancelled" as const,
@@ -13643,7 +13639,7 @@ export const useAppStore = create<AppState>()(persist(
         // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
         //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
         //   demos re-seed with the 1-credit package instead of the old 3-credit one.
-        version: 118,
+        version: 119,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

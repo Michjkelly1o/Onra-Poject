@@ -1441,6 +1441,9 @@ interface TxnSpec {
     productKey: typeof MEMBERSHIPS[number] | typeof PACKAGES[number];
     status: "complete" | "pending" | "failed" | "refunded";
     paymentMethod: "card" | "cash";
+    /** Standardised refund reason — required on refunded rows so the Refunds
+     *  report never shows an empty reason. */
+    reason?: string;
 }
 
 const TXN_SPECS: TxnSpec[] = [
@@ -1452,7 +1455,7 @@ const TXN_SPECS: TxnSpec[] = [
     { daysAgo: 19, customerIdx: 5, branchId: SOUTH, kind: "package",    productKey: "pkg_1_class_intro",     status: "complete", paymentMethod: "card" },
     { daysAgo: 17, customerIdx: 6, branchId: SOUTH, kind: "membership", productKey: "mem_yoga_focused",      status: "complete", paymentMethod: "card" },
     { daysAgo: 15, customerIdx: 7, branchId: EAST,  kind: "package",    productKey: "pkg_20_class",          status: "complete", paymentMethod: "card" },
-    { daysAgo: 14, customerIdx: 8, branchId: SOUTH, kind: "membership", productKey: "mem_advanced_monthly",  status: "refunded", paymentMethod: "card" },
+    { daysAgo: 14, customerIdx: 8, branchId: SOUTH, kind: "membership", productKey: "mem_advanced_monthly",  status: "refunded", paymentMethod: "card", reason: "Medical" },
     { daysAgo: 13, customerIdx: 9, branchId: SOUTH, kind: "package",    productKey: "pkg_5_class",           status: "complete", paymentMethod: "cash" },
     { daysAgo: 12, customerIdx: 0, branchId: SOUTH, kind: "package",    productKey: "pkg_3_class_trial",     status: "complete", paymentMethod: "card" },
     { daysAgo: 11, customerIdx: 1, branchId: EAST,  kind: "membership", productKey: "mem_unlimited_monthly", status: "complete", paymentMethod: "card" },
@@ -1462,7 +1465,7 @@ const TXN_SPECS: TxnSpec[] = [
     { daysAgo: 7,  customerIdx: 5, branchId: SOUTH, kind: "membership", productKey: "mem_beginner_monthly",  status: "complete", paymentMethod: "card" },
     { daysAgo: 6,  customerIdx: 6, branchId: SOUTH, kind: "package",    productKey: "pkg_10_class",          status: "complete", paymentMethod: "card" },
     { daysAgo: 5,  customerIdx: 7, branchId: EAST,  kind: "membership", productKey: "mem_yoga_focused",      status: "complete", paymentMethod: "card" },
-    { daysAgo: 4,  customerIdx: 8, branchId: SOUTH, kind: "package",    productKey: "pkg_5_class",           status: "refunded", paymentMethod: "card" },
+    { daysAgo: 4,  customerIdx: 8, branchId: SOUTH, kind: "package",    productKey: "pkg_5_class",           status: "refunded", paymentMethod: "card", reason: "Not satisfied" },
     { daysAgo: 3,  customerIdx: 9, branchId: SOUTH, kind: "membership", productKey: "mem_advanced_monthly",  status: "complete", paymentMethod: "card" },
     { daysAgo: 2,  customerIdx: 0, branchId: SOUTH, kind: "package",    productKey: "pkg_20_class",          status: "complete", paymentMethod: "card" },
     { daysAgo: 1,  customerIdx: 1, branchId: EAST,  kind: "package",    productKey: "pkg_10_class",          status: "complete", paymentMethod: "card" },
@@ -1511,6 +1514,7 @@ export const DEMO_NOW_TRANSACTIONS: CustomerTransaction[] = TXN_SPECS.map((t, id
         created_at: createdAt,
         refunded_at: t.status === "refunded" ? isoStamp(daysAgo(Math.max(0, t.daysAgo - 1))) : undefined,
         refund_method: t.status === "refunded" ? t.paymentMethod : undefined,
+        refund_reason: t.status === "refunded" ? t.reason : undefined,
     };
 });
 
