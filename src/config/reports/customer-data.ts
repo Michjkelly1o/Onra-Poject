@@ -32,7 +32,7 @@ const K = {
 export const CUSTOMER_DATA_REPORT: ReportDefinition = {
     id:          "customer-data",
     category:    "customer",
-    title:       "Customer Data (Active vs Inactive)",
+    title:       "Customer Data",
     description: "Full customer record.",
     type:        "lookback",
     route:       "/reports/customer-data",
@@ -56,7 +56,7 @@ export const CUSTOMER_DATA_REPORT: ReportDefinition = {
         { key: K.newOrReturning,     label: "New or returning",      kind: "text",     minWidth: 160 },
         { key: K.convertedFrom,      label: "Converted from",        kind: "text",     minWidth: 180 },
         { key: K.marketingSource,    label: "Marketing source",      kind: "text",     minWidth: 180 },
-        { key: K.lifetimeValue,      label: "Lifetime value",        kind: "currency", minWidth: 160, calc: "Σ net revenue, all-time" },
+        { key: K.lifetimeValue,      label: "Total spend",           kind: "currency", minWidth: 160, calc: "Σ net revenue, all-time" },
     ],
 
     // Sheet 1 defaults: status · plan type · location · marketing source · new vs returning.

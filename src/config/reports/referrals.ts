@@ -23,7 +23,7 @@ const K = {
 export const REFERRALS_REPORT: ReportDefinition = {
     id:          "referrals",
     category:    "marketing",
-    title:       "Referral Report",
+    title:       "Referrals",
     description: "New members via referral (+ conversion %).",
     type:        "lookback",
     route:       "/reports/referrals",
@@ -34,12 +34,12 @@ export const REFERRALS_REPORT: ReportDefinition = {
     columns: [
         { key: K.dateISO,            label: "Date",                 kind: "date",     minWidth: 130 },
         { key: K.referrerName,       label: "Referrer name",        kind: "text",     minWidth: 200 },
-        { key: K.referrerId,         label: "Referrer ID",          kind: "id",       minWidth: 160, hiddenByDefault: true },
-        { key: K.referredMemberName, label: "Referred member name", kind: "text",     minWidth: 220 },
-        { key: K.referredMemberId,   label: "Referred member ID",   kind: "id",       minWidth: 160, hiddenByDefault: true },
-        { key: K.referredEmail,      label: "Referred member email", kind: "text",    minWidth: 220 },
+        { key: K.referrerId,         label: "Referrer ID",          kind: "id",       minWidth: 160 },
+        { key: K.referredMemberName, label: "Referred customer name", kind: "text",   minWidth: 220 },
+        { key: K.referredMemberId,   label: "Referred customer ID", kind: "id",       minWidth: 160 },
+        { key: K.referredEmail,      label: "Referred customer email", kind: "text",  minWidth: 220 },
         { key: K.planPurchased,      label: "Plan purchased",       kind: "text",     minWidth: 220 },
-        { key: K.revenue,            label: "Revenue",              kind: "currency", minWidth: 140 },
+        { key: K.revenue,            label: "Sales",                kind: "currency", minWidth: 140 },
     ],
 
     // Sheet 1 defaults: referrer · location.

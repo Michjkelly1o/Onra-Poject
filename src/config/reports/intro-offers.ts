@@ -35,7 +35,7 @@ export const INTRO_OFFERS_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.customerName,     label: "Customer name",     kind: "text",     minWidth: 200 },
-        { key: K.customerId,       label: "Customer ID",       kind: "id",       minWidth: 160, hiddenByDefault: true },
+        { key: K.customerId,       label: "Customer ID",       kind: "id",       minWidth: 160 },
         { key: K.customerEmail,    label: "Customer email",    kind: "text",     minWidth: 220 },
         { key: K.introOfferName,   label: "Intro offer name",  kind: "text",     minWidth: 220 },
         { key: K.purchaseDateISO,  label: "Purchase date",     kind: "date",     minWidth: 140 },
@@ -43,7 +43,7 @@ export const INTRO_OFFERS_REPORT: ReportDefinition = {
         { key: K.sessionsIncluded, label: "Sessions included", kind: "number",   minWidth: 170 },
         { key: K.sessionsUsed,     label: "Sessions used",     kind: "number",   minWidth: 140 },
         { key: K.convertedTo,      label: "Converted to",      kind: "text",     minWidth: 200 },
-        { key: K.price,            label: "Price",             kind: "currency", minWidth: 130 },
+        { key: K.price,            label: "Converted plan price", kind: "currency", minWidth: 130 },
     ],
 
     // Sheet 1 defaults: offer · status.

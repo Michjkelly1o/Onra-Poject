@@ -31,7 +31,7 @@ const K = {
 export const CANCELLATIONS_NOSHOWS_REPORT: ReportDefinition = {
     id:          "cancellations-noshows",
     category:    "class",
-    title:       "Cancellations & No-shows",
+    title:       "Class Cancellations & No-shows",
     description: "Bookings that didn't result in attendance, with credit / charge outcome.",
     type:        "lookback",
     route:       "/reports/cancellations-noshows",
@@ -40,9 +40,9 @@ export const CANCELLATIONS_NOSHOWS_REPORT: ReportDefinition = {
     rbac:        ["admin"],
 
     columns: [
-        { key: K.cancelledAtISO,  label: "Cancellation date", kind: "date",     minWidth: 160 },
-        { key: K.location,        label: "Location",          kind: "text",     minWidth: 180 },
         { key: K.classDateISO,    label: "Class date",        kind: "date",     minWidth: 140 },
+        { key: K.location,        label: "Location",          kind: "text",     minWidth: 180 },
+        { key: K.cancelledAtISO,  label: "Cancellation date", kind: "date",     minWidth: 160 },
         { key: K.classDay,        label: "Class day",         kind: "text",     minWidth: 120 },
         { key: K.startTime,       label: "Start time",        kind: "text",     minWidth: 120 },
         { key: K.endTime,         label: "End time",          kind: "text",     minWidth: 120 },

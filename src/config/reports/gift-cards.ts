@@ -28,7 +28,7 @@ const K = {
 export const GIFT_CARDS_REPORT: ReportDefinition = {
     id:          "gift-cards",
     category:    "financial",
-    title:       "Gift Card",
+    title:       "Gift Cards",
     description: "Gift cards sold / outstanding balance.",
     type:        "snapshot",
     route:       "/reports/gift-cards",
@@ -37,10 +37,10 @@ export const GIFT_CARDS_REPORT: ReportDefinition = {
     rbac:        ["admin"],
 
     columns: [
+        { key: K.giftCardNumber,      label: "Gift card #",        kind: "id",       minWidth: 180 },
         { key: K.purchaseDateISO,     label: "Purchase date",      kind: "date",     minWidth: 130 },
         { key: K.location,            label: "Location",           kind: "text",     minWidth: 180 },
         { key: K.expiryDateISO,       label: "Expiry date",        kind: "date",     minWidth: 130 },
-        { key: K.giftCardNumber,      label: "Gift card #",        kind: "id",       minWidth: 180 },
         { key: K.transactionNumber,   label: "Transaction #",      kind: "id",       minWidth: 180, hiddenByDefault: true },
         { key: K.purchaserName,       label: "Purchaser name",     kind: "text",     minWidth: 200 },
         { key: K.purchaserEmail,      label: "Purchaser email",    kind: "text",     minWidth: 220, hiddenByDefault: true },

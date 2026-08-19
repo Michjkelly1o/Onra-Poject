@@ -30,7 +30,7 @@ const K = {
 export const REVENUE_PER_CLASS_REPORT: ReportDefinition = {
     id:          "revenue-per-class",
     category:    "financial",
-    title:       "Revenue per Class / Visit",
+    title:       "Class Revenue",
     description: "Revenue attributed / sessions run, and / attendees. Unit-economics view of every class ranked by revenue efficiency.",
     type:        "lookback",
     route:       "/reports/revenue-per-class",

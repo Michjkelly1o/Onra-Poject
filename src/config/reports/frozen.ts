@@ -25,7 +25,7 @@ const K = {
 export const FROZEN_REPORT: ReportDefinition = {
     id:          "frozen",
     category:    "membership_package",
-    title:       "Frozen Memberships / Packages",
+    title:       "Frozen Plans",
     description: "Plans currently frozen. Days-frozen, original expiry, and the new (extended) expiry that reflects the freeze window.",
     type:        "snapshot",
     route:       "/reports/frozen",
@@ -35,7 +35,7 @@ export const FROZEN_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.customerName,   label: "Customer name",   kind: "text",   minWidth: 200 },
-        { key: K.customerId,     label: "Customer ID",     kind: "id",     minWidth: 160, hiddenByDefault: true },
+        { key: K.customerId,     label: "Customer ID",     kind: "id",     minWidth: 160 },
         { key: K.customerEmail,  label: "Customer email",  kind: "text",   minWidth: 220 },
         { key: K.planName,       label: "Plan name",       kind: "text",   minWidth: 220 },
         { key: K.planType,       label: "Plan type",       kind: "text",   minWidth: 170 },

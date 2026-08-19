@@ -40,7 +40,7 @@ export const PROMO_REDEMPTIONS_REPORT: ReportDefinition = {
         { key: K.promoName,        label: "Promotion name",     kind: "text",     minWidth: 220 },
         { key: K.redemptions,      label: "Redemptions",        kind: "number",   minWidth: 140 },
         { key: K.discountGiven,    label: "Discount given",     kind: "currency", minWidth: 160 },
-        { key: K.revenueFromPromo, label: "Revenue from promotion", kind: "currency", minWidth: 180 },
+        { key: K.revenueFromPromo, label: "Sales from promo",   kind: "currency", minWidth: 180 },
         { key: K.revenueCategory,  label: "Revenue category",   kind: "text",     minWidth: 160 },
         { key: K.newVsExisting,    label: "New vs existing",    kind: "text",     minWidth: 160 },
     ],

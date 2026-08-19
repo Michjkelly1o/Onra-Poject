@@ -27,7 +27,7 @@ const K = {
 export const UPGRADES_DOWNGRADES_REPORT: ReportDefinition = {
     id:          "upgrades-downgrades",
     category:    "membership_package",
-    title:       "Upgrades / Downgrades",
+    title:       "Plan Changes",
     description: "Plan changes in the period — from-plan, to-plan, and the price delta that classifies each as an upgrade or downgrade.",
     type:        "lookback",
     route:       "/reports/upgrades-downgrades",

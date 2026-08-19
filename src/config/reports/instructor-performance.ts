@@ -40,8 +40,8 @@ export const INSTRUCTOR_PERFORMANCE_REPORT: ReportDefinition = {
         { key: K.avgClassSize,       label: "Avg class size",     kind: "number",  minWidth: 150, calc: "Total attendees ÷ Classes taught" },
         { key: K.avgFillRatePct,     label: "Avg fill rate %",    kind: "percent", minWidth: 160, calc: "Booked ÷ Capacity" },
         { key: K.noShowRatePct,      label: "No-show rate %",     kind: "percent", minWidth: 150, calc: "No-shows ÷ Booked" },
-        { key: K.uniqueClients,      label: "Unique clients",     kind: "number",  minWidth: 150 },
-        { key: K.clientRetentionPct, label: "Client retention %", kind: "percent", minWidth: 170, calc: "Retained clients ÷ clients" },
+        { key: K.uniqueClients,      label: "Unique customers",   kind: "number",  minWidth: 150 },
+        { key: K.clientRetentionPct, label: "Rebooked",           kind: "percent", minWidth: 170, calc: "Customers with 2+ visits ÷ unique customers" },
         { key: K.avgRating,          label: "Avg rating",         kind: "number",  minWidth: 130 },
     ],
 

@@ -48,10 +48,10 @@ export const ACQUISITION_EFFICIENCY_REPORT: ReportDefinition = {
         { key: K.newMembers,        label: "New members",         kind: "number",   minWidth: 150 },
         { key: K.cpl,               label: "CPL",                 kind: "currency", minWidth: 120, calc: "Marketing spend ÷ New leads" },
         { key: K.cac,               label: "CAC",                 kind: "currency", minWidth: 120, calc: "Marketing spend ÷ New members" },
-        { key: K.attributedRevenue, label: "Attributed revenue",  kind: "currency", minWidth: 180 },
-        { key: K.roas,              label: "ROAS",                kind: "number",   minWidth: 120, calc: "Attributed revenue ÷ Marketing spend" },
+        { key: K.attributedRevenue, label: "Attributed sales",    kind: "currency", minWidth: 180 },
+        { key: K.roas,              label: "ROAS",                kind: "number",   minWidth: 120, calc: "Attributed sales ÷ Marketing spend" },
         { key: K.ltv,               label: "LTV",                 kind: "currency", minWidth: 120 },
-        { key: K.cacLtvRatio,       label: "CAC:LTV ratio",       kind: "number",   minWidth: 150, calc: "CAC ÷ LTV" },
+        { key: K.cacLtvRatio,       label: "LTV:CAC",             kind: "number",   minWidth: 150, calc: "CAC ÷ LTV" },
     ],
 
     // Sheet 1 default: channel.

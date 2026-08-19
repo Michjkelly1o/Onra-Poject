@@ -34,13 +34,13 @@ export const TOP_CLASSES_SERVICES_REPORT: ReportDefinition = {
     rbac:        ["admin"],
 
     columns: [
-        { key: K.serviceType,     label: "Service type",         kind: "text",    minWidth: 160 },
-        { key: K.className,       label: "Class / service name", kind: "text",    minWidth: 240 },
+        { key: K.serviceType,     label: "Type",                 kind: "text",    minWidth: 160 },
+        { key: K.className,       label: "Session Name",         kind: "text",    minWidth: 240 },
         { key: K.sessionsRun,     label: "Sessions run",         kind: "number",  minWidth: 140 },
         { key: K.totalBookings,   label: "Total bookings",       kind: "number",  minWidth: 150 },
         { key: K.totalAttended,   label: "Total attended",       kind: "number",  minWidth: 150 },
         { key: K.noShows,         label: "No-shows",             kind: "number",  minWidth: 130 },
-        { key: K.avgFillPct,      label: "Avg fill %",           kind: "percent", minWidth: 130, calc: "Booked ÷ Capacity" },
+        { key: K.avgFillPct,      label: "Fill rate %",          kind: "percent", minWidth: 130, calc: "Booked ÷ Capacity" },
         { key: K.uniqueCustomers, label: "Unique customers",     kind: "number",  minWidth: 170 },
         { key: K.location,        label: "Location",             kind: "text",    minWidth: 180 },
     ],

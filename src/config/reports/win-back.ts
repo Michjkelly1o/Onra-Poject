@@ -35,15 +35,15 @@ export const WIN_BACK_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.customerName,        label: "Customer name",      kind: "text",     minWidth: 200 },
-        { key: K.customerId,          label: "Customer ID",        kind: "id",       minWidth: 160, hiddenByDefault: true },
+        { key: K.customerId,          label: "Customer ID",        kind: "id",       minWidth: 160 },
         { key: K.customerEmail,       label: "Customer email",     kind: "text",     minWidth: 220 },
         { key: K.lapsedDateISO,       label: "Lapsed date",        kind: "date",     minWidth: 140 },
         { key: K.lastPlan,            label: "Last plan",          kind: "text",     minWidth: 220 },
         { key: K.campaign,            label: "Campaign",           kind: "text",     minWidth: 200 },
-        { key: K.reactivatedYN,       label: "Reactivated?",       kind: "text",     minWidth: 140 },
+        { key: K.reactivatedYN,       label: "Reactivated",        kind: "text",     minWidth: 140 },
         { key: K.reactivationDateISO, label: "Reactivation date",  kind: "date",     minWidth: 160 },
         { key: K.newPlan,             label: "New plan",           kind: "text",     minWidth: 220 },
-        { key: K.revenueRecovered,    label: "Revenue recovered",  kind: "currency", minWidth: 170 },
+        { key: K.revenueRecovered,    label: "Sales recovered",    kind: "currency", minWidth: 170 },
     ],
 
     // Sheet 1 defaults: campaign · location.

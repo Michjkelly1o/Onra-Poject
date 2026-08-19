@@ -42,9 +42,9 @@ export const LEAD_DATA_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.leadAddedISO,        label: "Lead added on",         kind: "date",     minWidth: 150 },
-        { key: K.contactName,         label: "Contact name",          kind: "text",     minWidth: 200 },
-        { key: K.leadId,              label: "Lead ID",               kind: "id",       minWidth: 140, hiddenByDefault: true },
-        { key: K.contactEmail,        label: "Contact email",         kind: "text",     minWidth: 220 },
+        { key: K.contactName,         label: "Name",                  kind: "text",     minWidth: 200 },
+        { key: K.leadId,              label: "ID",                    kind: "id",       minWidth: 140 },
+        { key: K.contactEmail,        label: "Email",                 kind: "text",     minWidth: 220 },
         { key: K.phone,               label: "Phone",                 kind: "text",     minWidth: 160 },
         { key: K.gender,              label: "Gender",                kind: "text",     minWidth: 120 },
         { key: K.leadSource,          label: "Lead source",           kind: "text",     minWidth: 160 },

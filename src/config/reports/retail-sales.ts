@@ -55,13 +55,13 @@ export const RETAIL_SALES_REPORT: ReportDefinition = {
         { key: K.unitPrice,         label: "Unit price",        kind: "currency", minWidth: 130, calc: "Gross sales ÷ Quantity" },
         { key: K.grossSales,        label: "Gross sales",       kind: "currency", minWidth: 140 },
         { key: K.discount,          label: "Discount",          kind: "currency", minWidth: 130 },
-        { key: K.tax,               label: "Tax",               kind: "currency", minWidth: 120, calc: "Net (before tax) × tax rate" },
-        { key: K.netSales,          label: "Net sales",         kind: "currency", minWidth: 140, calc: "Gross − Discount (+ tax as labelled)" },
+        { key: K.tax,               label: "Tax collected",     kind: "currency", minWidth: 120, calc: "Net (before tax) × tax rate" },
+        { key: K.netSales,          label: "Net sales (before tax)", kind: "currency", minWidth: 160, calc: "Gross − Discount" },
         { key: K.unitCost,          label: "Unit cost",         kind: "currency", minWidth: 130 },
         { key: K.grossMarginPct,    label: "Gross margin %",    kind: "percent",  minWidth: 140, calc: "(Net sales − Cost) ÷ Net sales" },
         { key: K.attachedTo,        label: "Attached to",       kind: "status",   minWidth: 130 },
         { key: K.salesChannel,      label: "Sales channel",     kind: "status",   minWidth: 140 },
-        { key: K.staffId,           label: "Staff ID",          kind: "id",       minWidth: 160, hiddenByDefault: true },
+        { key: K.staffId,           label: "Staff ID",          kind: "id",       minWidth: 160 },
     ],
 
     // Plan doc default: by product; secondary breakdowns available.

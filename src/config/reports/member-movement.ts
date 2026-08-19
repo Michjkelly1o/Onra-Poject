@@ -27,7 +27,7 @@ const K = {
 export const MEMBER_MOVEMENT_REPORT: ReportDefinition = {
     id:          "member-movement",
     category:    "customer",
-    title:       "Member Movement (Sign-ups & Net Change)",
+    title:       "Member Movement",
     description: "New vs lost members in the period, and net change.",
     type:        "lookback",
     route:       "/reports/member-movement",
@@ -41,13 +41,13 @@ export const MEMBER_MOVEMENT_REPORT: ReportDefinition = {
     // aggregate; when Period=None (flat), the shell shows one row per
     // (branch × month) driven by `periodField: "periodKey"`.
     columns: [
-        { key: K.activeAtStart,   label: "Active members at start", kind: "number", minWidth: 190 },
+        { key: K.activeAtStart,   label: "Members",                kind: "number", minWidth: 190 },
         { key: K.newSignups,      label: "New sign-ups",           kind: "number", minWidth: 150 },
         { key: K.reactivated,     label: "Reactivated",            kind: "number", minWidth: 140 },
         { key: K.membersLost,     label: "Members lost",           kind: "number", minWidth: 140 },
         { key: K.netMemberChange, label: "Net member change",      kind: "number", minWidth: 180, calc: "New + Reactivated − Members lost" },
-        { key: K.activeAtEnd,     label: "Active members at end",  kind: "number", minWidth: 190, calc: "Active at start + Net change" },
-        { key: K.pctChange,       label: "% change",               kind: "percent", minWidth: 130, calc: "(Current − Prior) ÷ Prior" },
+        { key: K.activeAtEnd,     label: "Members at end",         kind: "number", minWidth: 190, calc: "Active at start + Net change" },
+        { key: K.pctChange,       label: "Member movement % change", kind: "percent", minWidth: 130, calc: "(Current − Prior) ÷ Prior" },
     ],
 
     // Sheet 1 defaults: period · location · source · plan type.

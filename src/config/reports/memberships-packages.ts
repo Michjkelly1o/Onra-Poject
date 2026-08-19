@@ -46,14 +46,14 @@ export const MEMBERSHIPS_PACKAGES_REPORT: ReportDefinition = {
         { key: K.planType,          label: "Plan type",           kind: "text",     minWidth: 170 },
         { key: K.allowance,         label: "Allowance",           kind: "text",     minWidth: 160, hiddenByDefault: true },
         { key: K.status,            label: "Status",              kind: "status",   minWidth: 130 },
-        { key: K.purchaseStartISO,  label: "Purchase / start date", kind: "date",   minWidth: 160 },
+        { key: K.purchaseStartISO,  label: "Start Date",          kind: "date",     minWidth: 160 },
         { key: K.renewsExpiresISO,  label: "Renews / expires on", kind: "date",     minWidth: 170 },
         { key: K.autoRenew,         label: "Auto-renew",          kind: "text",     minWidth: 130 },
         { key: K.totalCredits,      label: "Total credits",       kind: "number",   minWidth: 140 },
         { key: K.creditsUsed,       label: "Credits used",        kind: "number",   minWidth: 140 },
         { key: K.creditsRemaining,  label: "Credits remaining",   kind: "number",   minWidth: 170, calc: "Total credits − Credits used" },
         { key: K.nextBillingAmount, label: "Next billing amount", kind: "currency", minWidth: 180 },
-        { key: K.price,             label: "Price",               kind: "currency", minWidth: 130 },
+        { key: K.price,             label: "Plan Price",          kind: "currency", minWidth: 130 },
     ],
 
     // Sheet 1 defaults: plan type (recurring / package) · status · allowance · location.

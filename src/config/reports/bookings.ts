@@ -40,7 +40,7 @@ export const BOOKINGS_REPORT: ReportDefinition = {
         { key: K.typeLabel,        label: "Type",             kind: "text",   minWidth: 140 },
         { key: K.instructor,       label: "Instructor",       kind: "text",   minWidth: 180 },
         { key: K.customerName,     label: "Customer name",    kind: "text",   minWidth: 200 },
-        { key: K.customerId,       label: "Customer ID",      kind: "id",     minWidth: 160, hiddenByDefault: true },
+        { key: K.customerId,       label: "Customer ID",      kind: "id",     minWidth: 160 },
         { key: K.customerEmail,    label: "Customer email",   kind: "text",   minWidth: 220 },
         { key: K.outcomeLabel,     label: "Status",           kind: "status", minWidth: 140 },
         { key: K.cancellationType, label: "Cancellation type", kind: "text",  minWidth: 170 },
