@@ -20,7 +20,7 @@ import {
     SearchMd, FilterLines, Eye, XClose,
     MarkerPin01, Users01, AlignLeft,
 } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
@@ -491,6 +491,9 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
         const q = search.trim().toLowerCase();
         return rows
             .filter(r => {
+                // Booking history is past-only — upcoming and waitlisted (future)
+                // bookings live in the Overview tab's upcoming cards, not here.
+                if (r.displayStatus === "Upcoming" || r.displayStatus === "Waitlisted") return false;
                 if (q && !r.className.toLowerCase().includes(q)) return false;
                 if (applied.types.length > 0 && !applied.types.includes(r.type)) return false;
                 if (applied.dateStart && r.dateISO < applied.dateStart) return false;
@@ -499,11 +502,10 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                 if (applied.categories.length > 0 && (!r.category || !applied.categories.includes(r.category))) return false;
                 if (applied.times.length > 0 && !applied.times.includes(timeOfDay(r.startTime))) return false;
                 if (applied.statuses.length > 0) {
-                    // "Cancelled (late)" matches the "Cancelled" filter; a
-                    // waitlisted booking is for an upcoming class.
+                    // "Cancelled (late)" matches the "Cancelled" filter. (Upcoming
+                    // + Waitlisted are already excluded above — history is past-only.)
                     const fs: BookingFilterStatus =
                         r.displayStatus === "Cancelled (late)" ? "Cancelled"
-                        : r.displayStatus === "Waitlisted" ? "Upcoming"
                         : r.displayStatus as BookingFilterStatus;
                     if (!applied.statuses.includes(fs)) return false;
                 }
@@ -625,7 +627,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                             </span>
                                             <div className="flex flex-col gap-1 pr-20">
                                                 <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.className}</p>
-                                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{to12h(r.startTime)} – {to12h(r.endTime)}</p>
+                                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{formatDate(r.dateISO)} · {to12h(r.startTime)} – {to12h(r.endTime)}</p>
                                                 <div className="flex items-center gap-2 flex-wrap text-[14px] text-[var(--colors-text-quaternary)]">
                                                     <span className="flex items-center gap-1.5">
                                                         <TableAvatar initials={r.instructorInitials} size={16} />

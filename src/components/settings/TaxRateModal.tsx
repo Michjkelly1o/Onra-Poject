@@ -188,17 +188,12 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
     const rateLocked    = type === "zero_rated" || isEdit;
 
     return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
-            {/* Fixed modal height so switching tax rate types doesn't
-             *  cause the frame to shrink/grow (client-reported jump:
-             *  Default has a rate input, Exempt hides it, and the
-             *  overall modal was jittering). `h-[680px]` sits at the
-             *  tallest variant's natural size; `max-h-[90vh]` caps the
-             *  modal on short viewports. Body area gets its own scroll
-             *  so any overflow stays reachable without changing the
-             *  frame. */}
-            <div className="relative bg-white rounded-[16px] w-[600px] h-[680px] max-h-[90vh] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+        // Right-anchored side-panel content (client 2026-08-19) — SlidePanel
+        // owns the fixed wrapper + backdrop + slide motion; this component just
+        // fills it as a full-height column: header, scrolling body, pinned
+        // footer. A full-height panel also removes the old type-switch height
+        // jump for free (the body flexes, the frame doesn't).
+        <div className="relative flex flex-col h-full">
                 {/* Header */}
                 <div className="flex flex-col">
                     <div className="px-6 pt-6 flex items-start gap-4">
@@ -374,7 +369,6 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                         {isEdit ? "Save changes" : "Create tax rate"}
                     </Button>
                 </div>
-            </div>
         </div>
     );
 }

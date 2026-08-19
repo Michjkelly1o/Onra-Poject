@@ -48,6 +48,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SelectInput } from "@/components/ui/select-input";
 import { COUNTRIES } from "@/lib/data/locales";
 import { TaxRateModal } from "@/components/settings/TaxRateModal";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 import { ApplyTaxRatesView } from "@/components/settings/ApplyTaxRatesView";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { useAppStore, type TaxRate, type TaxRateStatus, type TaxRateKind, type TaxRoundingMode } from "@/lib/store";
@@ -521,6 +522,15 @@ export default function TaxPage() {
         | { mode: "edit"; existing: TaxRate }
         | null
     >(null);
+    // Retain the last panel through the ~320ms slide-out so the form stays
+    // mounted (and visible) while the SlidePanel animates closed — mirrors the
+    // Marketing form-panel host.
+    const [taxRetained, setTaxRetained] = useState(taxModal);
+    useEffect(() => {
+        if (taxModal) { setTaxRetained(taxModal); return; }
+        const t = setTimeout(() => setTaxRetained(null), 320);
+        return () => clearTimeout(t);
+    }, [taxModal]);
 
     useEffect(() => { setPage(1); setSelectedIds(new Set()); }, [statusFilter, tab, topKind]);
     // Income tax hidden (no payroll tax in the studio's country) → never leave
@@ -1119,25 +1129,27 @@ export default function TaxPage() {
                 `defaultKind` is the current top-level tab so creates land
                 in the right bucket; edits read the kind from the existing
                 row and the modal locks it. */}
-            {taxModal && (
-                <TaxRateModal
-                    mode={taxModal.mode}
-                    existing={taxModal.mode === "edit" ? taxModal.existing : undefined}
-                    defaultKind={
-                        // Category-context create wins (clicking "+ Add new
-                        // tax rate" from a Services dropdown seeds VAT
-                        // even on the Income tab, and pay_rate's seeds
-                        // income). The Tax rates list "+ Add new" button
-                        // has no category context — fall back to the
-                        // current top-level tab.
-                        taxModal.mode === "create" && taxModal.kindHint
-                            ? taxModal.kindHint
-                            : topKind
-                    }
-                    onClose={() => setTaxModal(null)}
-                    onSubmitted={saved => handleTaxModalSubmitted(saved, taxModal.mode)}
-                />
-            )}
+            <SlidePanel open={!!taxModal} onClose={() => setTaxModal(null)} width={600}>
+                {taxRetained && (
+                    <TaxRateModal
+                        mode={taxRetained.mode}
+                        existing={taxRetained.mode === "edit" ? taxRetained.existing : undefined}
+                        defaultKind={
+                            // Category-context create wins (clicking "+ Add new
+                            // tax rate" from a Services dropdown seeds VAT
+                            // even on the Income tab, and pay_rate's seeds
+                            // income). The Tax rates list "+ Add new" button
+                            // has no category context — fall back to the
+                            // current top-level tab.
+                            taxRetained.mode === "create" && taxRetained.kindHint
+                                ? taxRetained.kindHint
+                                : topKind
+                        }
+                        onClose={() => setTaxModal(null)}
+                        onSubmitted={saved => handleTaxModalSubmitted(saved, taxRetained.mode)}
+                    />
+                )}
+            </SlidePanel>
 
             {/* "Prices include tax" confirm modal — stages the flip behind a
                 Cancel / Confirm gate, matches the Branches / Rooms convention. */}
