@@ -376,46 +376,52 @@ const REFUND_REASONS = [
     "Other",
 ] as const;
 
+// Payment-method display labels + split reconstruction. A refund always returns
+// to the ORIGINAL source(s), so the modal shows "Paid with" and mirrors it as
+// "Refunds to" instead of asking the staff to pick cash/card.
+const PAY_METHOD_LABEL: Record<CustomerTransaction["paymentMethod"], string> = {
+    cash: "Cash", card: "Card", applepay: "Apple Pay", googlepay: "Google Pay",
+    banktransfer: "Bank transfer", wallet: "Account credit",
+};
+function primaryMethodLabel(t: CustomerTransaction): string {
+    if (t.paymentMethod === "card" && t.cardType) {
+        return `${t.cardType.charAt(0).toUpperCase()}${t.cardType.slice(1)} card`;
+    }
+    return PAY_METHOD_LABEL[t.paymentMethod] ?? "Card";
+}
+/** How this transaction was paid — the primary method plus any account-credit
+ *  (wallet) and gift-card portions from a split payment. Each portion refunds
+ *  back to its own source. */
+function paymentBreakdown(t: CustomerTransaction): { label: string; amountAed: number }[] {
+    const total = Math.abs(t.amountAed);
+    const wallet = t.accountCreditAppliedAed ?? 0;
+    const gift = (t.giftCardDebits ?? []).reduce((s, d) => s + d.amountAed, 0);
+    const primary = Math.max(0, total - wallet - gift);
+    const out: { label: string; amountAed: number }[] = [];
+    if (primary > 0) out.push({ label: primaryMethodLabel(t), amountAed: primary });
+    if (wallet > 0) out.push({ label: "Account credit (wallet)", amountAed: wallet });
+    if (gift > 0) out.push({ label: "Gift card", amountAed: gift });
+    if (out.length === 0) out.push({ label: primaryMethodLabel(t), amountAed: total });
+    return out;
+}
+
 function RefundModal({ txn, onClose, onConfirm }: {
     txn: CustomerTransaction;
     onClose: () => void;
-    onConfirm: (method: "cash" | "card", reason: string) => void;
+    onConfirm: (reason: string) => void;
 }) {
-    const [method, setMethod] = useState<"cash" | "card">("cash");
     const [reason, setReason] = useState("");
     const [otherText, setOtherText] = useState("");
     const resolvedReason = reason === "Other" ? otherText.trim() : reason;
     // Proceed is gated until a reason is chosen (and, for "Other", a note typed).
     const canProceed = reason !== "" && (reason !== "Other" || otherText.trim() !== "");
+    const breakdown = paymentBreakdown(txn);
 
     useEffect(() => {
         function h(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
         document.addEventListener("keydown", h);
         return () => document.removeEventListener("keydown", h);
     }, [onClose]);
-
-    const MethodOption = ({ value, label, Icon }: {
-        value: "cash" | "card"; label: string; Icon: React.ComponentType<{ className?: string }>;
-    }) => {
-        const selected = method === value;
-        return (
-            <button type="button" onClick={() => setMethod(value)}
-                className={cn("flex items-center gap-3 p-4 rounded-[12px] w-full text-left transition-all",
-                    selected ? "border-2 border-[var(--colors-secondary-600)] bg-white" : "border-1 border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-secondary-300)]")}>
-                {/* Icon box turns green when the method is selected, neutral otherwise. */}
-                <div className={cn("size-10 rounded-[8px] flex items-center justify-center shrink-0 transition-colors",
-                    selected ? "" : "bg-white border-1 border-[var(--colors-border-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]")}
-                    style={selected ? { background: "linear-gradient(135deg, #edfdf5 0%, #dcfae9 100%)" } : undefined}>
-                    <Icon className={cn("w-5 h-5", selected ? "text-[var(--colors-secondary-600)]" : "text-[var(--colors-text-tertiary)]")} />
-                </div>
-                <p className="flex-1 min-w-0 text-[16px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
-                <span className={cn("w-5 h-5 rounded-full flex items-center justify-center shrink-0",
-                    selected ? "bg-[var(--colors-secondary-600)]" : "border border-[var(--colors-border-primary)]")}>
-                    {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                </span>
-            </button>
-        );
-    };
 
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
@@ -429,26 +435,40 @@ function RefundModal({ txn, onClose, onConfirm }: {
                     </button>
                     <div className="flex flex-col gap-1 px-6 pt-6 pb-5 pr-14">
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Refund Payment</h3>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Select the refund method to confirm this transaction.</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">The refund is returned to the original payment source. Choose a reason to confirm.</p>
                     </div>
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                 </div>
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-4">
-                    {/* Detail refund */}
+                    {/* Detail refund — item, total, and the paid-with / refunds-to
+                        breakdown (each split portion returns to its own source). */}
                     <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                         <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Detail refund</p>
                         <div className="flex items-center justify-between gap-4">
                             <p className="text-[14px] text-[var(--colors-text-quaternary)]">{txn.name}</p>
                             <p className="text-[16px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{fmtAed(txn.amountAed)}</p>
                         </div>
-                    </div>
-                    {/* Refund method — two options side by side */}
-                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Refund method</p>
-                        <div className="grid grid-cols-2 gap-4">
-                            <MethodOption value="cash" label="Cash" Icon={BankNote01} />
-                            <MethodOption value="card" label="Card on file" Icon={CreditCard01} />
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                        {/* Paid with */}
+                        <div className="flex flex-col gap-2">
+                            <p className="text-[13px] font-medium text-[var(--colors-text-quaternary)] uppercase tracking-wide">Paid with</p>
+                            {breakdown.map((b, i) => (
+                                <div key={`paid-${i}`} className="flex items-center justify-between gap-4">
+                                    <p className="text-[14px] text-[var(--colors-text-secondary)]">{b.label}</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{fmtAed(b.amountAed)}</p>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Refunds to — mirrors the original source(s) automatically */}
+                        <div className="flex flex-col gap-2">
+                            <p className="text-[13px] font-medium text-[var(--colors-text-quaternary)] uppercase tracking-wide">Refunds to</p>
+                            {breakdown.map((b, i) => (
+                                <div key={`refund-${i}`} className="flex items-center justify-between gap-4">
+                                    <p className="text-[14px] text-[var(--colors-text-secondary)]">{b.label}</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-secondary-600)] whitespace-nowrap">{fmtAed(b.amountAed)}</p>
+                                </div>
+                            ))}
                         </div>
                     </div>
                     {/* Refund reason — standardised list; "Other" opens a required note. */}
@@ -481,7 +501,7 @@ function RefundModal({ txn, onClose, onConfirm }: {
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                     <div className="px-6 pt-6 pb-6 flex gap-3">
                         <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
-                        <Button variant="primary" size="lg" className="flex-1" disabled={!canProceed} onClick={() => onConfirm(method, resolvedReason)}>Proceed refund</Button>
+                        <Button variant="primary" size="lg" className="flex-1" disabled={!canProceed} onClick={() => onConfirm(resolvedReason)}>Proceed refund</Button>
                     </div>
                 </div>
             </div>
@@ -684,8 +704,8 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
         applied.dateStart !== "" || applied.dateEnd !== "";
 
     // ─── Refund handler ─────────────────────────────────────────────────────
-    function handleRefund(txn: CustomerTransaction, method: "cash" | "card", reason: string) {
-        refundTransaction(txn.id, method, reason);
+    function handleRefund(txn: CustomerTransaction, reason: string) {
+        refundTransaction(txn.id, reason);
         setRefundTxn(null);
         showToast(
             "Refund payment successfully",
@@ -909,7 +929,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
 
             {refundTxn && (
                 <RefundModal txn={refundTxn} onClose={() => setRefundTxn(null)}
-                    onConfirm={(method, reason) => handleRefund(refundTxn, method, reason)} />
+                    onConfirm={reason => handleRefund(refundTxn, reason)} />
             )}
         </div>
     );

@@ -218,6 +218,7 @@ import {
     type PromoCode,
     type MarketingItem,
     type PaymentMethod,
+    type TransactionPaymentMethod,
     type PurchaseRulesData,
     type DurationUnit,
     type Weekday,
@@ -281,7 +282,7 @@ import {
 // Re-export raw seed types — consumers can read these directly from the store.
 export type {
     SessionType, ServiceType,
-    ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, FreezePolicy, FreezeReason, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod,
+    ClassCategory, ClassesSettings, CancellationPolicy, CancellationOutcome, FreezePolicy, FreezeReason, Branch, Room, BusinessHours, StaffProfile, Membership, Package, GiftCardDesign, IssuedGiftCard, PromoCode, MarketingItem, PaymentMethod, TransactionPaymentMethod,
     PurchaseRulesData, DurationUnit, Weekday,
     CommissionCategory, CommissionValueType,
     // Reports v33 — new seed types the selectors reach into
@@ -2209,13 +2210,15 @@ export interface CustomerTransaction {
      *  purchase time. */
     taxInclusive?: boolean;
     status: "complete" | "pending" | "failed" | "refunded";
-    paymentMethod: "card" | "cash";
+    paymentMethod: TransactionPaymentMethod;
     /** Origin surface that processed the payment. Mirrors the
      *  `customer_transactions.payment_source` seed column. */
     paymentSource?: "pos" | "customer_portal" | "admin";
     createdAtISO: string;
     refundedAtISO?: string;
-    refundMethod?: "cash" | "card";
+    /** Refund always issues back to the original source, so this mirrors
+     *  `paymentMethod`. */
+    refundMethod?: TransactionPaymentMethod;
     // ── Reports v30 ledger fields (all optional — see _types.ts for
     //     the full refund/void model documentation) ──
     transactionType?: "sale" | "refund" | "void" | "write_off";
@@ -3317,6 +3320,7 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         createdAtISO: t.created_at,
         refundedAtISO: t.refunded_at,
         refundMethod: t.refund_method,
+        accountCreditAppliedAed: t.account_credit_applied_aed,
         // ── Reports v30 ledger fields ───────────────────────────────
         transactionType:       t.transaction_type,
         originalTransactionId: t.original_transaction_id,
@@ -4861,7 +4865,7 @@ export interface AppState {
     // ── Customer transactions (customer-detail Payments tab) ───────────────
     /** Refund a completed transaction — status → refunded, with the refund
      *  method + timestamp recorded. Only `complete` transactions are eligible. */
-    refundTransaction: (id: string, method: "cash" | "card", reason?: string) => void;
+    refundTransaction: (id: string, reason?: string) => void;
     /** Append a customer transaction — used by the AI Agent migration importer
      *  to bring across historical payments. Auto id + createdAtISO. */
     addCustomerTransaction: (
@@ -5425,6 +5429,12 @@ export interface AppState {
          *  increments that promo's `usage_count` — the single write-path that
          *  makes a redemption real. Omit when no promo was applied. */
         promo?: { code: string; discountAed: number },
+        /** Method the buyer paid the non-credit / non-gift-card balance with —
+         *  cash / card / Apple Pay / Google Pay / bank transfer, or `wallet` when
+         *  the whole balance was account credit. Stamped on every sale row so the
+         *  refund flow can send money back to the original source. Defaults to
+         *  "card" for legacy callers. */
+        paymentMethod?: TransactionPaymentMethod,
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -9293,8 +9303,13 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({ staffAttendanceLog: [...state.staffAttendanceLog, next] }));
         return id;
     },
-    refundTransaction: (id, method, reason) => {
+    refundTransaction: (id, reason) => {
         const target = get().customerTransactions.find(t => t.id === id);
+        // Best practice — the refund always goes back to the ORIGINAL payment
+        // source, so `refundMethod` mirrors the sale's `paymentMethod` (no manual
+        // cash/card choice). Split-payment wallet + gift-card portions are
+        // restored to their own sources by the side-effect block below.
+        const originalMethod = target?.paymentMethod ?? "card";
         // Belt-and-braces guard — even if a future UI surface skips
         // its own `isRefundable` check, the store rejects the refund
         // on non-refundable rows (e.g. cancellation-penalty fees).
@@ -9321,7 +9336,7 @@ export const useAppStore = create<AppState>()(persist(
                         ...t,
                         status: "refunded" as const,
                         refundedAtISO: new Date().toISOString(),
-                        refundMethod: method,
+                        refundMethod: originalMethod,
                         // Standardised refund reason (or the "Other" note) — surfaces
                         // in the Refunds report's Reason column. Keeps any existing
                         // reason if the caller didn't pass one.
@@ -9340,7 +9355,7 @@ export const useAppStore = create<AppState>()(persist(
         if (target && willFlip) {
             const targetCustomer = get().customers.find(c => c.id === target.customerId);
             const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
-            get().recordAudit(`Refunded ${customerName}'s payment`, "customer", target.customerId, target.name, { amount: target.amountAed, method });
+            get().recordAudit(`Refunded ${customerName}'s payment`, "customer", target.customerId, target.name, { amount: target.amountAed, method: originalMethod });
             // Restore any account credit that was applied to this sale so the
             // customer's balance returns to what it was before the checkout.
             // Skipped on rows that didn't use credit (undefined / 0). Silent
@@ -12088,7 +12103,11 @@ export const useAppStore = create<AppState>()(persist(
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
     setAiScratchCoverImage: (url) => set({ aiScratchCoverImage: url }),
-    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride, giftCardDebits, promo) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride, giftCardDebits, promo, paymentMethod) => {
+        // Original payment source recorded on every sale row this call creates
+        // (was hardcoded "card"). `wallet` means the whole balance was account
+        // credit; otherwise it's the method that covered the non-credit balance.
+        const payMethod: TransactionPaymentMethod = paymentMethod ?? "card";
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -12293,7 +12312,7 @@ export const useAppStore = create<AppState>()(persist(
                         ?? `AED ${card.face_value_aed} Gift Card`,
                     amountAed: card.face_value_aed,
                     status: "complete",
-                    paymentMethod: "card",
+                    paymentMethod: payMethod,
                     paymentSource: paymentSource ?? "pos",
                     transactionType: "sale",
                     staffId: giftCardSeller,
@@ -12404,7 +12423,7 @@ export const useAppStore = create<AppState>()(persist(
                     amountAed: lineGross,
                     ...txnExtra,
                     status: "complete",
-                    paymentMethod: "card",
+                    paymentMethod: payMethod,
                     // Default origin: a POS checkout. Customer-portal +
                     // admin callers pass their own value via `paymentSource`.
                     paymentSource: source,
@@ -12519,7 +12538,7 @@ export const useAppStore = create<AppState>()(persist(
                     amountAed: lineGross,
                     ...txnExtra,
                     status: "complete",
-                    paymentMethod: "card",
+                    paymentMethod: payMethod,
                     paymentSource: source,
                     transactionType: "sale",
                     staffId: cashierStaffId,
@@ -12632,7 +12651,7 @@ export const useAppStore = create<AppState>()(persist(
                     amountAed: lineGross,
                     ...txnExtra,
                     status: "complete",
-                    paymentMethod: "card",
+                    paymentMethod: payMethod,
                     paymentSource: source,
                     transactionType: "sale",
                     staffId: cashierStaffId,
@@ -13624,7 +13643,7 @@ export const useAppStore = create<AppState>()(persist(
         // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
         //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
         //   demos re-seed with the 1-credit package instead of the old 3-credit one.
-        version: 117,
+        version: 118,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

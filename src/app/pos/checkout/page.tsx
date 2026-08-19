@@ -206,6 +206,7 @@ function POSCheckoutInner() {
             pendingPurchase.promoCode
                 ? { code: pendingPurchase.promoCode, discountAed: pendingPurchase.promoDiscountAed ?? 0 }
                 : undefined,
+            paymentMethod ?? "card",
         );
         setPendingPurchase(null);
         showToast(

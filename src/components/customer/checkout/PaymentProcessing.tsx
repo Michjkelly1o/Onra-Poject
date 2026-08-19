@@ -110,6 +110,14 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
                 // bumps usage_count) so the customer-side sale reflects in the
                 // Promo Redemptions report exactly like a POS redemption.
                 promo ? { code: promo.code, discountAed: totals.discount } : undefined,
+                // Original payment source, mapped from the checkout method label
+                // so a later refund goes back to it. Gift-card / other-card fall
+                // back to "card" (gift-card spend is tracked separately above).
+                method.toLowerCase().includes("apple") ? "applepay"
+                    : method.toLowerCase().includes("google") ? "googlepay"
+                    : method.toLowerCase().includes("cash") ? "cash"
+                    : method.toLowerCase().includes("bank") ? "banktransfer"
+                    : "card",
             );
 
             // The store txns applyPurchase just created (one per line) — linked

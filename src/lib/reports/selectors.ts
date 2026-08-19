@@ -36,7 +36,7 @@
 // The registry entries in Phase 2 reserve slots for those selector names
 // so nothing is forgotten.
 
-import type { AppState, Customer, CustomerPlan, CustomerTransaction } from "@/lib/store";
+import type { AppState, Customer, CustomerPlan, CustomerTransaction, TransactionPaymentMethod } from "@/lib/store";
 import { resolveLedger, signedAmount, type ResolvedLedgerRow } from "./refunds";
 import { derivePlanBalances } from "@/lib/plan-credits";
 import { customerSegment } from "@/lib/customer/segment";
@@ -78,7 +78,7 @@ export interface PaymentRow {
     /** membership | package — feeds the "Revenue category" column. */
     revenueCategory: "membership" | "package";
     paymentAmount: number;
-    paymentMethod: "card" | "cash";
+    paymentMethod: TransactionPaymentMethod;
     cardType?: "visa" | "mastercard" | "amex";
     paymentType?: "one_off" | "recurring";
     status: CustomerTransaction["status"];

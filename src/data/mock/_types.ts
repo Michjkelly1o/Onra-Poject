@@ -749,6 +749,12 @@ export interface CustomerPlan {
  *     copy of the product name (mirrors the `customer_plans` pattern) so the
  *     table + refund modal render without a join.
  */
+/** How a transaction was paid (and refunded — refunds go back to the original
+ *  source). `wallet` = paid entirely from account credit. Apple/Google Pay +
+ *  bank transfer are POS options gated by their integrations. */
+export type TransactionPaymentMethod =
+    | "cash" | "card" | "applepay" | "googlepay" | "banktransfer" | "wallet";
+
 export interface CustomerTransaction {
     /** e.g. "txn_ahmed_1" */
     id: string;
@@ -766,7 +772,7 @@ export interface CustomerTransaction {
      *  item. Drives the Retail Sales report; the retail snapshot fields
      *  below (retail_product_id / product_snapshot_* / quantity /
      *  branch_id_at_sale) are only populated on `retail`-kind rows. */
-    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail";
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card" | "private" | "recovery";
     /** FK → memberships.id / packages.id (depending on `kind`). For
      *  `cancellation_penalty` rows this instead references the
      *  cancelled `class_bookings.id` so Payment history rows can
@@ -794,8 +800,10 @@ export interface CustomerTransaction {
      *  refunded = a completed payment that was later refunded. Only
      *  `complete` rows expose the "Refund payment" row action. */
     status: "complete" | "pending" | "failed" | "refunded";
-    /** Method the customer paid with at purchase time. */
-    payment_method: "card" | "cash";
+    /** Method the customer paid with at purchase time. Apple/Google Pay +
+     *  bank transfer surface at POS only when their integration is enabled;
+     *  `wallet` is a pure account-credit payment. */
+    payment_method: TransactionPaymentMethod;
     /** Origin surface that processed the payment. Drives the Payments
      *  + Total sales "Payment source" column. */
     payment_source?: "pos" | "customer_portal" | "admin";
@@ -804,8 +812,13 @@ export interface CustomerTransaction {
     // ─ Refund (set when status === "refunded") ───────────────────────────
     /** ISO 8601 — when the refund was processed. */
     refunded_at?: string;
-    /** Method the refund was issued through (chosen in the Refund modal). */
-    refund_method?: "cash" | "card";
+    /** Method the refund was issued back through — always the ORIGINAL payment
+     *  source (best practice), so this mirrors `payment_method`. */
+    refund_method?: TransactionPaymentMethod;
+    /** Split payment — the AED portion of this sale paid from account credit
+     *  (wallet). The remainder was covered by `payment_method`. A refund returns
+     *  this portion to the wallet and the rest to the original method. */
+    account_credit_applied_aed?: number;
     // ── Reports v30 ledger fields (2026-07-04 rewrite — all optional so
     //     historical seeds keep loading; existing readers unaffected) ──
     //

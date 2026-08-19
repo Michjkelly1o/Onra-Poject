@@ -13,8 +13,8 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
-import { getReportById, resolveSelector } from "@/config/reports-registry";
-import type { LedgerRow } from "@/lib/reports/selectors";
+import { getReportById } from "@/config/reports-registry";
+import { resolveLedger, signedAmount } from "@/lib/reports/refunds";
 
 interface RefundsDisplayRow {
     [k: string]: unknown;
@@ -35,9 +35,16 @@ interface RefundsDisplayRow {
     location:             string;
 }
 
+// Every refundable kind that appears in a customer's Payment history — so the
+// Refunds report covers memberships, packages, private/recovery sessions, retail
+// (POS) and gift cards, not just memberships/packages.
 const REVENUE_CATEGORY_LABEL: Record<string, string> = {
     membership: "Membership",
     package:    "Package / Credits",
+    private:    "Private session",
+    recovery:   "Recovery session",
+    retail:     "Retail",
+    gift_card:  "Gift card",
 };
 const SALES_CHANNEL_LABEL: Record<string, string> = {
     customer_portal: "Online",
@@ -54,36 +61,39 @@ export default function RefundsReportPage() {
     const transactions = useAppStore(s => s.customerTransactions);
     const customers    = useAppStore(s => s.customers);
     const branches     = useAppStore(s => s.branches);
-    const staff        = useAppStore(s => s.staff);
 
     const report = getReportById("refunds");
 
-    const rawLedger = useMemo<LedgerRow[]>(() => {
-        if (!report) return [];
-        const fn = resolveSelector(report) as unknown as (state: unknown) => LedgerRow[];
-        return fn({ customerTransactions: transactions, customers, branches, staff, classBookings: [] });
-    }, [report, transactions, customers, branches, staff]);
-
     const rows = useMemo<RefundsDisplayRow[]>(() => {
-        const refundRows = rawLedger.filter(r =>
+        const custById = new Map(customers.map(c => [c.id, c]));
+        const loc = (id: string) => branches.find(b => b.id === id)?.name ?? id;
+        // Resolve the WHOLE transaction table (every kind — retail, gift card,
+        // private, recovery, membership, package) through the void-vs-refund
+        // rule, then keep just the refund / write-off rows.
+        const resolved = resolveLedger(transactions);
+        const refundRows = resolved.filter(r =>
             r.transactionType === "refund" || r.transactionType === "write_off"
         );
         // Look up original sale amount to detect partial refunds.
-        const originals = new Map(rawLedger.filter(r => r.transactionType === "sale").map(r => [r.id, r]));
+        const originals = new Map(resolved.filter(r => r.transactionType === "sale").map(r => [r.id, r]));
 
         return refundRows.map(r => {
-            const grossAbs = Math.abs(r.signedAmount);
+            const grossAbs = Math.abs(signedAmount(r));
             const original = r.originalTransactionId ? originals.get(r.originalTransactionId) : undefined;
-            const originalGross = original ? Math.abs(original.signedAmount) : grossAbs;
+            const originalGross = original ? Math.abs(signedAmount(original)) : grossAbs;
             const refundType: "Full" | "Partial" = grossAbs >= originalGross ? "Full" : "Partial";
+            const c = custById.get(r.customerId);
+            // Refund is dated on the day it happened, never the sale date, so the
+            // period bucketing (periodField: refundDateISO) never restates a past month.
+            const refundDay = (r.refundedAtISO ?? r.createdAtISO).slice(0, 10);
 
             return {
-                refundDateISO:        r.createdAtISO.slice(0, 10),
+                refundDateISO:        refundDay,
                 txnId:                orderNumberOf(r.id),
                 originalTxnId:        r.originalTransactionId ? orderNumberOf(r.originalTransactionId) : "",
-                customerName:         r.customerName,
+                customerName:         c ? `${c.firstName} ${c.lastName}`.trim() : "—",
                 customerId:           r.customerId,
-                customerEmail:        r.customerEmail,
+                customerEmail:        c?.email ?? "—",
                 itemPackage:          r.name,
                 revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind] ?? r.kind,
                 refundAmount:         -grossAbs,   // shown negative per Excel spec
@@ -92,10 +102,10 @@ export default function RefundsReportPage() {
                 salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "POS",
                 staffId:              r.staffId ?? "",
                 branchId:             r.branchId,
-                location:             r.location,
+                location:             loc(r.branchId),
             } satisfies RefundsDisplayRow;
         });
-    }, [rawLedger]);
+    }, [transactions, customers, branches]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),
