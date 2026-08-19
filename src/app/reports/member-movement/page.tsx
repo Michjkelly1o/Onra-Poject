@@ -24,6 +24,7 @@ interface MemberMovementDisplayRow {
     netMemberChange: number;
     activeAtEnd:     number;
     pctChange:       number;
+    avgMonthsBeforeLeaving: number;
     branchId:        string;
     location:        string;
 }
@@ -62,6 +63,7 @@ export default function MemberMovementReportPage() {
             newSignups: number;
             reactivated: number;
             membersLost: number;
+            lostTenureMonthsSum: number;
             branchId: string;
             location: string;
         }
@@ -94,6 +96,7 @@ export default function MemberMovementReportPage() {
                 const bucket = perBranch.get(branchKey) ?? {
                     periodKey, period,
                     activeAtStart: 0, newSignups: 0, reactivated: 0, membersLost: 0,
+                    lostTenureMonthsSum: 0,
                     branchId: branchKey, location: p.location,
                 };
 
@@ -103,8 +106,14 @@ export default function MemberMovementReportPage() {
                 if (p.isFirstPlan && purchased >= firstDay && purchased <= lastDay) bucket.newSignups += 1;
                 // Reactivated: purchased WITHIN this month AND not the customer's first plan.
                 if (!p.isFirstPlan && purchased >= firstDay && purchased <= lastDay) bucket.reactivated += 1;
-                // Members lost: end date WITHIN this month.
-                if (endDate >= firstDay && endDate <= lastDay) bucket.membersLost += 1;
+                // Members lost: end date WITHIN this month. Accumulate their tenure
+                // (leave date − join date, in months) for the average-tenure column.
+                if (endDate >= firstDay && endDate <= lastDay) {
+                    bucket.membersLost += 1;
+                    const tenure = (endDate.getFullYear() - purchased.getFullYear()) * 12
+                        + (endDate.getMonth() - purchased.getMonth());
+                    bucket.lostTenureMonthsSum += Math.max(0, tenure);
+                }
 
                 perBranch.set(branchKey, bucket);
             }
@@ -125,6 +134,9 @@ export default function MemberMovementReportPage() {
             const prior = priorByBranch.get(b.branchId) ?? 0;
             const pctChange = prior > 0 ? ((activeAtEnd - prior) / prior) * 100 : 0;
             priorByBranch.set(b.branchId, activeAtEnd);
+            const avgMonthsBeforeLeaving = b.membersLost > 0
+                ? Math.round((b.lostTenureMonthsSum / b.membersLost) * 10) / 10
+                : 0;
             return {
                 periodKey:       b.periodKey,
                 period:          b.period,
@@ -135,6 +147,7 @@ export default function MemberMovementReportPage() {
                 netMemberChange,
                 activeAtEnd,
                 pctChange,
+                avgMonthsBeforeLeaving,
                 branchId:        b.branchId,
                 location:        b.location,
             } satisfies MemberMovementDisplayRow;

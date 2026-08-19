@@ -20,6 +20,7 @@ const K = {
     netMemberChange:     "netMemberChange",
     activeAtEnd:         "activeAtEnd",
     pctChange:           "pctChange",
+    avgMonthsBeforeLeaving: "avgMonthsBeforeLeaving",
     branchId:            "branchId",
     location:            "location",
 } as const;
@@ -48,6 +49,7 @@ export const MEMBER_MOVEMENT_REPORT: ReportDefinition = {
         { key: K.netMemberChange, label: "Net member change",      kind: "number", minWidth: 180, calc: "New + Reactivated − Members lost" },
         { key: K.activeAtEnd,     label: "Members at end",         kind: "number", minWidth: 190, calc: "Active at start + Net change" },
         { key: K.pctChange,       label: "Member movement % change", kind: "percent", minWidth: 130, calc: "(Current − Prior) ÷ Prior" },
+        { key: K.avgMonthsBeforeLeaving, label: "Average months before leaving", kind: "number", minWidth: 200, calc: "Avg (leave date − join date) of members lost in the period" },
     ],
 
     // Sheet 1 defaults: period · location · source · plan type.
