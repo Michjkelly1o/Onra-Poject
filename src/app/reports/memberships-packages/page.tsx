@@ -28,9 +28,9 @@ interface MembershipsDisplayRow {
     purchaseStartISO:  string;
     renewsExpiresISO:  string;
     autoRenew:         "Y" | "N";
-    totalCredits:      number;
+    totalCredits:      number | string;
     creditsUsed:       number;
-    creditsRemaining:  number;
+    creditsRemaining:  number | string;
     nextBillingAmount: number;
     price:             number;
     branchId:          string;
@@ -90,6 +90,10 @@ export default function MembershipsPackagesReportPage() {
             // deterministic derivation (see customerPlanFromSeed in
             // store.ts). Fall back to previous heuristics if a legacy
             // row doesn't carry them.
+            // Unlimited plans (unlimited memberships) have no finite credit
+            // count — client comment: they must NOT show 0. Total + remaining
+            // render "Unlimited"; credits used stays the real class count.
+            const isUnlimited = /unlimited/i.test(r.creditsLabel);
             const total     = r.totalCredits     || parseCredits(r.creditsLabel);
             const used      = r.creditsUsed      ?? 0;
             const remaining = r.creditsRemaining ?? Math.max(0, total - used);
@@ -107,9 +111,9 @@ export default function MembershipsPackagesReportPage() {
                 purchaseStartISO:  r.purchasedAtISO.slice(0, 10),
                 renewsExpiresISO:  r.expiryISO.slice(0, 10),
                 autoRenew,
-                totalCredits:      total,
+                totalCredits:      isUnlimited ? "Unlimited" : total,
                 creditsUsed:       used,
-                creditsRemaining:  remaining,
+                creditsRemaining:  isUnlimited ? "Unlimited" : remaining,
                 nextBillingAmount: nextBilling,
                 price:             r.priceAed,
                 branchId:          r.branchId,

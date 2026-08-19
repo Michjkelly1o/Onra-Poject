@@ -42,7 +42,7 @@ export const FROZEN_REPORT: ReportDefinition = {
         { key: K.planType,       label: "Plan type",       kind: "text",   minWidth: 170 },
         { key: K.freezeStartISO, label: "Freeze start",    kind: "date",   minWidth: 140 },
         { key: K.freezeEndISO,   label: "Freeze end",      kind: "date",   minWidth: 140 },
-        { key: K.daysFrozen,     label: "Days frozen",     kind: "number", minWidth: 130, calc: "Freeze end − Freeze start" },
+        { key: K.daysFrozen,     label: "Days frozen",     kind: "number", minWidth: 130, calc: "Freeze end − Freeze start", totalMode: "avg" },
         { key: K.originalExpISO, label: "Original expiry", kind: "date",   minWidth: 150 },
         { key: K.newExpiryISO,   label: "New expiry",      kind: "date",   minWidth: 130, calc: "Original expiry + Days frozen" },
         { key: K.reason,         label: "Reason",          kind: "text",   minWidth: 220 },

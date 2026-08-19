@@ -25,7 +25,7 @@ interface StockOnHandDisplayRow {
     reorderThreshold:    number;
     unitsReceivedPeriod: number;
     unitsSoldPeriod:     number;
-    sellThroughPct:      number;
+    sellThroughPct:      number | null;
     stockTurnover:       number;
     lastReceivedDateISO: string;
     lastSoldDateISO:     string;

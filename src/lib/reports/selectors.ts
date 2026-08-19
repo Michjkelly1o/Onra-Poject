@@ -1178,8 +1178,9 @@ export interface RetailStockOnHandRow {
     unitsReceivedPeriod: number;
     /** Units sold over the last 30 days. */
     unitsSoldPeriod: number;
-    /** unitsSoldPeriod ÷ unitsReceivedPeriod (0-safe). */
-    sellThroughPct: number;
+    /** unitsSoldPeriod ÷ unitsReceivedPeriod. null when nothing was received
+     *  in the period (renders "—", not 0%). */
+    sellThroughPct: number | null;
     /** unitsSoldPeriod ÷ mean(unitsOnHand in period) — approximated as
      *  unitsSoldPeriod / ((currentOnHand + (currentOnHand + soldPeriod − receivedPeriod)) / 2). */
     stockTurnover: number;
@@ -1400,7 +1401,9 @@ export function selectRetailStockOnHand(
                 else if (a.kind === "refund") unitsSold -= a.delta; // refund unwinds a sale
             }
             unitsSold = Math.max(0, unitsSold);
-            const sellThrough = unitsReceived > 0 ? unitsSold / unitsReceived : 0;
+            // Client comment: when nothing came in during the period the
+            // denominator is zero — show "—", not 0%. null renders as "—".
+            const sellThrough = unitsReceived > 0 ? unitsSold / unitsReceived : null;
 
             // Stock turnover approximation — units sold in period ÷ average on
             // hand. Average on hand = (start + end) / 2 where

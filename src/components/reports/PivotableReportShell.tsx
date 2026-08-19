@@ -772,8 +772,11 @@ function ListTable({
 
     function sumFor(col: ColumnDef): number | null {
         if (col.kind !== "currency" && col.kind !== "number") return null;
-        let s = 0;
-        for (const r of totalRowSource) { const n = Number(r[col.key]); if (Number.isFinite(n)) s += n; }
+        let s = 0, count = 0;
+        for (const r of totalRowSource) { const n = Number(r[col.key]); if (Number.isFinite(n)) { s += n; count += 1; } }
+        // "avg" columns (e.g. Days frozen) show the mean — a sum would be
+        // meaningless. Everything else sums.
+        if (col.totalMode === "avg") return count > 0 ? s / count : null;
         return s;
     }
 

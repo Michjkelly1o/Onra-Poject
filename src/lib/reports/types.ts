@@ -72,6 +72,10 @@ export interface ColumnDef {
     /** Column width hint (px) — the shell uses it as a min-width. Wide
      *  columns (customer name, item description) can specify > 200. */
     minWidth?: number;
+    /** How the shell's bottom Total row aggregates this column. Defaults to
+     *  "sum" for number/currency. "avg" shows the mean (e.g. Days frozen —
+     *  a total of days frozen is meaningless; the average is what matters). */
+    totalMode?: "sum" | "avg";
     /** When the list is grouped by a break-down dimension, compute this
      *  column from the SUMMED group row (+ all grouped rows, for cross-group
      *  totals) instead of summing it — for ratio columns like a refund rate or

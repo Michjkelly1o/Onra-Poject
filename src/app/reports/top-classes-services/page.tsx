@@ -94,7 +94,10 @@ export default function TopClassesServicesReportPage() {
             branchId:        b.branchId,
             location:        b.location,
             dateAnchorISO:   b.dateAnchorISO,
-        } satisfies TopClassesDisplayRow));
+        } satisfies TopClassesDisplayRow))
+            // Client comment: this report should open ranked by highest
+            // bookings → lowest.
+            .sort((a, b) => b.totalBookings - a.totalBookings);
     }, [raw, inScope]);
 
     const branchOptions = useMemo<BranchOption[]>(
