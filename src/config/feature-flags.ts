@@ -75,10 +75,9 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/marketing",              // list view
     //"/marketing",                    // create / detail / edit
 
-    // ── Marketing Spend module ── (DISABLED — needs adjustment before demo)
-    // Sidebar menu item stays visible per the file convention; clicking it
-    // 404s until the module is finalised. Re-enable by commenting this line.
-    "/admin/marketing/spend",          // marketing spend tracker
+    // ── Marketing Spend module ── (ENABLED — being reworked to match the
+    // shared list + side-panel patterns)
+    //"/admin/marketing/spend",        // marketing spend tracker
 
     // ── Announcements ── (ENABLED — its own single menu, split out of
     // Campaigns/Marketing. List at /admin/marketing/announcements; create/

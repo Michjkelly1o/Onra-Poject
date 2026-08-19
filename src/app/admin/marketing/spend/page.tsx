@@ -11,27 +11,38 @@
 // mirrors the acquisition channels the report joins leads on, so spend and
 // leads line up and the ratios resolve.
 //
-// State source of truth: useAppStore(s => s.marketingSpend). Add / edit go
-// through a right side-panel (matches Campaigns / Tax); delete is a centered
-// ConfirmModal. Every action fires a toast.
+// Chrome deliberately reuses the shared list + side-panel patterns:
+//   • Table  → same TABLE_TH/TD styles, SortableHeader, RowActions ⋮,
+//     Pagination, ToolbarTotal/Search as the Gift Cards list.
+//   • Add / Edit → a right SlidePanel with the Marketing forms' header /
+//     scrollable body / border-top footer shell.
+//   • Delete → the shared ConfirmModal. Every action fires a toast.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    Plus, Edit02, Trash02, Trash01, CurrencyDollarCircle,
-    Calendar, MarkerPin01, Announcement01,
+    Plus, Edit02, Trash01, Trash02, XClose,
+    CurrencyDollarCircle, Calendar, Announcement01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { SelectInput } from "@/components/ui/select-input";
-import { SlidePanel } from "@/components/ui/SlidePanel";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { RowActions } from "@/components/patterns/RowActions";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Toast } from "@/components/ui/Toast";
+import { SlidePanel } from "@/components/ui/SlidePanel";
+import { SelectInput } from "@/components/ui/select-input";
+import { Section, FormField, TextInput, BranchSingleSelect } from "@/components/marketing/form-kit";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { useAppStore } from "@/lib/store";
 import type { MarketingSpend } from "@/data/mock/_types";
 
-// Channels the Acquisition Efficiency report joins spend↔leads on. Keeping
-// this list in lock-step with the lead sources is what makes CPL / CAC / ROAS
+// Channels the Acquisition Efficiency report joins spend↔leads on. Keeping this
+// list in lock-step with the lead sources is what makes CPL / CAC / ROAS
 // resolve per channel.
 const CHANNELS: MarketingSpend["channel"][] = [
     "Instagram", "Google", "Website", "Walk-in", "Referral", "WhatsApp",
@@ -42,8 +53,7 @@ const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep
 /** "2026-08" → "Aug 2026". */
 function monthLabel(ym: string): string {
     const [y, m] = ym.split("-");
-    const mi = Number(m) - 1;
-    return `${MONTH_ABBR[mi] ?? m} ${y}`;
+    return `${MONTH_ABBR[Number(m) - 1] ?? m} ${y}`;
 }
 
 /** Last 18 calendar months, newest first — the Month picker options. */
@@ -60,79 +70,179 @@ function recentMonthOptions(): { value: string; label: string }[] {
 
 const AED = new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 });
 
+// ─── Row VM ────────────────────────────────────────────────────────────────
+
+type SpendRow = {
+    id: string;
+    month: string;
+    monthText: string;
+    channel: string;
+    branch: string;
+    amount: number;
+};
+
+// ─── Table (same chrome as the Gift Cards list) ─────────────────────────────
+
+function SpendTable({
+    rows, sortKey, sortDir, onSort, onEdit, onDelete,
+}: {
+    rows: SpendRow[];
+    sortKey: string | null;
+    sortDir: "asc" | "desc";
+    onSort: (key: string) => void;
+    onEdit: (row: SpendRow) => void;
+    onDelete: (row: SpendRow) => void;
+}) {
+    if (rows.length === 0) {
+        return (
+            <div className="relative flex-1" style={{ minHeight: 400 }}>
+                <EmptyState
+                    icon={CurrencyDollarCircle}
+                    title="No marketing spend yet"
+                    subtitle="Add your first spend entry to power the Acquisition Efficiency report."
+                />
+            </div>
+        );
+    }
+    return (
+        <table className="w-full border-collapse">
+            <thead>
+                <tr>
+                    <th className={cn(TH, "w-[220px]")}>
+                        <SortableHeader sortKey="month" currentSort={sortKey} dir={sortDir} onSort={onSort}>Month</SortableHeader>
+                    </th>
+                    <th className={cn(TH, "w-[220px]")}>
+                        <SortableHeader sortKey="channel" currentSort={sortKey} dir={sortDir} onSort={onSort}>Channel</SortableHeader>
+                    </th>
+                    <th className={cn(TH)}>
+                        <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={onSort}>Branch</SortableHeader>
+                    </th>
+                    <th className={cn(TH, "w-[180px]", "!text-right")}>
+                        <SortableHeader sortKey="amount" currentSort={sortKey} dir={sortDir} onSort={onSort} align="right">Amount (AED)</SortableHeader>
+                    </th>
+                    <th className={cn(TH, "w-[52px]")}></th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows.map(r => (
+                    <tr key={r.id}
+                        onClick={() => onEdit(r)}
+                        className="transition-colors cursor-pointer hover:bg-[var(--colors-bg-secondary)]">
+                        <td className={cn(TD, "whitespace-nowrap")}>
+                            <span className="text-[14px] font-medium text-[#101828]">{r.monthText}</span>
+                        </td>
+                        <td className={cn(TD, "whitespace-nowrap")}>{r.channel}</td>
+                        <td className={cn(TD, "whitespace-nowrap")}>{r.branch}</td>
+                        <td className={cn(TD, "whitespace-nowrap", "text-right", "tabular-nums")}>{AED.format(r.amount)}</td>
+                        <td className={TD} onClick={e => e.stopPropagation()}>
+                            <RowActions items={[
+                                { label: "Edit", icon: Edit02, onClick: () => onEdit(r) },
+                                { label: "Delete", icon: Trash01, onClick: () => onDelete(r), danger: true },
+                            ]} />
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+}
+
+// ─── Form state ──────────────────────────────────────────────────────────────
+
 interface FormState {
     month: string;
     channel: MarketingSpend["channel"] | "";
     branchId: string;
     amount: string;
 }
-
 const EMPTY_FORM: FormState = { month: "", channel: "", branchId: "", amount: "" };
 
+// ─── Page ──────────────────────────────────────────────────────────────────
+
 export default function MarketingSpendPage() {
-    const marketingSpend      = useAppStore(s => s.marketingSpend);
-    const branches            = useAppStore(s => s.branches);
-    const addMarketingSpend   = useAppStore(s => s.addMarketingSpend);
-    const updateMarketingSpend= useAppStore(s => s.updateMarketingSpend);
-    const deleteMarketingSpend= useAppStore(s => s.deleteMarketingSpend);
-    const showToast           = useAppStore(s => s.showToast);
+    const marketingSpend       = useAppStore(s => s.marketingSpend);
+    const branches             = useAppStore(s => s.branches);
+    const addMarketingSpend    = useAppStore(s => s.addMarketingSpend);
+    const updateMarketingSpend = useAppStore(s => s.updateMarketingSpend);
+    const deleteMarketingSpend = useAppStore(s => s.deleteMarketingSpend);
+    const showToast            = useAppStore(s => s.showToast);
+
+    const [search, setSearch]     = usePersistedListState("marketingSpend:search", "");
+    const [page, setPage]         = usePersistedListState("marketingSpend:page", 1);
+    const [pageSize, setPageSize] = usePersistedListState("marketingSpend:pageSize", 10);
 
     const [panelOpen, setPanelOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm]           = useState<FormState>(EMPTY_FORM);
-    const [confirmDelete, setConfirmDelete] = useState<MarketingSpend | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<SpendRow | null>(null);
 
-    const activeBranches = useMemo(
-        () => branches.filter(b => b.status !== "archived"),
-        [branches],
-    );
+    const activeBranches = useMemo(() => branches.filter(b => b.status !== "archived"), [branches]);
     const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
     const monthOptions = useMemo(recentMonthOptions, []);
 
-    // Newest month first, then channel A→Z, then branch — a stable, scannable order.
-    const rows = useMemo(
-        () => [...marketingSpend].sort(
-            (a, b) =>
-                b.month.localeCompare(a.month) ||
-                a.channel.localeCompare(b.channel) ||
-                branchName(a.branch_id).localeCompare(branchName(b.branch_id)),
-        ),
+    // Reset to page 1 when the search changes (skip initial mount).
+    const didMount = useRef(false);
+    useEffect(() => {
+        if (!didMount.current) { didMount.current = true; return; }
+        setPage(1);
+    }, [search, setPage]);
+
+    // ─── Rows + search + sort + paginate ───────────────────────────────────
+    const allRows = useMemo<SpendRow[]>(
+        () => marketingSpend.map(s => ({
+            id: s.id,
+            month: s.month,
+            monthText: monthLabel(s.month),
+            channel: s.channel,
+            branch: branchName(s.branch_id),
+            amount: s.spend_aed,
+        })),
         [marketingSpend, branches],
     );
+    const filteredRows = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return allRows;
+        return allRows.filter(r =>
+            r.monthText.toLowerCase().includes(q) ||
+            r.channel.toLowerCase().includes(q) ||
+            r.branch.toLowerCase().includes(q),
+        );
+    }, [allRows, search]);
 
-    const total = useMemo(
-        () => marketingSpend.reduce((s, r) => s + (r.spend_aed || 0), 0),
-        [marketingSpend],
-    );
+    const comparators: Record<string, (a: SpendRow, b: SpendRow) => number> = {
+        month:   (a, b) => a.month.localeCompare(b.month),
+        channel: (a, b) => a.channel.localeCompare(b.channel),
+        branch:  (a, b) => a.branch.localeCompare(b.branch),
+        amount:  (a, b) => a.amount - b.amount,
+    };
+    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, comparators);
 
+    const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+    const clampedPage = Math.min(Math.max(1, page), totalPages);
+    const pagedRows = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    // ─── Panel + actions ───────────────────────────────────────────────────
     function openAdd() {
         setEditingId(null);
         setForm({ ...EMPTY_FORM, month: monthOptions[0]?.value ?? "", branchId: activeBranches[0]?.id ?? "" });
         setPanelOpen(true);
     }
-
-    function openEdit(row: MarketingSpend) {
-        setEditingId(row.id);
-        setForm({ month: row.month, channel: row.channel, branchId: row.branch_id, amount: String(row.spend_aed) });
+    function openEdit(row: SpendRow) {
+        const src = marketingSpend.find(s => s.id === row.id);
+        if (!src) return;
+        setEditingId(src.id);
+        setForm({ month: src.month, channel: src.channel, branchId: src.branch_id, amount: String(src.spend_aed) });
         setPanelOpen(true);
     }
 
     const amountNum = Number(form.amount);
     const isValid =
-        form.month !== "" &&
-        form.channel !== "" &&
-        form.branchId !== "" &&
-        Number.isFinite(amountNum) &&
-        amountNum > 0;
+        form.month !== "" && form.channel !== "" && form.branchId !== "" &&
+        Number.isFinite(amountNum) && amountNum > 0;
 
     function handleSave() {
         if (!isValid || form.channel === "") return;
-        const payload = {
-            month: form.month,
-            channel: form.channel,
-            spend_aed: amountNum,
-            branch_id: form.branchId,
-        };
+        const payload = { month: form.month, channel: form.channel, spend_aed: amountNum, branch_id: form.branchId };
         if (editingId) {
             updateMarketingSpend(editingId, payload);
             showToast("Spend updated", `${form.channel} · ${monthLabel(form.month)} set to AED ${AED.format(amountNum)}.`, "success", "check");
@@ -143,233 +253,123 @@ export default function MarketingSpendPage() {
         setPanelOpen(false);
         setEditingId(null);
     }
-
-    function handleDelete(row: MarketingSpend) {
+    function handleDelete(row: SpendRow) {
         deleteMarketingSpend(row.id);
-        showToast("Spend deleted", `${row.channel} · ${monthLabel(row.month)} removed.`, "success", "trash");
+        showToast("Spend deleted", `${row.channel} · ${row.monthText} removed.`, "success", "trash");
         setConfirmDelete(null);
     }
 
     return (
-        <>
-            <div className="flex flex-col gap-6 py-8">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-4 px-6">
-                    <div className="flex flex-col gap-1">
-                        <h1 className="text-[24px] font-semibold leading-[32px] text-[var(--colors-text-primary)]">
-                            Marketing Spend
-                        </h1>
-                        <p className="text-[14px] leading-[20px] text-[var(--colors-text-tertiary)] max-w-[640px]">
-                            Track ad &amp; marketing spend per channel and month. These figures feed the
-                            Acquisition Efficiency report — CPL, CAC and ROAS are calculated against them.
-                        </p>
-                    </div>
-                    <Button variant="primary" onClick={openAdd} className="shrink-0">
-                        <Plus className="size-[18px]" />
-                        Add spend
-                    </Button>
-                </div>
-
-                {/* Table card — fixed min-height so it never hugs sparse data. */}
-                <div className="px-6">
-                    <div className="min-h-[760px] rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-white overflow-hidden flex flex-col">
-                        {rows.length === 0 ? (
-                            <div className="relative flex-1 flex flex-col items-center justify-center gap-5">
-                                <EmptyState
-                                    icon={CurrencyDollarCircle}
-                                    title="No marketing spend yet"
-                                    subtitle="Add your first spend entry to power the Acquisition Efficiency report."
-                                    absolute={false}
-                                />
-                                <Button variant="primary" onClick={openAdd}>
-                                    <Plus className="size-[18px]" />
-                                    Add spend
-                                </Button>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="flex-1 overflow-x-auto">
-                                    <table className="w-full border-collapse">
-                                        <thead>
-                                            <tr className="border-b border-[var(--colors-border-secondary)]">
-                                                <Th>Month</Th>
-                                                <Th>Channel</Th>
-                                                <Th>Branch</Th>
-                                                <Th align="right">Amount (AED)</Th>
-                                                <th className="w-[100px] px-6 py-3" />
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {rows.map(row => (
-                                                <tr key={row.id} className="border-b border-[var(--colors-border-secondary)] last:border-b-0 hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                                                    <Td>{monthLabel(row.month)}</Td>
-                                                    <Td>{row.channel}</Td>
-                                                    <Td>{branchName(row.branch_id)}</Td>
-                                                    <Td align="right" className="tabular-nums">{AED.format(row.spend_aed)}</Td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <IconBtn label="Edit" onClick={() => openEdit(row)}>
-                                                                <Edit02 className="size-[18px]" />
-                                                            </IconBtn>
-                                                            <IconBtn label="Delete" onClick={() => setConfirmDelete(row)}>
-                                                                <Trash02 className="size-[18px]" />
-                                                            </IconBtn>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {/* Total footer */}
-                                <div className="flex items-center justify-between border-t border-[var(--colors-border-secondary)] px-6 py-4">
-                                    <span className="text-[13px] text-[var(--colors-text-tertiary)]">
-                                        {rows.length} {rows.length === 1 ? "entry" : "entries"}
-                                    </span>
-                                    <span className="text-[14px] font-semibold text-[var(--colors-text-primary)] tabular-nums">
-                                        Total: AED {AED.format(total)}
-                                    </span>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
+            {/* ── Toolbar (same as Gift Cards) ── */}
+            <div className="flex items-center gap-3">
+                <ToolbarTotal count={sorted.length} entitySingular="entry" entityPlural="entries" />
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search spend..." />
+                <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={openAdd}>
+                    Add
+                </Button>
             </div>
 
-            {/* Add / Edit side panel */}
-            <SlidePanel open={panelOpen} onClose={() => setPanelOpen(false)} width={440}>
+            {/* ── List (fills viewport, pagination pinned) ── */}
+            <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide">
+                    <SpendTable
+                        rows={pagedRows}
+                        sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
+                        onEdit={openEdit}
+                        onDelete={setConfirmDelete}
+                    />
+                </div>
+                {sorted.length > 0 && (
+                    <Pagination
+                        page={clampedPage} total={sorted.length} pageSize={pageSize}
+                        onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+                    />
+                )}
+            </div>
+
+            {/* ── Add / Edit side panel (same shell as Marketing forms) ── */}
+            <SlidePanel open={panelOpen} onClose={() => setPanelOpen(false)} width={480}>
                 <div className="flex h-full flex-col">
-                    <div className="flex items-start justify-between gap-4 border-b border-[var(--colors-border-secondary)] px-6 py-5">
-                        <div className="flex flex-col gap-1">
-                            <h2 className="text-[18px] font-semibold leading-[26px] text-[var(--colors-text-primary)]">
-                                {editingId ? "Edit spend" : "Add spend"}
-                            </h2>
-                            <p className="text-[13px] leading-[18px] text-[var(--colors-text-tertiary)]">
-                                Record ad / marketing spend for a channel and month.
-                            </p>
+                    <div className="flex items-center justify-between px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                        <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                            {editingId ? "Edit spend" : "New spend"}
+                        </h2>
+                        <button type="button" onClick={() => setPanelOpen(false)} aria-label="Close"
+                            className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                            <XClose className="w-5 h-5 text-[#667085]" />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-5">
+                        <div className="flex flex-col gap-8">
+                            <Section title="Spend details">
+                                <FormField label="Month">
+                                    <SelectInput
+                                        triggerIcon={<Calendar className="w-5 h-5" />}
+                                        placeholder="Select month"
+                                        options={monthOptions}
+                                        value={form.month}
+                                        onChange={v => setForm(f => ({ ...f, month: v }))}
+                                        width="w-full"
+                                        searchable
+                                    />
+                                </FormField>
+                                <FormField label="Channel"
+                                    hint="Matches the acquisition channels the report uses, so spend lines up with leads.">
+                                    <SelectInput
+                                        triggerIcon={<Announcement01 className="w-5 h-5" />}
+                                        placeholder="Select channel"
+                                        options={CHANNELS.map(c => ({ value: c, label: c }))}
+                                        value={form.channel}
+                                        onChange={v => setForm(f => ({ ...f, channel: v as MarketingSpend["channel"] }))}
+                                        width="w-full"
+                                    />
+                                </FormField>
+                                <FormField label="Branch">
+                                    <BranchSingleSelect
+                                        value={form.branchId}
+                                        onChange={id => setForm(f => ({ ...f, branchId: id }))}
+                                        branches={activeBranches}
+                                    />
+                                </FormField>
+                                <FormField label="Amount (AED)">
+                                    <TextInput
+                                        value={form.amount === "0" ? "" : form.amount}
+                                        onChange={v => setForm(f => ({ ...f, amount: v.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "") }))}
+                                        placeholder="0"
+                                    />
+                                </FormField>
+                            </Section>
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-5">
-                        <Field label="Month">
-                            <SelectInput
-                                triggerIcon={<Calendar className="size-[18px]" />}
-                                placeholder="Select month"
-                                options={monthOptions}
-                                value={form.month}
-                                onChange={v => setForm(f => ({ ...f, month: v }))}
-                                width="w-full"
-                                searchable
-                            />
-                        </Field>
-
-                        <Field label="Channel">
-                            <SelectInput
-                                triggerIcon={<Announcement01 className="size-[18px]" />}
-                                placeholder="Select channel"
-                                options={CHANNELS.map(c => ({ value: c, label: c }))}
-                                value={form.channel}
-                                onChange={v => setForm(f => ({ ...f, channel: v as MarketingSpend["channel"] }))}
-                                width="w-full"
-                            />
-                        </Field>
-
-                        <Field label="Branch">
-                            <SelectInput
-                                triggerIcon={<MarkerPin01 className="size-[18px]" />}
-                                placeholder="Select branch"
-                                options={activeBranches.map(b => ({ value: b.id, label: b.name }))}
-                                value={form.branchId}
-                                onChange={v => setForm(f => ({ ...f, branchId: v }))}
-                                width="w-full"
-                            />
-                        </Field>
-
-                        <Field label="Amount (AED)">
-                            <Input
-                                inputMode="numeric"
-                                placeholder="0"
-                                value={form.amount === "0" ? "" : form.amount}
-                                onChange={e => {
-                                    // Digits only; strip leading zeros (number-input convention).
-                                    const cleaned = e.target.value.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
-                                    setForm(f => ({ ...f, amount: cleaned }));
-                                }}
-                            />
-                        </Field>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3 border-t border-[var(--colors-border-secondary)] px-6 py-4">
-                        <Button variant="secondary-gray" onClick={() => setPanelOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button variant="primary" onClick={handleSave} disabled={!isValid}>
-                            {editingId ? "Save changes" : "Add spend"}
-                        </Button>
+                    <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4">
+                        <div className="flex items-center justify-between w-full">
+                            <Button variant="secondary-gray" size="md" onClick={() => setPanelOpen(false)}>Cancel</Button>
+                            <Button variant="primary" size="md" disabled={!isValid} onClick={handleSave}>
+                                {editingId ? "Save changes" : "Add spend"}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </SlidePanel>
 
-            {/* Delete confirmation */}
+            {/* ── Delete confirmation ── */}
             <ConfirmModal
                 open={!!confirmDelete}
                 onClose={() => setConfirmDelete(null)}
-                icon={Trash01}
+                icon={Trash02}
                 tone="danger"
                 title="Delete spend entry?"
                 description={confirmDelete ? (
-                    <>Remove the <span className="font-medium text-[var(--colors-text-primary)]">{confirmDelete.channel} · {monthLabel(confirmDelete.month)}</span> spend of AED {AED.format(confirmDelete.spend_aed)}. The Acquisition Efficiency report will recompute without it.</>
+                    <>Remove the <span className="font-medium text-[var(--colors-text-primary)]">{confirmDelete.channel} · {confirmDelete.monthText}</span> spend of AED {AED.format(confirmDelete.amount)}. The Acquisition Efficiency report will recompute without it.</>
                 ) : ""}
                 confirmLabel="Delete"
                 onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
             />
-        </>
-    );
-}
 
-// ─── Small presentational helpers ────────────────────────────────────────────
-
-function Th({ children, align = "left" }: { children: React.ReactNode; align?: "left" | "right" }) {
-    return (
-        <th className={cn(
-            "px-6 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] whitespace-nowrap",
-            align === "right" ? "text-right" : "text-left",
-        )}>
-            {children}
-        </th>
-    );
-}
-
-function Td({ children, align = "left", className }: { children: React.ReactNode; align?: "left" | "right"; className?: string }) {
-    return (
-        <td className={cn(
-            "px-6 py-4 text-[14px] leading-[20px] text-[var(--colors-text-secondary)] whitespace-nowrap",
-            align === "right" ? "text-right" : "text-left",
-            className,
-        )}>
-            {children}
-        </td>
-    );
-}
-
-function IconBtn({ children, label, onClick }: { children: React.ReactNode; label: string; onClick: () => void }) {
-    return (
-        <button
-            type="button"
-            aria-label={label}
-            onClick={onClick}
-            className="flex size-9 items-center justify-center rounded-[8px] text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-secondary)] hover:text-[var(--colors-text-secondary)] transition-colors"
-        >
-            {children}
-        </button>
-    );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-        <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
-            {children}
-        </label>
+            <Toast />
+        </div>
     );
 }
