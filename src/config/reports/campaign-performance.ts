@@ -48,7 +48,6 @@ export const CAMPAIGN_PERFORMANCE_REPORT: ReportDefinition = {
         { key: K.clickRatePct,       label: "Click rate %",        kind: "percent",  minWidth: 150, calc: "Clicks ÷ Sends" },
         { key: K.attributedBookings, label: "Attributed bookings", kind: "number",   minWidth: 180 },
         { key: K.attributedRevenue,  label: "Attributed revenue",  kind: "currency", minWidth: 180 },
-        { key: K.attributionWindow,  label: "Attribution window",  kind: "text",     minWidth: 180 },
     ],
 
     // Sheet 1 defaults: campaign · channel.

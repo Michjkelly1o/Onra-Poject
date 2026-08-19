@@ -41,10 +41,10 @@ export const MEMBERSHIPS_PACKAGES_REPORT: ReportDefinition = {
     columns: [
         { key: K.customerName,      label: "Customer name",       kind: "text",     minWidth: 200 },
         { key: K.customerId,        label: "Customer ID",         kind: "id",       minWidth: 160, hiddenByDefault: true },
-        { key: K.customerEmail,     label: "Customer email",      kind: "text",     minWidth: 220 },
+        { key: K.customerEmail,     label: "Customer email",      kind: "text",     minWidth: 220, hiddenByDefault: true },
         { key: K.planName,          label: "Plan name",           kind: "text",     minWidth: 220 },
         { key: K.planType,          label: "Plan type",           kind: "text",     minWidth: 170 },
-        { key: K.allowance,         label: "Allowance",           kind: "text",     minWidth: 160 },
+        { key: K.allowance,         label: "Allowance",           kind: "text",     minWidth: 160, hiddenByDefault: true },
         { key: K.status,            label: "Status",              kind: "status",   minWidth: 130 },
         { key: K.purchaseStartISO,  label: "Purchase / start date", kind: "date",   minWidth: 160 },
         { key: K.renewsExpiresISO,  label: "Renews / expires on", kind: "date",     minWidth: 170 },

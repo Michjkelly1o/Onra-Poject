@@ -46,7 +46,6 @@ export const RETAIL_STOCK_ON_HAND_REPORT: ReportDefinition = {
         { key: K.unitsReceivedPeriod, label: "Units received",       kind: "number",   minWidth: 140 },
         { key: K.unitsSoldPeriod,     label: "Units sold",           kind: "number",   minWidth: 120 },
         { key: K.sellThroughPct,      label: "Sell-through %",       kind: "percent",  minWidth: 150, calc: "Units sold ÷ Units received" },
-        { key: K.stockTurnover,       label: "Stock turnover",       kind: "number",   minWidth: 140, calc: "Units sold ÷ avg stock on hand" },
         { key: K.lastReceivedDateISO, label: "Last received date",   kind: "date",     minWidth: 160 },
         { key: K.lastSoldDateISO,     label: "Last sold date",       kind: "date",     minWidth: 140 },
         { key: K.location,            label: "Location",             kind: "text",     minWidth: 180 },

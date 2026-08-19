@@ -43,8 +43,8 @@ export const CUSTOMER_DATA_REPORT: ReportDefinition = {
     columns: [
         { key: K.customerName,       label: "Customer name",         kind: "text",     minWidth: 200 },
         { key: K.customerId,         label: "Customer ID",           kind: "id",       minWidth: 160, hiddenByDefault: true },
-        { key: K.customerEmail,      label: "Customer email",        kind: "text",     minWidth: 220 },
-        { key: K.phone,              label: "Phone",                 kind: "text",     minWidth: 160 },
+        { key: K.customerEmail,      label: "Customer email",        kind: "text",     minWidth: 220, hiddenByDefault: true },
+        { key: K.phone,              label: "Phone",                 kind: "text",     minWidth: 160, hiddenByDefault: true },
         { key: K.status,             label: "Status",                kind: "status",   minWidth: 130 },
         { key: K.currentPlan,        label: "Current plan",          kind: "text",     minWidth: 220 },
         { key: K.planType,           label: "Plan type",             kind: "text",     minWidth: 170 },
@@ -53,7 +53,6 @@ export const CUSTOMER_DATA_REPORT: ReportDefinition = {
         { key: K.lastVisitISO,       label: "Last visit date",       kind: "date",     minWidth: 150 },
         { key: K.daysSinceLastVisit, label: "Days since last visit", kind: "number",   minWidth: 180, calc: "Today − Last visit date" },
         { key: K.totalVisits,        label: "Total visits",          kind: "number",   minWidth: 140 },
-        { key: K.avgVisits,          label: "Avg visits",            kind: "number",   minWidth: 140, calc: "Total visits ÷ months active" },
         { key: K.newOrReturning,     label: "New or returning",      kind: "text",     minWidth: 160 },
         { key: K.convertedFrom,      label: "Converted from",        kind: "text",     minWidth: 180 },
         { key: K.marketingSource,    label: "Marketing source",      kind: "text",     minWidth: 180 },

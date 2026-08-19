@@ -48,7 +48,7 @@ export const RETAIL_SALES_REPORT: ReportDefinition = {
         { key: K.transactionType,   label: "Transaction type",  kind: "status",   minWidth: 140 },
         { key: K.customerName,      label: "Customer name",     kind: "text",     minWidth: 200 },
         { key: K.customerId,        label: "Customer ID",       kind: "id",       minWidth: 180, hiddenByDefault: true },
-        { key: K.customerEmail,     label: "Customer email",    kind: "text",     minWidth: 220 },
+        { key: K.customerEmail,     label: "Customer email",    kind: "text",     minWidth: 220, hiddenByDefault: true },
         { key: K.productName,       label: "Product name",      kind: "text",     minWidth: 200 },
         { key: K.productCategory,   label: "Product category",  kind: "text",     minWidth: 160 },
         { key: K.unitsSold,         label: "Units sold",        kind: "number",   minWidth: 110 },

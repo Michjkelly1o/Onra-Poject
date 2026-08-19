@@ -50,7 +50,6 @@ export const LEAD_DATA_REPORT: ReportDefinition = {
         { key: K.leadSource,          label: "Lead source",           kind: "text",     minWidth: 160 },
         { key: K.leadStage,           label: "Lead stage",            kind: "status",   minWidth: 160 },
         { key: K.leadAssignedTo,      label: "Lead assigned to",      kind: "text",     minWidth: 180 },
-        { key: K.engagementStatus,    label: "Engagement status",     kind: "status",   minWidth: 170 },
         { key: K.firstPurchase,       label: "First purchase",        kind: "text",     minWidth: 200 },
         { key: K.firstPurchaseISO,    label: "First purchase date",   kind: "date",     minWidth: 170 },
         { key: K.firstPurchaseAmount, label: "First purchase amount", kind: "currency", minWidth: 180 },

@@ -51,7 +51,7 @@ export const CANCELLATIONS_NOSHOWS_REPORT: ReportDefinition = {
         { key: K.instructor,      label: "Instructor",        kind: "text",     minWidth: 180 },
         { key: K.customerName,    label: "Customer name",     kind: "text",     minWidth: 200 },
         { key: K.customerId,      label: "Customer ID",       kind: "id",       minWidth: 160, hiddenByDefault: true },
-        { key: K.customerEmail,   label: "Customer email",    kind: "text",     minWidth: 220 },
+        { key: K.customerEmail,   label: "Customer email",    kind: "text",     minWidth: 220, hiddenByDefault: true },
         { key: K.outcomeType,     label: "Type",              kind: "status",   minWidth: 160 },
         { key: K.creditOutcome,   label: "Credit outcome",    kind: "text",     minWidth: 160 },
         { key: K.charge,          label: "Charge",            kind: "currency", minWidth: 130 },

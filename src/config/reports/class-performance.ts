@@ -51,7 +51,6 @@ export const CLASS_PERFORMANCE_REPORT: ReportDefinition = {
         { key: K.waitlisted,        label: "Waitlisted",        kind: "number",  minWidth: 130 },
         { key: K.waitlistConverted, label: "Waitlist converted", kind: "number", minWidth: 170 },
         { key: K.fillRatePct,       label: "Fill rate %",       kind: "percent", minWidth: 140, calc: "Booked ÷ Capacity" },
-        { key: K.attendanceRatePct, label: "Attendance rate %", kind: "percent", minWidth: 170, calc: "Attended ÷ Booked" },
         { key: K.noShowRatePct,     label: "No-show rate %",    kind: "percent", minWidth: 150, calc: "No-shows ÷ Booked" },
     ],
 
@@ -67,7 +66,6 @@ export const CLASS_PERFORMANCE_REPORT: ReportDefinition = {
         { key: "booked",            label: "Booked",            kind: "number",  extract: r => Number(r[K.booked]            ?? 0) },
         { key: "attended",          label: "Attended",          kind: "number",  extract: r => Number(r[K.attended]          ?? 0) },
         { key: "fillRatePct",       label: "Fill rate %",       kind: "percent", extract: r => Number(r[K.fillRatePct]       ?? 0) },
-        { key: "attendanceRatePct", label: "Attendance rate %", kind: "percent", extract: r => Number(r[K.attendanceRatePct] ?? 0) },
     ],
 
     periods: ["none", "day", "week", "month", "quarter", "year"],

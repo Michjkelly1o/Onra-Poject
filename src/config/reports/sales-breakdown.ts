@@ -51,13 +51,13 @@ export const SALES_BREAKDOWN_REPORT: ReportDefinition = {
         { key: K.grossSales,     label: "Gross sales",          kind: "currency", minWidth: 140 },
         { key: K.grossInclTax,   label: "Gross incl. tax",      kind: "currency", minWidth: 150, hiddenByDefault: true },
         { key: K.discountAmount, label: "Discount amount",      kind: "currency", minWidth: 150 },
-        { key: K.refundAmount,   label: "Refund amount",        kind: "currency", minWidth: 150 },
-        { key: K.writeOffAmount, label: "Write-off amount",     kind: "currency", minWidth: 160 },
+        { key: K.refundAmount,   label: "Refund amount",        kind: "currency", minWidth: 150, hiddenByDefault: true },
+        { key: K.writeOffAmount, label: "Write-off amount",     kind: "currency", minWidth: 160, hiddenByDefault: true },
         { key: K.netBeforeTax,   label: "Net sales before tax", kind: "currency", minWidth: 190, calc: "Gross − Discount − Refund − Write-off" },
         { key: K.taxCollected,   label: "Tax collected",        kind: "currency", minWidth: 140, calc: "Sales tax − refunded/written-off tax" },
         { key: K.netAfterTax,    label: "Net sales after tax",  kind: "currency", minWidth: 180, calc: "Net before tax + Tax collected" },
         {
-            key: K.refundRatePct, label: "Refund rate", kind: "percent", minWidth: 130, calc: "Refund ÷ Gross (incl. tax)",
+            key: K.refundRatePct, label: "Refund rate", kind: "percent", minWidth: 130, calc: "Refund ÷ Gross (incl. tax)", hiddenByDefault: true,
             groupCalc: (row) => {
                 const g = Number(row[K.grossInclTax]) || 0;
                 const r = Math.abs(Number(row[K.refundAmount]) || 0);
