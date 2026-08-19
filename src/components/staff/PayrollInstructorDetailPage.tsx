@@ -430,7 +430,7 @@ export function ChangePayRateModal({ instructor, isInstructor, initialConfig, al
                                     enabled={cfg.perClass.enabled} onToggle={n => toggleTrack("perClass", n)} disabled={perClassToggleDisabled} />
                             )}
                             {isInstructor && (
-                                <PayToggleRow title="Pay per appointment" subtitle="Salary for every appointment completed."
+                                <PayToggleRow title="Pay per private" subtitle="Salary for every private session completed."
                                     enabled={cfg.perAppointment.enabled} onToggle={n => toggleTrack("perAppointment", n)} disabled={perApptToggleDisabled} />
                             )}
                         </div>
@@ -450,7 +450,7 @@ export function ChangePayRateModal({ instructor, isInstructor, initialConfig, al
                         />
                     )}
                     {isInstructor && (
-                        <PayRateSection title="Pay per appointment" value={cfg.perAppointment.payRateId ?? ""} options={options}
+                        <PayRateSection title="Pay per private" value={cfg.perAppointment.payRateId ?? ""} options={options}
                             onChange={v => setTrack("perAppointment", { payRateId: v })} />
                     )}
 

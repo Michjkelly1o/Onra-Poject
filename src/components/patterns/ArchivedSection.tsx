@@ -5,27 +5,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Archive/Delete policy §3 — the shared shell every archive-only module renders
-// BELOW its active list. Archived rows leave the active table and appear here in
-// a collapsible "Archived <entity>" section (client 2026-08-11), replacing the
-// old "View archived (n)" toggle / separate archived-only view.
+// BELOW its active list. Archived rows leave the active table; this component
+// surfaces them behind a single "Archived <entity> (n)" LINK that opens the
+// archived list in a centered POP-UP MODAL (client 2026-08-14, replacing the
+// earlier inline accordion). Renders nothing when `count === 0`.
 //
-// Behaviour (locked with the client):
-//  • Renders NOTHING when `count === 0` — the page looks like the default
-//    (active container only).
-//  • Header row = "Archived <entity>" (singular) + "(n)" + an h-px separator +
-//    a ChevronDown that rotates -90 when collapsed. Default EXPANDED.
-//  • When expanded it fills the scroll region (`h-full`) so the archived card
-//    matches the active card's height and scrolls INTERNALLY (its pagination
-//    pinned) instead of growing long at 30/page. Collapsed → hugs the header.
-//  • `children` = the module's table or card grid. `pagination` = optional
-//    footer — table modules pass <Pagination>; card/grid modules pass nothing.
-//
-// Search / filters / bulk-selection are owned by the page and apply to BOTH the
-// active list and this section — this component is presentation only. Extracted
-// verbatim from the Customers reference (src/app/admin/customers/page.tsx).
+// `children` = the module's archived table or card grid. `pagination` = optional
+// footer (table modules pass <Pagination>). Search / filters / bulk-selection are
+// owned by the page and apply to BOTH lists — this component is presentation only.
+// `fill` / `bordered` are accepted for call-site compatibility but no longer used
+// (the modal owns the container + scroll).
 
-import { useState, type ReactNode } from "react";
-import { ChevronDown } from "@untitledui/icons";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { XClose, Archive } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 
 export function ArchivedSection({
@@ -33,9 +26,6 @@ export function ArchivedSection({
     count,
     children,
     pagination,
-    defaultExpanded = true,
-    fill = true,
-    bordered = true,
 }: {
     /** Singular entity noun for the label — "customer" → "Archived customer". */
     entitySingular: string;
@@ -45,62 +35,67 @@ export function ArchivedSection({
     children: ReactNode;
     /** Optional pinned footer (table modules pass <Pagination>). */
     pagination?: ReactNode;
-    /** Default open on first render. */
+    /** Accepted for call-site compatibility (the modal owns layout now). */
     defaultExpanded?: boolean;
-    /**
-     * true (default) — fill-viewport modules: the expanded card takes `h-full`
-     * and scrolls internally (used inside a flex scroll region, e.g. customers /
-     * products / retail / class-types).
-     * false — bare-flow card-grid pages (e.g. promo codes) with no height
-     * context: the card HUGS its content (no internal scroll / no h-full) so it
-     * renders naturally below the active grid.
-     */
     fill?: boolean;
-    /**
-     * true (default) — wrap the archived content in a bordered white card
-     * (matches modules whose ACTIVE list sits in a bordered view card).
-     * false — no border/rounded/bg, so the archived content sits flush like the
-     * borderless active lists (promotions / announcements / gift cards / services
-     * / pay rates / agreements render their active table flush on the chrome).
-     */
     bordered?: boolean;
 }) {
-    const [collapsed, setCollapsed] = useState(!defaultExpanded);
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        if (!open) return;
+        function onKey(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [open]);
+
     if (count === 0) return null;
 
     return (
-        // fill + expanded → h-full so the archived card fills a viewport exactly
-        // like the active one (scrolls internally, pagination pinned). Collapsed
-        // or !fill → hug (header row, then a natural-height card).
-        <div className={cn("shrink-0 flex flex-col gap-3", fill && !collapsed && "h-full")}>
+        <div className="shrink-0 flex items-center">
+            {/* Link/button — opens the archived list in a modal. */}
             <button
                 type="button"
-                onClick={() => setCollapsed(v => !v)}
-                className="shrink-0 flex items-center gap-2 text-left group"
-                aria-expanded={!collapsed}
+                onClick={() => setOpen(true)}
+                className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)] transition-colors"
             >
-                <span className="text-[14px] font-medium text-[var(--colors-text-tertiary)] group-hover:text-[var(--colors-text-secondary)] transition-colors whitespace-nowrap">
-                    Archived {entitySingular}
-                </span>
-                <span className="text-[14px] text-[var(--colors-text-quaternary)]">({count})</span>
-                <div className="flex-1 h-px bg-[var(--colors-border-secondary)]" />
-                <ChevronDown className={cn(
-                    "w-5 h-5 text-[var(--colors-text-quaternary)] transition-transform shrink-0",
-                    collapsed && "-rotate-90",
-                )} />
+                <Archive className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                Archived {entitySingular}
+                <span className="text-[var(--colors-text-quaternary)]">({count})</span>
             </button>
 
-            {!collapsed && (
-                <div className={cn(
-                    "flex flex-col overflow-hidden",
-                    bordered && "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px]",
-                    fill && "flex-1 min-h-0",
-                )}>
-                    <div className={cn(fill && "flex-auto min-h-0 overflow-y-auto scrollbar-hide")}>
-                        {children}
+            {open && typeof document !== "undefined" && createPortal(
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#0c111d]/40" onClick={() => setOpen(false)} />
+                    <div className={cn(
+                        "relative bg-white rounded-[16px] w-[1040px] max-w-full max-h-[85vh]",
+                        "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
+                        "flex flex-col overflow-hidden",
+                    )}>
+                        {/* Header */}
+                        <div className="shrink-0 flex items-center justify-between px-6 h-[64px] border-b border-[var(--colors-border-secondary)]">
+                            <div className="flex items-center gap-2">
+                                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] capitalize">Archived {entitySingular}</p>
+                                <span className="text-[14px] text-[var(--colors-text-quaternary)]">({count})</span>
+                            </div>
+                            <button type="button" onClick={() => setOpen(false)} aria-label="Close"
+                                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                            </button>
+                        </div>
+                        {/* Body — the module's archived table / grid, scrolls internally. */}
+                        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+                            {children}
+                        </div>
+                        {/* Footer — optional pagination. */}
+                        {pagination && (
+                            <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6">
+                                {pagination}
+                            </div>
+                        )}
                     </div>
-                    {pagination && <div className={cn("shrink-0", bordered && "px-6")}>{pagination}</div>}
-                </div>
+                </div>,
+                document.body,
             )}
         </div>
     );

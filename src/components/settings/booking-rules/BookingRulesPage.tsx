@@ -38,6 +38,7 @@ import { GuestBookingPanel } from "./GuestBookingPanel";
 // settings tab, the freeze rules live alongside cancellation now). Panel
 // component unchanged; only the entry point changes.
 import { FreezePolicyPanel }  from "../FreezePolicyPanel";
+import { PlanCancellationPanel } from "./PlanCancellationPanel";
 
 // ─── Display helpers ────────────────────────────────────────────────────────
 
@@ -84,6 +85,12 @@ const FREEZE_UNIT_LABEL: Record<FreezePolicy["max_duration_unit"], (n: number) =
 
 type CancellationTab = "rule" | "applied";
 
+const WHO_CAN_CANCEL_LABEL: Record<string, string> = {
+    members_and_admins: "Customers & admins",
+    members_request_admins_approve: "Customers request, admins approve",
+    admins_only: "Admins only",
+};
+
 export default function BookingRulesPage() {
     const classesSettings   = useAppStore(s => s.classesSettings);
     const cancellationPolicy = useAppStore(s => s.cancellationPolicy);
@@ -98,6 +105,7 @@ export default function BookingRulesPage() {
     const [wlOpen, setWlOpen] = useState(false);
     const [cpOpen, setCpOpen] = useState(false);
     const [cpTab, setCpTab]   = useState<CancellationTab>("rule");
+    const [pcOpen, setPcOpen] = useState(false);
     const [fpOpen, setFpOpen] = useState(false);
     const [gbOpen, setGbOpen] = useState(false);
 
@@ -126,6 +134,21 @@ export default function BookingRulesPage() {
     const freezeApplyToValue = freezePolicy.apply_to === "all"
         ? "All memberships"
         : `${freezePolicy.membership_ids.length} membership${freezePolicy.membership_ids.length === 1 ? "" : "s"}`;
+
+    // Plan-cancellation summary values (client 2026-08-14 — split out of the
+    // combined card). `members_can_cancel` lives on freezePolicy; who / fee /
+    // reasons / apply-to on cancellationPolicy.
+    const cancelWhoValue = WHO_CAN_CANCEL_LABEL[cancellationPolicy.plan_cancel_who ?? "members_and_admins"];
+    const cancelFeeValue = cancellationPolicy.plan_cancel_fee_enabled
+        ? `AED ${cancellationPolicy.plan_cancel_fee_aed}`
+        : "No";
+    const cancelReasonsValue = (() => {
+        const n = (cancellationPolicy.cancellation_reasons ?? []).filter(r => r.enabled && r.label.trim()).length;
+        return `${n} reason${n === 1 ? "" : "s"}`;
+    })();
+    const cancelApplyToValue = (cancellationPolicy.plan_cancel_apply_to ?? "all") === "all"
+        ? "All memberships"
+        : `${(cancellationPolicy.plan_cancel_membership_ids ?? []).length} membership${(cancellationPolicy.plan_cancel_membership_ids ?? []).length === 1 ? "" : "s"}`;
 
     function handleToggleWaitlist(next: boolean) {
         updateClassesSettings({ waitlist_enabled: next });
@@ -240,10 +263,10 @@ export default function BookingRulesPage() {
                 </div>
             </SettingsCard>
 
-            {/* ── Card 3: Cancellation policy ──────────────────────── */}
+            {/* ── Card 3: Booking cancellations & no-shows ─────────── */}
             <SettingsCard>
                 <CardHeader
-                    title="Cancellation policy"
+                    title="Booking cancellations & no-shows"
                     subtitle="Manage the rules for cancellations and no-shows."
                     editLabel="Customize"
                     onEdit={() => setCpOpen(true)}
@@ -263,29 +286,45 @@ export default function BookingRulesPage() {
                 {cpTab === "applied" && <AppliedToSummary policy={cancellationPolicy} />}
             </SettingsCard>
 
-            {/* ── Card 4: Freeze policy ────────────────────────────
-                Moved here from the retired /admin/settings/freeze-policy
-                tab (client Jul 2026). Reads the same freezePolicy slice +
-                opens the same FreezePolicyPanel — pure UI relocation, no
-                behaviour or data change. */}
+            {/* ── Card 4: Plan cancellation (client 2026-08-14) ────
+                Split out of the combined "Cancel & freeze plan policy".
+                `members_can_cancel` on freezePolicy; who / fee / reasons /
+                apply-to on cancellationPolicy. Reasons sync to the customer
+                cancel sheet. */}
             <SettingsCard>
                 <CardHeader
-                    title="Cancel & freeze plan policy"
-                    subtitle="Rules for how customers cancel or pause their memberships from their account."
+                    title="Plan cancellation"
+                    subtitle="Rules for how customers cancel their memberships from their account."
+                    editLabel="Customize"
+                    onEdit={() => setPcOpen(true)}
+                />
+                <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+                    <SummaryField label="Members can cancel their own membership" value={freezePolicy.members_can_cancel ? "Yes" : "No"} />
+                    {freezePolicy.members_can_cancel && (
+                        <>
+                            <SummaryField label="Who can cancel"    value={cancelWhoValue} />
+                            <SummaryField label="Cancellation fee"  value={cancelFeeValue} />
+                            <SummaryField label="Allowed reasons"   value={cancelReasonsValue} />
+                            <SummaryField label="Apply to"          value={cancelApplyToValue} />
+                        </>
+                    )}
+                </div>
+            </SettingsCard>
+
+            {/* ── Card 5: Plan freeze ──────────────────────────────
+                The freeze half of the former combined card. Reads the
+                freezePolicy slice + opens FreezePolicyPanel. */}
+            <SettingsCard>
+                <CardHeader
+                    title="Plan freeze"
+                    subtitle="Rules for how customers pause their memberships from their account."
                     editLabel="Customize"
                     onEdit={() => setFpOpen(true)}
                 />
-                {/* One 3-column grid. The two toggle summaries sit in row 1
-                    (cancel · freeze · —); a spacer fills column 3 so the freeze
-                    detail fields start on row 2 and "Freezes per membership"
-                    lands directly under "Members can freeze their own
-                    membership" (both column 2). Client 2026-08-11. */}
                 <div className="grid grid-cols-3 gap-x-6 gap-y-5">
-                    <SummaryField label="Members can cancel their own membership" value={freezePolicy.members_can_cancel ? "Yes" : "No"} />
                     <SummaryField label="Members can freeze their own membership" value={freezePolicy.enabled ? "Yes" : "No"} />
                     {freezePolicy.enabled && (
                         <>
-                            <div aria-hidden />
                             <SummaryField label="Maximum freeze duration" value={freezeDurationValue} />
                             <SummaryField label="Freezes per membership"  value={freezeFreezesValue} />
                             <SummaryField label="Freeze fee"              value={freezeFeeValue} />
@@ -300,6 +339,7 @@ export default function BookingRulesPage() {
             <BookingWindowPanel       open={bwOpen} onClose={() => setBwOpen(false)} />
             <WaitlistPanel            open={wlOpen} onClose={() => setWlOpen(false)} />
             <CancellationPolicyPanel  open={cpOpen} onClose={() => setCpOpen(false)} />
+            <PlanCancellationPanel    open={pcOpen} onClose={() => setPcOpen(false)} />
             <FreezePolicyPanel        open={fpOpen} onClose={() => setFpOpen(false)} />
             <GuestBookingPanel        open={gbOpen} onClose={() => setGbOpen(false)} />
 

@@ -141,7 +141,7 @@ export function recognizedRevenueLineItems(input: RevenueInput, fromMs: number, 
                 const durationDays = Math.max(1, (mem?.duration_months ?? 1) * 30);
                 const expiryMs = purchaseMs + durationDays * DAY_MS;
                 const overlap = Math.max(0, Math.min(expiryMs, toMs) - Math.max(purchaseMs, fromMs));
-                if (overlap > 0) items.push({ customerId: t.customerId, kind: "membership", label: `${mem?.name ?? "Unlimited membership"} · earned this period`, amountAed: t.amountAed * (overlap / (durationDays * DAY_MS)) });
+                if (overlap > 0) items.push({ customerId: t.customerId, kind: "membership", label: `${mem?.name ?? "Unlimited membership"}`, amountAed: t.amountAed * (overlap / (durationDays * DAY_MS)) });
             }
             continue;
         }

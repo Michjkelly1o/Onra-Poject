@@ -29,6 +29,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type PromoCode } from "@/lib/store";
+import { openMarketingFormPanel } from "@/lib/marketing-form-panel";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
@@ -162,7 +163,6 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
     const showToast       = useAppStore(s => s.showToast);
     const [confirmAction, setConfirmAction] = useState<PromoCardAction | null>(null);
     const canDelete = (promo.usage_count ?? 0) === 0;
-    const editHref  = `/products/promo-codes/${promo.id}/edit?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`;
     // Items conditional on stored status (expired promos live in one of the
     // three stored states, so we key off `promo.status`, not `status`).
     const items: RowActionItem[] = (() => {
@@ -177,7 +177,7 @@ function PromoCardView({ promo, onOpen, totalBranches }: { promo: PromoCode; onO
             return base;
         }
         // Active
-        base.push({ label: "Edit promotion", icon:Edit02, onClick: () => router.push(editHref) });
+        base.push({ label: "Edit promotion", icon:Edit02, onClick: () => openMarketingFormPanel({ kind: "promotion", mode: "edit", id: promo.id }) });
         base.push({ label: "Archive promotion", icon:Archive, onClick: () => setConfirmAction("archive") });
         if (canDelete) {
             base.push({ label: "Delete promotion", icon:Trash02, danger: true, onClick: () => setConfirmAction("delete") });
@@ -527,7 +527,7 @@ export default function PromoListPage() {
                 <ToolbarImportButton visible={promoCodes.length === 0 && !search.trim() && !hasActiveFilter} />
 
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push(`/products/promo-codes/new?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)}>
+                    onClick={() => openMarketingFormPanel({ kind: "promotion", mode: "create" })}>
                     Add
                 </Button>
             </div>
@@ -554,11 +554,13 @@ export default function PromoListPage() {
             {/* ── Archived section — card grid, no pagination, hugging layout
                    (policy §3). Renders only when archived promos exist. */}
             <ArchivedSection entitySingular="promotion" count={archivedPromos.length} fill={false} bordered={false}>
-                <div className="grid grid-cols-4 gap-4">
-                    {archivedPromos.map(p => (
-                        <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
-                            onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
-                    ))}
+                <div className="px-6 py-4">
+                    <div className="grid grid-cols-4 gap-4">
+                        {archivedPromos.map(p => (
+                            <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
+                                onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
+                        ))}
+                    </div>
                 </div>
             </ArchivedSection>
 

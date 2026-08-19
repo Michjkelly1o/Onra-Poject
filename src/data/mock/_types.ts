@@ -269,6 +269,24 @@ export interface CancellationPolicy {
      *  cancelled without picking a reason (mirrors freeze policy behaviour).
      *  Shape reused from FreezeReason — same { id, label, enabled }. */
     cancellation_reasons: FreezeReason[];
+
+    // ── Plan cancellation (membership self-cancel) — client 2026-08-14 ────
+    // Split out of the combined "Cancel & freeze plan policy" into its own
+    // "Plan cancellation" panel. `members_can_cancel` stays on FreezePolicy
+    // (the customer plan page already reads it there); these govern who may
+    // cancel, the plan-cancellation fee, and which memberships it applies to.
+    /** Who can cancel a membership — mirrors FreezePolicy.who_can_freeze. */
+    plan_cancel_who: "members_and_admins" | "members_request_admins_approve" | "admins_only";
+    /** Charge a fee when a member cancels their own membership. */
+    plan_cancel_fee_enabled: boolean;
+    plan_cancel_fee_aed: number;
+    /** Which memberships plan-cancellation applies to (self-cancel scope). */
+    plan_cancel_apply_to: "all" | "specific";
+    plan_cancel_membership_ids: string[];
+    /** Require the customer to pick a reason when cancelling — mirrors
+     *  FreezePolicy.require_reason. When false the customer cancel flow skips
+     *  the reason step entirely (client 2026-08-14). */
+    plan_cancel_require_reason: boolean;
 }
 
 // ─── Freeze Policy (customer settings) ─────────────────────────────────────

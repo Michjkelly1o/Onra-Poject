@@ -197,11 +197,13 @@ export function ComingUpTileStrip({ metrics, typeFilter, onTileClick }: ComingUp
     const returning       = typeFilter === "" ? String(m.returningTotal)                     : String(m.returningByType[typeFilter]);
     const expiringPlans   = typeFilter === "" ? String(m.expiringPlansTotal)                 : String(m.expiringPlansByType[typeFilter]);
 
-    // Column count drives the grid width — 5 tiles fill the row for
-    // Private mode (5-tile scope); everyone else has 6 tiles.
+    // Column count drives the grid width. The trailing "signature" tile
+    // only exists for Classes (Under-filled) and Recovery (Top services);
+    // All-types + Private stop at the 5 common tiles (client 2026-08-18 —
+    // the All-types "Capacity used" mini-bar tile was removed).
     const tileCount =
-        typeFilter === "private" ? 5 :
-        6;
+        typeFilter === "class" || typeFilter === "recovery" ? 6 :
+        5;
 
     return (
         <div
@@ -240,33 +242,9 @@ export function ComingUpTileStrip({ metrics, typeFilter, onTileClick }: ComingUp
                 onClick={click("expiring")}
             />
 
-            {/* Trailing signature tile — varies by filter. */}
-            {typeFilter === "" && (
-                <div
-                    className={cn(
-                        "bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4",
-                        onTileClick && "cursor-pointer hover:border-[var(--colors-border-primary)] hover:shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-all",
-                    )}
-                    onClick={click("capacity")}
-                    role={onTileClick ? "button" : undefined}
-                    tabIndex={onTileClick ? 0 : undefined}
-                    onKeyDown={onTileClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTileClick("capacity"); } } : undefined}
-                >
-                    <p className="font-normal text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap mb-2">Capacity used</p>
-                    <div className="flex flex-col gap-1.5">
-                        {SESSION_TYPE_ORDER.map(t => (
-                            <BarRow
-                                key={t}
-                                name={t === "class" ? "Classes" : t === "private" ? "Private" : "Recovery"}
-                                value={m.capacityByType[t]}
-                                max={100}
-                                color={SESSION_TYPE_TAG_COLORS[t].bar}
-                                valueLabel={`${m.capacityByType[t]}%`}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
+            {/* Trailing signature tile — varies by filter. The All-types
+                "Capacity used" mini-bar tile was removed (client 2026-08-18);
+                capacity now lives in the per-type band heatmap below. */}
             {typeFilter === "class" && (
                 <Tile
                     label="Under-filled classes"

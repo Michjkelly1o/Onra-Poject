@@ -19,7 +19,7 @@
 // through the store so the list view + this page stay in lock-step.
 
 import { Suspense, useState } from "react";
-import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     ChevronUp, ChevronDown, HelpCircle,
@@ -31,6 +31,8 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { useAppStore, type MarketingItem, type Branch } from "@/lib/store";
+import { openMarketingFormPanel } from "@/lib/marketing-form-panel";
+import { MarketingFormPanelHost } from "@/components/marketing/MarketingFormPanelHost";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 
 const LIST_PATH = "/admin/marketing/announcements";
@@ -413,7 +415,6 @@ interface AnnouncementDetailVM {
 
 function AnnouncementDetailPageInner() {
     const router = useRouter();
-    const pathname = usePathname();
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
     const searchParams = useSearchParams();
@@ -478,7 +479,9 @@ function AnnouncementDetailPageInner() {
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
-            router.push(`/announcements/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
+            // Consistency (client 2026-08-14): edit opens the SAME side panel the
+            // list uses — no more full-page edit route.
+            openMarketingFormPanel({ kind: "announcement", mode: "edit", id });
             return;
         }
         setConfirmAction(a);
@@ -557,6 +560,7 @@ function AnnouncementDetailPageInner() {
                 );
             })()}
             <Toast />
+            <MarketingFormPanelHost />
         </div>
     );
 }

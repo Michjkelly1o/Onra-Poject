@@ -1,33 +1,32 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Dashboard · Coming Up · Capacity heatmap
+// Onra Studio — Dashboard · Coming Up · Session band heatmap
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// One row per active SessionType, one cell per Period. Cell colour is
-// the type's `bar` tone at an alpha keyed to the fill %; a null fill
-// (no sessions of that type in the period) renders as a dashed-border
-// "closed" cell. Cell label is the fill %; text swaps to white when the
-// blended luminance drops below ~62% so both extremes stay legible.
+// One row per time-of-day band (Morning / Afternoon / Evening), one cell
+// per Period — matching the Performance "Attendance heatmap" look. Only
+// ever rendered for a SINGLE session type (the All-types view shows no
+// band heatmap):
 //
-// Kept purely presentational — the periods + fill values are computed
-// upstream by `capacityByPeriod` in @/lib/dashboard/coming-up.
+//   • Classes            → "Class Utilization" — cell = booked/capacity %
+//   • Private / Recovery → "Bookings"          — cell = booked-seat count
 //
-// Interaction: hover a cell → shared cursor-following tooltip listing
-// type + period + fill%. Click a cell → deep-link to the schedule
-// scoped to that period (day or dateFrom+dateTo range).
+// Cell colour is the type's `bar` tone at an alpha keyed to the cell
+// value (utilization % for classes, or booking count normalized to the
+// busiest bucket for private / recovery) — darker = higher. A bucket
+// with no sessions renders as a dashed-border "closed" cell. Cell text
+// swaps to white once the blended luminance drops below ~62% so both
+// extremes stay legible.
+//
+// Interaction: hover a cell → shared cursor-following tooltip. Click a
+// cell → deep-link to the schedule scoped to that period + type.
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { SESSION_TYPE_LABEL, SESSION_TYPE_ORDER, SESSION_TYPE_TAG_COLORS } from "@/lib/session-type";
+import { SESSION_TYPE_TAG_COLORS } from "@/lib/session-type";
 import type { SessionType } from "@/lib/store";
-import type { CapacityByPeriod } from "@/lib/dashboard/coming-up";
-
-const ROW_LABELS: Record<SessionType, string> = {
-    class:    "Classes",
-    private:  "Private",
-    recovery: "Recovery",
-};
+import { COMING_BANDS, COMING_BAND_LABEL, type BandHeatmap, type ComingBand } from "@/lib/dashboard/coming-up";
 
 /** Blend RGB in the color with white to approximate what the cell renders
  *  as at the given alpha; return luminance in 0..1 space (rec709 weights). */
@@ -41,10 +40,17 @@ function blendedLuminance(hex: string, alpha: number): number {
     return (0.2126 * rB + 0.7152 * gB + 0.0722 * bB) / 255;
 }
 
-/** Map fill % to a cell alpha — matches the mockup's ramp. Under 40%
- *  reads as very light (0.15), 85%+ maxes at ~0.95. */
-function alphaFor(pct: number): number {
+/** Map a utilization fill % to a cell alpha — matches the mockup's ramp.
+ *  Under 40% reads as very light (0.15), 85%+ maxes at ~0.95. */
+function alphaForFill(pct: number): number {
     return 0.15 + Math.max(0, Math.min(1, (pct - 40) / 45)) * 0.8;
+}
+
+/** Map a booking count to a cell alpha, normalized to the busiest bucket
+ *  so the heaviest booking volume in the window reads darkest. */
+function alphaForCount(count: number, max: number): number {
+    if (max <= 0) return 0.15;
+    return 0.15 + Math.max(0, Math.min(1, count / max)) * 0.8;
 }
 
 // ── Cursor-following tooltip (matches the DS InfoTooltip chrome) ────────────
@@ -61,31 +67,37 @@ function HeatTooltip({ payload }: { payload: HeatTooltipPayload | null }) {
     return (
         <div
             role="tooltip"
-            className="fixed z-50 bg-[#0c111d] text-white text-[12px] leading-[16px] rounded-[8px] px-3 py-2 min-w-[160px] shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)] pointer-events-none"
+            className="fixed z-50 bg-white border border-[var(--colors-border-secondary)] rounded-lg shadow-lg text-[12px] leading-[16px] px-3 py-2 min-w-[160px] pointer-events-none"
             style={{ left: payload.x, top: payload.y }}
         >
-            <p className="font-semibold mb-0.5">{payload.title}</p>
-            {payload.subtitle && <p className="text-[11px] text-[#c8d0cb] mb-1">{payload.subtitle}</p>}
-            <p>{payload.text}</p>
+            <p className="font-semibold text-[var(--colors-text-primary)] mb-0.5">{payload.title}</p>
+            {payload.subtitle && <p className="text-[11px] text-[var(--colors-text-quaternary)] mb-1">{payload.subtitle}</p>}
+            <p className="text-[var(--colors-text-tertiary)]">{payload.text}</p>
         </div>
     );
 }
 
-export interface CapacityHeatmapProps {
-    rows: CapacityByPeriod[];
-    typeFilter: SessionType | "";
+export interface SessionBandHeatmapProps {
+    heatmap: BandHeatmap;
+    /** The single session type this heatmap covers — drives colour + copy. */
+    type: SessionType;
+    /** Card title — "Class Utilization" or "Bookings". */
+    title: string;
+    /** Subtitle after the title dot (e.g. "by day · avg 63%"). */
     unitLabel: string;
     granularity: "day" | "week";
 }
 
-export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: CapacityHeatmapProps) {
+export function SessionBandHeatmap({ heatmap, type, title, unitLabel, granularity }: SessionBandHeatmapProps) {
     const router = useRouter();
     const [tip, setTip] = useState<HeatTooltipPayload | null>(null);
-    const activeTypes: SessionType[] = typeFilter === "" ? SESSION_TYPE_ORDER : [typeFilter];
+    const palette = SESSION_TYPE_TAG_COLORS[type];
+    const { periods, metric, maxBookings } = heatmap;
 
-    function onCellClick(startISO: string, endISO: string, type: SessionType) {
-        // Carry the row's session type through as `?type=` so the schedule opens
-        // pre-filtered to Classes / Private / Recovery for that clicked day/week.
+    // (band × periodIndex) → cell lookup so each row can render in order.
+    const cellByKey = new Map(heatmap.cells.map(c => [`${c.band}|${c.periodIndex}`, c]));
+
+    function onCellClick(startISO: string, endISO: string) {
         if (granularity === "day") router.push(`/admin/schedule?date=${startISO}&type=${type}`);
         else                        router.push(`/admin/schedule?dateFrom=${startISO}&dateTo=${endISO}&type=${type}`);
     }
@@ -101,83 +113,84 @@ export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: Ca
     return (
         <div className="bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-5">
             <p className="text-base font-semibold text-[var(--colors-text-primary)] mb-4">
-                Capacity used <span className="font-normal text-[var(--colors-text-quaternary)]">· {unitLabel}</span>
+                {title} <span className="font-normal text-[var(--colors-text-quaternary)]">· {unitLabel}</span>
             </p>
 
             <div className="flex flex-col gap-2">
-                {activeTypes.map(type => {
-                    const palette = SESSION_TYPE_TAG_COLORS[type];
-                    return (
-                        <div key={type} className="flex items-center gap-3">
-                            <div className="w-[64px] text-xs font-medium text-[var(--colors-text-quaternary)] text-right shrink-0">
-                                {ROW_LABELS[type]}
-                            </div>
-                            <div className="flex-1 flex gap-1">
-                                {rows.map((r, i) => {
-                                    const fill = r.fill[type];
-                                    if (fill === null) {
-                                        return (
-                                            <button
-                                                key={i}
-                                                type="button"
-                                                onClick={() => onCellClick(r.period.startISO, r.period.endISO, type)}
-                                                onMouseEnter={(e) => setTip({
-                                                    ...tipPosition(e),
-                                                    title: `${SESSION_TYPE_LABEL[type]}`,
-                                                    subtitle: `${r.period.label} ${r.period.sub}`,
-                                                    text: "No sessions scheduled",
-                                                })}
-                                                onMouseMove={(e) => setTip(prev => prev ? { ...prev, ...tipPosition(e) } : prev)}
-                                                onMouseLeave={() => setTip(null)}
-                                                className="flex-1 h-5 rounded-[5px] border border-dashed border-[var(--colors-border-secondary)] bg-transparent"
-                                                aria-label={`${ROW_LABELS[type]} ${r.period.sub} — no sessions`}
-                                            />
-                                        );
-                                    }
-                                    const alpha = alphaFor(fill);
-                                    const lum = blendedLuminance(palette.bar, alpha);
-                                    const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, "0");
+                {COMING_BANDS.map((band: ComingBand) => (
+                    <div key={band} className="flex items-center gap-3">
+                        <div className="w-[64px] text-xs font-medium text-[var(--colors-text-quaternary)] text-right shrink-0">
+                            {COMING_BAND_LABEL[band]}
+                        </div>
+                        <div className="flex-1 flex gap-1">
+                            {periods.map((period, pi) => {
+                                const cell = cellByKey.get(`${band}|${pi}`);
+                                const value = cell?.value ?? null;
+                                if (value === null) {
                                     return (
                                         <button
-                                            key={i}
+                                            key={pi}
                                             type="button"
-                                            onClick={() => onCellClick(r.period.startISO, r.period.endISO, type)}
+                                            onClick={() => onCellClick(period.startISO, period.endISO)}
                                             onMouseEnter={(e) => setTip({
                                                 ...tipPosition(e),
-                                                title: `${SESSION_TYPE_LABEL[type]}`,
-                                                subtitle: `${r.period.label} ${r.period.sub}`,
-                                                text: `${fill}% of capacity booked`,
+                                                title: `${COMING_BAND_LABEL[band]} · ${period.sub}`,
+                                                text: metric === "utilization" ? "No class scheduled" : "No sessions scheduled",
                                             })}
                                             onMouseMove={(e) => setTip(prev => prev ? { ...prev, ...tipPosition(e) } : prev)}
                                             onMouseLeave={() => setTip(null)}
-                                            className="flex-1 h-5 rounded-[5px] flex items-center justify-center text-xs tabular-nums transition-transform hover:scale-[1.02]"
-                                            style={{
-                                                background: `${palette.bar}${alphaHex}`,
-                                                color: lum < 0.62 ? "#ffffff" : "#101828",
-                                            }}
-                                            aria-label={`${ROW_LABELS[type]} ${r.period.sub} — ${fill}% capacity booked`}
-                                        >
-                                            {fill}%
-                                        </button>
+                                            className="flex-1 h-5 rounded-[5px] border border-dashed border-[var(--colors-border-secondary)] bg-transparent"
+                                            aria-label={`${COMING_BAND_LABEL[band]} ${period.sub} — no sessions`}
+                                        />
                                     );
-                                })}
-                            </div>
+                                }
+                                const alpha = metric === "utilization"
+                                    ? alphaForFill(value)
+                                    : alphaForCount(value, maxBookings);
+                                const lum = blendedLuminance(palette.bar, alpha);
+                                const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, "0");
+                                const label = metric === "utilization" ? `${value}%` : String(value);
+                                const tipText = metric === "utilization"
+                                    ? `Booked / Total capacity: ${cell?.bookings ?? 0} / ${cell?.capacity ?? 0} (${value}%)`
+                                    : `${value} booking${value === 1 ? "" : "s"}`;
+                                return (
+                                    <button
+                                        key={pi}
+                                        type="button"
+                                        onClick={() => onCellClick(period.startISO, period.endISO)}
+                                        onMouseEnter={(e) => setTip({
+                                            ...tipPosition(e),
+                                            title: `${COMING_BAND_LABEL[band]} · ${period.sub}`,
+                                            text: tipText,
+                                        })}
+                                        onMouseMove={(e) => setTip(prev => prev ? { ...prev, ...tipPosition(e) } : prev)}
+                                        onMouseLeave={() => setTip(null)}
+                                        className="flex-1 h-5 rounded-[5px] flex items-center justify-center text-xs tabular-nums transition-transform hover:scale-[1.02]"
+                                        style={{
+                                            background: `${palette.bar}${alphaHex}`,
+                                            color: lum < 0.62 ? "#ffffff" : "#101828",
+                                        }}
+                                        aria-label={`${COMING_BAND_LABEL[band]} ${period.sub} — ${label}`}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
                         </div>
-                    );
-                })}
+                    </div>
+                ))}
             </div>
 
-            {/* Period date labels — aligns under the cells, matching the Revenue
-                outlook chart's x-axis (client 2026-08). The left spacer mirrors
-                the row-label column (w-[64px] + gap-3) so each date sits under
-                its column of cells. */}
+            {/* Period date labels — align under the cells, matching the Revenue
+                outlook chart's x-axis. The left spacer mirrors the row-label
+                column (w-[64px] + gap-3) so each date sits under its column. */}
             <div className="flex items-start gap-3 mt-3">
                 <div className="w-[64px] shrink-0" aria-hidden />
                 <div className="flex-1 flex gap-1">
-                    {rows.map((r, i) => (
+                    {periods.map((period, i) => (
                         <div key={i} className="flex-1 text-center text-xs text-[var(--colors-text-quaternary)] leading-tight">
-                            <span className="block font-semibold text-[var(--colors-text-primary)]">{r.period.label}</span>
-                            <span>{r.period.sub}</span>
+                            <span className="block font-semibold text-[var(--colors-text-primary)]">{period.label}</span>
+                            <span>{period.sub}</span>
                         </div>
                     ))}
                 </div>

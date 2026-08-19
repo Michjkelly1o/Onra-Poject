@@ -70,8 +70,8 @@ export const packages: Package[] = [
     {
         id: "pkg_1_class_intro",
         name: "Single class for 7 days",
-        description: "3 classes to get you started — valid for 7 days from purchase.",
-        credits: 3,
+        description: "1 class to get you started — valid for 7 days from purchase.",
+        credits: 1,
         validity_days: 7,
         price_aed: 170,
         branch_ids: ["branch_forma_south", "branch_forma_east"],

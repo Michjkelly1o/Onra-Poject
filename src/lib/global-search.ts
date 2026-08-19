@@ -84,7 +84,7 @@ const PAGES: PageEntry[] = [
     { title: "Services",               href: "/admin/services",                   icon: CalendarCheck01 },
     // Services & products group — Sidebar parent is ShoppingBag01; Gift Cards
     // + Promo keep their own glyphs since those are universally recognised.
-    { title: "Memberships & Packages", href: "/admin/products",                   icon: ShoppingBag01 },
+    { title: "Plans",                  href: "/admin/products",                   icon: ShoppingBag01 },
     { title: "Gift Cards",             href: "/admin/products/gift-cards",        icon: Tag01 },
     { title: "Promotions",             href: "/admin/products/promo-codes",       icon: Percent01 },
     // Analytics group — Sidebar parent is BarChartSquare01. The live Insights

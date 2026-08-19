@@ -241,6 +241,113 @@ export function capacityByPeriod(
     });
 }
 
+// ── Time-of-day band heatmap (Class Utilization / Bookings) ─────────────────
+//
+// Client 2026-08-18 — the Coming Up capacity surface moves from a
+// per-type × per-period grid to a per-time-band × per-period grid, one
+// heatmap per active session type:
+//
+//   • Classes            → "Class Utilization" — cell = booked/capacity %
+//   • Private / Recovery → "Bookings"          — cell = booked-seat count
+//
+// Rows are the three time-of-day bands (Morning / Afternoon / Evening);
+// columns reuse the same `Period[]` window the rest of the tab draws.
+// The All-types view shows no band heatmap at all (removed).
+
+export type ComingBand = "morning" | "afternoon" | "evening";
+export const COMING_BANDS: readonly ComingBand[] = ["morning", "afternoon", "evening"] as const;
+export const COMING_BAND_LABEL: Record<ComingBand, string> = {
+    morning:   "Morning",
+    afternoon: "Afternoon",
+    evening:   "Evening",
+};
+
+/** Map a `HH:MM` start time → time-of-day band. Morning < 12:00,
+ *  Afternoon 12:00–16:59, Evening 17:00+. */
+function comingBand(startTime: string): ComingBand {
+    const hh = Number((startTime ?? "").slice(0, 2));
+    if (Number.isNaN(hh) || hh < 12) return "morning";
+    if (hh < 17) return "afternoon";
+    return "evening";
+}
+
+/** One cell of the band heatmap — a (band × period) bucket for a single
+ *  session type. `value` is null when the bucket has no sessions (drawn
+ *  as a "closed" dashed cell). */
+export interface BandHeatCell {
+    band: ComingBand;
+    periodIndex: number;
+    /** Utilization metric → fill % (0–100). Bookings metric → booked-seat
+     *  count. `null` = no sessions of this type in the band + period. */
+    value: number | null;
+    /** Raw booked-seat count (drives the bookings ramp + both tooltips). */
+    bookings: number;
+    /** Summed capacity across the bucket's sessions (utilization tooltip). */
+    capacity: number;
+    /** How many sessions fell in the bucket. */
+    sessions: number;
+}
+
+/** Full band-heatmap payload for one session type. */
+export interface BandHeatmap {
+    periods: Period[];
+    /** "utilization" for Classes, "bookings" for Private / Recovery. */
+    metric: "utilization" | "bookings";
+    /** Cells in band-major order (Morning row first, then Afternoon, …). */
+    cells: BandHeatCell[];
+    /** Largest booked-seat count across all cells — normalizes the
+     *  bookings color ramp so the busiest bucket reads darkest. */
+    maxBookings: number;
+    /** Capacity-weighted average fill % across the window (utilization only). */
+    avgFill: number;
+    /** Total booked seats across the window (bookings only). */
+    totalBookings: number;
+}
+
+/** Build the (band × period) heatmap for one session type. Classes are
+ *  measured by capacity utilization; private / recovery by raw booking
+ *  volume (they have no meaningful fixed capacity to divide against). */
+export function timeBandHeatmap(
+    sessions: ClassInstance[],
+    periods: Period[],
+    type: SessionType,
+): BandHeatmap {
+    const metric: "utilization" | "bookings" = type === "class" ? "utilization" : "bookings";
+    const cells: BandHeatCell[] = [];
+    let maxBookings = 0;
+    let windowCap = 0;
+    let windowBook = 0;
+    for (const band of COMING_BANDS) {
+        periods.forEach((period, periodIndex) => {
+            const daySet = new Set(period.dateISOs);
+            const scoped = sessions.filter(
+                s => s.type === type
+                    && daySet.has(s.dateISO.slice(0, 10))
+                    && comingBand(s.startTime) === band,
+            );
+            const capacity = scoped.reduce((n, s) => n + (s.capacity ?? 0), 0);
+            const bookings = scoped.reduce((n, s) => n + (s.booked ?? 0), 0);
+            windowCap  += capacity;
+            windowBook += bookings;
+            if (bookings > maxBookings) maxBookings = bookings;
+            const value = scoped.length === 0
+                ? null
+                : metric === "utilization"
+                    ? (capacity > 0 ? Math.round((bookings / capacity) * 100) : 0)
+                    : bookings;
+            cells.push({ band, periodIndex, value, bookings, capacity, sessions: scoped.length });
+        });
+    }
+    return {
+        periods,
+        metric,
+        cells,
+        maxBookings,
+        avgFill: windowCap > 0 ? Math.round((windowBook / windowCap) * 100) : 0,
+        totalBookings: windowBook,
+    };
+}
+
 // ── Event chips ─────────────────────────────────────────────────────────────
 
 /** The two chip signals we surface today:

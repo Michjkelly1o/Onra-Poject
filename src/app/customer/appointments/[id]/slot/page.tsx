@@ -21,7 +21,7 @@ import { useAppointment } from "@/lib/customer/appointments-data";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { useAppStore } from "@/lib/store";
-import { useAvailableSlots, useFlexibleAvailableSlots } from "@/lib/customer/slot-availability";
+import { useAvailableSlots, useFlexibleAvailableSlots, useDaysWithAvailability, firstAvailableDay } from "@/lib/customer/slot-availability";
 import { appointmentDraft, ensureAppointmentDraft, resetAppointmentDraft } from "@/lib/customer/booking-flow";
 import { AppointmentFlowHeader } from "@/components/customer/appointments/AppointmentFlowHeader";
 import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
@@ -75,19 +75,47 @@ export default function SelectSlotPage() {
     const flexibleSlots = useFlexibleAvailableSlots(appointment, dateISO);
     const slots = isFlexible ? flexibleSlots : singleSlots;
 
+    // Which days (today … +6 weeks) have ≥1 bookable slot. Days NOT in this set
+    // are greyed out + non-tappable, and the selection auto-lands on the first
+    // available day rather than dropping the shopper on an empty day.
+    const availableDays = useDaysWithAvailability(appointment, appointmentDraft.instructorId, isFlexible);
+    const dayHasSlots = (d: string) => availableDays.has(d);
+
+    // On entry (once availability is known), if the current day has nothing
+    // bookable and the draft isn't already parked on an available day, jump the
+    // strip + selection to the earliest available day. Runs once so it never
+    // fights a manual pick.
+    const didAutoJumpRef = useRef(false);
+    useEffect(() => {
+        if (didAutoJumpRef.current || availableDays.size === 0) return;
+        didAutoJumpRef.current = true;
+        const draftOnAvailable = !!appointmentDraft.slotISO && availableDays.has(appointmentDraft.slotISO);
+        if (!draftOnAvailable && !availableDays.has(dateISO)) {
+            const first = firstAvailableDay(availableDays);
+            setWeekStartISO(first);
+            setDateISO(first);
+            setSlot(appointmentDraft.slotISO === first ? appointmentDraft.slotTime : null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [availableDays]);
+
     // Month sheet bounds — today → +1 year (mirrors the Search date selector).
     const anchor = new Date(`${weekStartISO}T00:00:00`);
     const today = new Date(`${REAL_TODAY_ISO}T00:00:00`);
     const minYear = today.getFullYear();
     const maxYear = minYear + 1;
 
-    /** Jump the strip to the chosen month (clamped so it never starts before today). */
+    /** Jump the strip to the chosen month (clamped so it never starts before
+     *  today), snapping the selection to the first available day on/after that
+     *  start so the shopper never lands on an empty day. */
     function jumpToMonth(m: number, y: number) {
         const first = `${y}-${String(m + 1).padStart(2, "0")}-01`;
-        const start = first < REAL_TODAY_ISO ? REAL_TODAY_ISO : first;
-        setWeekStartISO(start);
-        setDateISO(start);
-        setSlot(appointmentDraft.slotISO === start ? appointmentDraft.slotTime : null);
+        const clamped = first < REAL_TODAY_ISO ? REAL_TODAY_ISO : first;
+        const nextAvailable = Array.from(availableDays).filter((d) => d >= clamped).sort()[0];
+        const target = nextAvailable ?? clamped;
+        setWeekStartISO(target);
+        setDateISO(target);
+        setSlot(appointmentDraft.slotISO === target ? appointmentDraft.slotTime : null);
         setMonthOpen(false);
     }
 
@@ -131,16 +159,24 @@ export default function SelectSlotPage() {
                 <div className="flex w-full items-center gap-2">
                     {days.map((d) => {
                         const active = d === dateISO;
+                        // No bookable slot that day → greyed out + non-tappable.
+                        const disabled = !dayHasSlots(d);
                         return (
                             <button
                                 key={d}
                                 type="button"
+                                disabled={disabled}
                                 onClick={() => {
+                                    if (disabled) return;
                                     setDateISO(d);
                                     setSlot(appointmentDraft.slotISO === d ? appointmentDraft.slotTime : null);
                                 }}
                                 className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl p-2 transition-colors ${
-                                    active ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[var(--colors-border-secondary)] bg-white"
+                                    active
+                                        ? "border-2 border-[var(--brand-primary)] bg-white"
+                                        : disabled
+                                            ? "cursor-not-allowed border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] opacity-40"
+                                            : "border border-[var(--colors-border-secondary)] bg-white"
                                 }`}
                             >
                                 <span

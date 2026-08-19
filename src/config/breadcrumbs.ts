@@ -45,12 +45,12 @@ export interface BreadcrumbSegment {
 const MODULE_LABELS: Record<string, string> = {
     "/admin/dashboard":                "Dashboard",
     "/admin/schedule":                 "Schedule",
-    "/admin/class-types":              "Class",
+    "/admin/class-types":              "Classes",
     "/admin/services":                 "Appointment services",
     "/admin/categories":               "Categories",
     "/admin/customers":                "Customers",
     "/admin/pos":                      "Point of sale",
-    "/admin/products":                 "Memberships & packages",
+    "/admin/products":                 "Plans",
     "/admin/products/gift-cards":      "Gift cards",
     "/admin/products/retail":          "Retail",
     "/admin/products/retail-categories": "Retail categories",
@@ -124,7 +124,7 @@ interface ModuleRoot {
 const MODULE_ROOT: ModuleRoot[] = [
     { prefix: "/customers",           listPath: "/admin/customers",         label: "Customers",             detailNoun: "Customer details" },
     { prefix: "/schedule",            listPath: "/admin/schedule",          label: "Schedule",              detailNoun: "Class details" },
-    { prefix: "/class-types",         listPath: "/admin/class-types",       label: "Class",                 detailNoun: "Template details" },
+    { prefix: "/class-types",         listPath: "/admin/class-types",       label: "Classes",               detailNoun: "Template details" },
     { prefix: "/services",            listPath: "/admin/services",          label: "Appointment services",
       // Client 2026-07-21 — swap the static "Service details" for a
       // type-aware noun that mirrors the module name the customer sees
@@ -147,7 +147,7 @@ const MODULE_ROOT: ModuleRoot[] = [
     { prefix: "/products/gift-cards", listPath: "/admin/products/gift-cards",  label: "Gift cards",         detailNoun: "Gift card details" },
     { prefix: "/products/retail",     listPath: "/admin/products/retail",       label: "Retail",             detailNoun: "Retail product" },
     { prefix: "/products/promo-codes",listPath: "/admin/products/promo-codes", label: "Promotions",         detailNoun: "Promo details" },
-    { prefix: "/products",            listPath: "/admin/products",          label: "Memberships & packages", detailNoun: "Product details" },
+    { prefix: "/products",            listPath: "/admin/products",          label: "Plans",                  detailNoun: "Product details" },
     { prefix: "/marketing",           listPath: "/admin/marketing",         label: "Campaigns",             detailNoun: "Campaign details" },
     { prefix: "/announcements",       listPath: "/admin/marketing/announcements", label: "Announcements",   detailNoun: "Announcement details" },
     { prefix: "/settings/branches",   listPath: "/admin/settings/business-locations", label: "Business & locations", detailNoun: "Branch details",

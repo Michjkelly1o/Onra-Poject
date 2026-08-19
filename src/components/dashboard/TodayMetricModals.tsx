@@ -334,7 +334,7 @@ export function TodayRevenueModal({ open, onClose, branchIds, todayISO, typeFilt
                         <tr>
                             <th className={TH}>Customer</th>
                             <th className={TH}>Detail</th>
-                            <th className={TH}>Recognised</th>
+                            <th className={TH}>Earned</th>
                         </tr>
                     </thead>
                     <tbody>

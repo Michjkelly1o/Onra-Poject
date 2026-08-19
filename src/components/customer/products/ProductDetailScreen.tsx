@@ -18,7 +18,7 @@ import { ChevronLeft, ChevronRight, Clock, CreditCard02, CurrencyDollarCircle, G
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext, ALL_BRANCHES } from "@/lib/customer/context";
 import { useCatalogProducts } from "@/lib/customer/products-catalog";
-import { addToCart, ensurePurchaseCart, purchaseCart, usePurchasePlans, type PlanKind, type PlanRow } from "@/lib/customer/purchase";
+import { addToCart, ensurePurchaseCart, purchaseCart, retailCartBranchId, usePurchasePlans, type PlanKind, type PlanRow } from "@/lib/customer/purchase";
 import { Rings } from "@/components/customer/products/ProductArt";
 import { Button } from "@/components/ui/button";
 
@@ -209,12 +209,32 @@ export function ProductDetailScreen({
                 ? needsBranchPick || retailOutOfStock || needsSize || (hasSizes && selectedSizeStock <= 0)
                 : false;
 
+    /** A single invoice may only hold retail from ONE branch (retail is collected
+     *  in person). Blocks + explains when the cart already has retail from a
+     *  different branch than the one currently selected. Returns true = blocked. */
+    function retailBranchBlocked(): boolean {
+        if (!isRetail) return false;
+        const cartBranch = retailCartBranchId();
+        if (cartBranch && cartBranch !== selectedBranchId) {
+            const existingName = branches.find((b) => b.id === cartBranch)?.name ?? "another branch";
+            showToast(
+                "Different branch",
+                `Retail items must be purchased from the same branch. Your cart already has items from ${existingName}.`,
+                "error",
+                "slash",
+            );
+            return true;
+        }
+        return false;
+    }
+
     function onAdd() {
         if (isGift) {
             if (onGiftConfigure) onGiftConfigure("add");
             else router.push(`/customer/products/gift-card/${product!.id}`);
             return;
         }
+        if (retailBranchBlocked()) return;
         // Packages + retail both open at their current cart qty and let the
         // shopper set an explicit total — so an existing line is OVERWRITTEN
         // rather than added onto.
@@ -228,7 +248,7 @@ export function ProductDetailScreen({
             existing.quantity = qty;
             showToast("Cart updated", `${product!.name}${sizeSuffix} quantity set to ${qty}.`, "success", "check");
         } else {
-            addToCart(product!, isPackage || isRetail ? qty : 1, chosenSize);
+            addToCart(product!, isPackage || isRetail ? qty : 1, chosenSize, isRetail ? selectedBranchId : undefined);
             showToast("Added to cart", `${product!.name}${sizeSuffix} added to your cart.`, "success", "check");
         }
         bump();
@@ -244,12 +264,14 @@ export function ProductDetailScreen({
             else router.push(`/customer/products/gift-card/${product!.id}?pay=1`);
             return;
         }
+        if (retailBranchBlocked()) return;
+        const chosenSize = hasSizes ? (selectedSize ?? undefined) : undefined;
         const existing =
             isPackage || isRetail
-                ? purchaseCart.items.find((i) => i.id === product!.id && i.kind === product!.kind)
+                ? purchaseCart.items.find((i) => i.id === product!.id && i.kind === product!.kind && i.size === chosenSize)
                 : null;
         if (existing) existing.quantity = qty;
-        else addToCart(product!, isPackage || isRetail ? qty : 1);
+        else addToCart(product!, isPackage || isRetail ? qty : 1, chosenSize, isRetail ? selectedBranchId : undefined);
         if (onCheckout) onCheckout();
         else router.push("/customer/products/checkout");
     }

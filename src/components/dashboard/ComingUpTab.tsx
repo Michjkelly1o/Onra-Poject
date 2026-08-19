@@ -32,14 +32,14 @@ import type {
 import {
     windowPeriods,
     revenueByPeriod,
-    capacityByPeriod,
+    timeBandHeatmap,
     stripMetrics,
     eventChips,
 } from "@/lib/dashboard/coming-up";
 import { SESSION_TYPE_LABEL } from "@/lib/session-type";
 import { ComingUpTileStrip, type ComingTileKey } from "./ComingUpTileStrip";
 import { RevenueOutlookChart } from "./RevenueOutlookChart";
-import { CapacityHeatmap } from "./CapacityHeatmap";
+import { SessionBandHeatmap } from "./CapacityHeatmap";
 
 export interface ComingUpTabProps {
     /** Merged branch-scoped session feed (classes + appointments as
@@ -86,8 +86,10 @@ export function ComingUpTab({
         () => revenueByPeriod(sessions, periods, type),
         [sessions, periods, type],
     );
-    const capacityRows = useMemo(
-        () => capacityByPeriod(sessions, periods, type),
+    // Band heatmap is per-type only — the All-types view shows none
+    // (client 2026-08-18). Computed lazily for the active type filter.
+    const bandHeatmap = useMemo(
+        () => (type === "" ? null : timeBandHeatmap(sessions, periods, type)),
         [sessions, periods, type],
     );
 
@@ -127,10 +129,15 @@ export function ComingUpTab({
     // "Classes · " prefix for single-type views).
     const scopePrefix = type === "" ? "" : `${SESSION_TYPE_LABEL[type]} · `;
     const unitLabel = `${scopePrefix}by ${granularity}`;
-    // Capacity heatmap gets a per-type avg suffix so the block header
-    // reads "Classes · by day · avg 63%" in single-type mode.
-    const avgSuffix = type === "" ? "" : ` · avg ${metrics.capacityByType[type]}%`;
-    const capacityUnitLabel = `${unitLabel}${avgSuffix}`;
+    // Band-heatmap header. Title carries the type ("Class Utilization" /
+    // "Bookings"), so the subtitle drops the type prefix and appends a
+    // window summary — avg fill % for classes, total bookings otherwise.
+    const bandTitle = type === "class" ? "Class utilization" : "Bookings";
+    const bandUnitLabel = bandHeatmap
+        ? bandHeatmap.metric === "utilization"
+            ? `by ${granularity} · avg ${bandHeatmap.avgFill}%`
+            : `by ${granularity} · ${bandHeatmap.totalBookings} booking${bandHeatmap.totalBookings === 1 ? "" : "s"}`
+        : "";
 
     return (
         <div className="flex flex-col gap-4">
@@ -146,13 +153,18 @@ export function ComingUpTab({
                 granularity={granularity}
             />
 
-            {/* Capacity heatmap */}
-            <CapacityHeatmap
-                rows={capacityRows}
-                typeFilter={type}
-                unitLabel={capacityUnitLabel}
-                granularity={granularity}
-            />
+            {/* Session band heatmap — per-type only. Classes → "Class
+                Utilization" (fill %), Private / Recovery → "Bookings"
+                (count). Hidden entirely in the All-types view. */}
+            {type !== "" && bandHeatmap && (
+                <SessionBandHeatmap
+                    heatmap={bandHeatmap}
+                    type={type}
+                    title={bandTitle}
+                    unitLabel={bandUnitLabel}
+                    granularity={granularity}
+                />
+            )}
 
             <p className="text-[11.5px] text-[var(--colors-fg-quaternary)] italic mt-1">
                 Individual items to fix live in Today → Act on it. Click a

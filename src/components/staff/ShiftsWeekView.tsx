@@ -34,8 +34,6 @@ import { AssignShiftPickerCard } from "@/components/schedule/AssignShiftPickerCa
 import { UnassignShiftModal } from "@/components/schedule/UnassignShiftModal";
 import { ShiftPeriodModal } from "@/components/schedule/ShiftPeriodModal";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
-import { SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
-import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { getCategoryColor } from "@/components/schedule/ScheduleGridViews";
 import { useAppStore, type Staff, type Shift, type ShiftAssignment, type SessionType } from "@/lib/store";
 import { timeRangesOverlap } from "@/lib/staff/shift-conflict";
@@ -199,10 +197,10 @@ function ShiftSliceCard({ shift, sessions, partialOffs, onUnassign, onCardClick 
                     <div key={`d${i}`} className="absolute inset-y-0 w-px bg-[#e4e7ec]" style={{ left: `${d}%` }} />
                 ))}
             </div>
-            {/* Text overlay — same padding + type sizes as the previous card. */}
+            {/* Text overlay — shift TIME only, in the title font (client 2026-08-14;
+                the shift name moved to the native tooltip + the popover header). */}
             <div className="relative pl-[10px] pr-2 py-1.5">
-                <p className="truncate text-[12px] font-semibold leading-4 pr-4 text-[#101828]">{shift.name}</p>
-                <p className="truncate text-[11px] leading-4 text-[#667085]">{time}</p>
+                <p className="truncate text-[12px] font-semibold leading-4 pr-4 text-[#101828]">{time}</p>
             </div>
             {onUnassign && (
                 <button type="button" aria-label="Unassign shift"
@@ -227,10 +225,13 @@ type ShiftPopoverItem =
     | { kind: "session"; id: string; startTime: string; displayTime: string; name: string; type: SessionType; category: string; booked: number; capacity: number; status: string }
     | { kind: "off"; id: string; startTime: string; label: string; sub: string };
 
-function ShiftHoverPopover({ shift, items, anchor, onClose }: {
+function ShiftHoverPopover({ shift, items, anchor, dayISO, onOpenDay, onClose }: {
     shift: Shift;
     items: ShiftPopoverItem[];
     anchor: { left: number; right: number; top: number };
+    /** ISO day of this shift card — clicking a session opens the Day view here. */
+    dayISO: string;
+    onOpenDay: (dayISO: string) => void;
     onClose: () => void;
 }) {
     const WIDTH = 320, MAX_H = 420;
@@ -265,21 +266,13 @@ function ShiftHoverPopover({ shift, items, anchor, onClose }: {
                         </div>
                     </div>
                 ) : (
-                    <div key={it.id} className="flex items-start gap-3 px-2 py-2 rounded-[8px]">
-                        <span className="mt-1.5 w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getCategoryColor(it.category).border }} aria-hidden />
-                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-[13px] font-medium text-[var(--colors-text-secondary)] shrink-0">{it.displayTime}</span>
-                                <span className="text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">{it.name}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 min-w-0">
-                                <SessionTypeTag type={it.type} />
-                                <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">·</span>
-                                <span className="text-[12px] text-[var(--colors-text-quaternary)] shrink-0">{it.booked}/{it.capacity}</span>
-                            </div>
-                        </div>
-                        <StatusBadge type="class" status={it.status} />
-                    </div>
+                    <button key={it.id} type="button"
+                        onClick={() => { onClose(); onOpenDay(dayISO); }}
+                        className="w-full flex items-center gap-3 px-2 py-2 rounded-[8px] text-left hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getCategoryColor(it.category).border }} aria-hidden />
+                        <span className="flex-1 text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">{it.name}</span>
+                        <span className="text-[13px] text-[var(--colors-text-quaternary)] shrink-0">{it.displayTime}</span>
+                    </button>
                 ))}
             </div>
         </div>
@@ -584,7 +577,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     const [unassignDay, setUnassignDay] = useState<{ assignmentId: string; shiftName: string; staffName: string; dayIdx: number; dayLabel: string } | null>(null);
     // Shift-card hover popover state (client 2026-08-11) — open/close on a short
     // delay so a quick pass-through doesn't flash the popover.
-    const [hover, setHover] = useState<{ cardKey: string; shift: Shift; items: ShiftPopoverItem[]; anchor: { left: number; right: number; top: number } } | null>(null);
+    const [hover, setHover] = useState<{ cardKey: string; shift: Shift; items: ShiftPopoverItem[]; anchor: { left: number; right: number; top: number }; dayISO: string } | null>(null);
     const roles            = useAppStore(s => s.roles);
     const shifts           = useAppStore(s => s.shifts);
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
@@ -774,10 +767,10 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     }
 
     // Click a shift card to toggle its schedule popover (client 2026-08-12).
-    function toggleHover(cardKey: string, shift: Shift, items: ShiftPopoverItem[], rect: DOMRect) {
+    function toggleHover(cardKey: string, shift: Shift, items: ShiftPopoverItem[], rect: DOMRect, dayISO: string) {
         setHover(cur => (cur && cur.cardKey === cardKey)
             ? null
-            : { cardKey, shift, items, anchor: { left: rect.left, right: rect.right, top: rect.top } });
+            : { cardKey, shift, items, anchor: { left: rect.left, right: rect.right, top: rect.top }, dayISO });
     }
 
     /** Assign `shiftId` to `staff` — but first guard against a same-day time
@@ -1049,7 +1042,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                     onPick={(shiftId) => requestAssign(s, shiftId)}
                                                     onAddShift={() => openStaffFormPanel({ kind: "shift", mode: "create" })}
                                                     onUnassign={() => setUnassignStaff(s)}
-                                                    onViewSchedule={() => router.push(`/admin/schedule?instructorId=${s.id}`)}
+                                                    onViewSchedule={() => router.push(`/admin/schedule?instructorId=${s.id}&view=day`)}
                                                     onOpen={onFlyoutOpen}
                                                     mainPanelOpen={mainPanelOpen}
                                                 />
@@ -1097,14 +1090,14 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                             <ShiftSliceCard key={assignment.id} shift={shift}
                                                                 sessions={sessionsForStaffOnDay(s.id, day)}
                                                                 partialOffs={partialOffsForStaffOnDay(s.id, day)}
-                                                                onCardClick={(rect) => toggleHover(assignment.id, shift, scheduleItemsForShift(s.id, day, shift), rect)}
-                                                                onUnassign={() => setUnassignDay({
+                                                                onCardClick={(rect) => toggleHover(assignment.id, shift, scheduleItemsForShift(s.id, day, shift), rect, isoDayLocal(day))}
+                                                                onUnassign={isoDayLocal(day) >= todayISO ? () => setUnassignDay({
                                                                     assignmentId: assignment.id,
                                                                     shiftName: shift.name,
                                                                     staffName: s.fullName,
                                                                     dayIdx,
                                                                     dayLabel,
-                                                                })} />
+                                                                }) : undefined} />
                                                         ))}
                                                         <DayAddShiftMenu
                                                             staffName={s.fullName}
@@ -1135,6 +1128,8 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                     shift={hover.shift}
                     items={hover.items}
                     anchor={hover.anchor}
+                    dayISO={hover.dayISO}
+                    onOpenDay={(iso) => router.push(`/admin/schedule?view=day&date=${iso}`)}
                     onClose={() => setHover(null)}
                 />
             )}

@@ -27,6 +27,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type MarketingItem } from "@/lib/store";
+import { openMarketingFormPanel } from "@/lib/marketing-form-panel";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
@@ -149,7 +150,6 @@ function AnnouncementCardView({ item, onOpen, totalBranches }: { item: Marketing
     const showToast           = useAppStore(s => s.showToast);
     const [confirmAction, setConfirmAction] = useState<AnnouncementCardAction | null>(null);
     const canDelete = (item.view_count ?? 0) === 0;
-    const editHref  = `/announcements/${item.id}/edit?returnTo=${encodeURIComponent(LIST_PATH)}`;
     const items: RowActionItem[] = (() => {
         const base: RowActionItem[] = [{ label: "View details", icon: Eye, onClick: onOpen }];
         if (item.status === "archived") {
@@ -162,7 +162,7 @@ function AnnouncementCardView({ item, onOpen, totalBranches }: { item: Marketing
             return base;
         }
         // Active
-        base.push({ label: "Edit announcement", icon: Edit02, onClick: () => router.push(editHref) });
+        base.push({ label: "Edit announcement", icon: Edit02, onClick: () => openMarketingFormPanel({ kind: "announcement", mode: "edit", id: item.id }) });
         base.push({ label: "Archive announcement", icon: Archive, onClick: () => setConfirmAction("archive") });
         if (canDelete) {
             base.push({ label: "Delete announcement", icon: Trash02, danger: true, onClick: () => setConfirmAction("delete") });
@@ -489,7 +489,7 @@ export default function AnnouncementsListPage() {
                 <ToolbarImportButton visible={announcements.length === 0 && !search.trim() && !hasActiveFilter} />
 
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push(`/announcements/new?returnTo=${encodeURIComponent(LIST_PATH)}`)}>
+                    onClick={() => openMarketingFormPanel({ kind: "announcement", mode: "create" })}>
                     Add
                 </Button>
             </div>
@@ -516,11 +516,13 @@ export default function AnnouncementsListPage() {
             {/* ── Archived section — card grid, no pagination, hugging layout
                    (policy §3). Renders only when archived announcements exist. */}
             <ArchivedSection entitySingular="announcement" count={archivedAnnouncements.length} fill={false} bordered={false}>
-                <div className="grid grid-cols-4 gap-4">
-                    {archivedAnnouncements.map(m => (
-                        <AnnouncementCardView key={m.id} item={m} totalBranches={totalBranches}
-                            onOpen={() => router.push(`/announcements/${m.id}?returnTo=${encodeURIComponent(LIST_PATH)}`)} />
-                    ))}
+                <div className="px-6 py-4">
+                    <div className="grid grid-cols-4 gap-4">
+                        {archivedAnnouncements.map(m => (
+                            <AnnouncementCardView key={m.id} item={m} totalBranches={totalBranches}
+                                onOpen={() => router.push(`/announcements/${m.id}?returnTo=${encodeURIComponent(LIST_PATH)}`)} />
+                        ))}
+                    </div>
                 </div>
             </ArchivedSection>
 
