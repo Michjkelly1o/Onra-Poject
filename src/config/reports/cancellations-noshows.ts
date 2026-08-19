@@ -41,6 +41,7 @@ export const CANCELLATIONS_NOSHOWS_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.cancelledAtISO,  label: "Cancellation date", kind: "date",     minWidth: 160 },
+        { key: K.location,        label: "Location",          kind: "text",     minWidth: 180 },
         { key: K.classDateISO,    label: "Class date",        kind: "date",     minWidth: 140 },
         { key: K.classDay,        label: "Class day",         kind: "text",     minWidth: 120 },
         { key: K.startTime,       label: "Start time",        kind: "text",     minWidth: 120 },
@@ -56,7 +57,6 @@ export const CANCELLATIONS_NOSHOWS_REPORT: ReportDefinition = {
         { key: K.charge,          label: "Charge",            kind: "currency", minWidth: 130 },
         { key: K.paymentStatus,   label: "Payment status",    kind: "status",   minWidth: 150 },
         { key: K.salesChannel,    label: "Sales channel",     kind: "text",     minWidth: 180 },
-        { key: K.location,        label: "Location",          kind: "text",     minWidth: 180 },
     ],
 
     // Sheet 1 defaults: type · class · customer.

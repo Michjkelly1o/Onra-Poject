@@ -46,6 +46,7 @@ export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
         { key: K.staffId,          label: "Staff ID",          kind: "id",     minWidth: 160, hiddenByDefault: true },
         { key: K.role,             label: "Role",              kind: "text",   minWidth: 160 },
         { key: K.classDateISO,     label: "Class date",        kind: "date",   minWidth: 140 },
+        { key: K.location,         label: "Location",          kind: "text",   minWidth: 180 },
         { key: K.classDay,         label: "Class day",         kind: "text",   minWidth: 120 },
         { key: K.startTime,        label: "Start time",        kind: "text",   minWidth: 120 },
         { key: K.endTime,          label: "End time",          kind: "text",   minWidth: 120 },
@@ -57,7 +58,6 @@ export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
         { key: K.scheduledHours,   label: "Scheduled hours",   kind: "number", minWidth: 160 },
         { key: K.actualHours,      label: "Actual hours",      kind: "number", minWidth: 140 },
         { key: K.hoursVariance,    label: "Hours variance",    kind: "number", minWidth: 150, calc: "Actual hours − Scheduled hours" },
-        { key: K.location,         label: "Location",          kind: "text",   minWidth: 180 },
     ],
 
     // Sheet 1 defaults: staff · role · location.

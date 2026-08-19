@@ -39,6 +39,7 @@ export const CLASS_PERFORMANCE_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.dateISO,           label: "Date",              kind: "date",    minWidth: 130 },
+        { key: K.location,          label: "Location",          kind: "text",    minWidth: 180 },
         { key: K.className,         label: "Class name",        kind: "text",    minWidth: 220 },
         { key: K.classType,         label: "Class type",        kind: "text",    minWidth: 180 },
         { key: K.instructor,        label: "Instructor",        kind: "text",    minWidth: 180 },
@@ -52,7 +53,6 @@ export const CLASS_PERFORMANCE_REPORT: ReportDefinition = {
         { key: K.fillRatePct,       label: "Fill rate %",       kind: "percent", minWidth: 140, calc: "Booked ÷ Capacity" },
         { key: K.attendanceRatePct, label: "Attendance rate %", kind: "percent", minWidth: 170, calc: "Attended ÷ Booked" },
         { key: K.noShowRatePct,     label: "No-show rate %",    kind: "percent", minWidth: 150, calc: "No-shows ÷ Booked" },
-        { key: K.location,          label: "Location",          kind: "text",    minWidth: 180 },
     ],
 
     // Sheet 1 defaults: class type · instructor · day · time slot.

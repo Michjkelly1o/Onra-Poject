@@ -51,6 +51,7 @@ export const PAYMENTS_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.paymentDateISO, label: "Payment date",         kind: "date",     minWidth: 140 },
+        { key: K.location,       label: "Location",             kind: "text",     minWidth: 180 },
         { key: K.paymentId,      label: "Payment #",            kind: "id",       minWidth: 180 },
         { key: K.txnId,          label: "Transaction #",        kind: "id",       minWidth: 180, hiddenByDefault: true },
         { key: K.customerName,   label: "Customer name",        kind: "text",     minWidth: 200 },
@@ -70,7 +71,6 @@ export const PAYMENTS_REPORT: ReportDefinition = {
         { key: K.payoutId,       label: "Payout / settlement ID", kind: "id",     minWidth: 180, hiddenByDefault: true },
         { key: K.processorFee,   label: "Processor fee",        kind: "currency", minWidth: 140 },
         { key: K.netPayout,      label: "Net payout",           kind: "currency", minWidth: 140, calc: "Payment − Processor fee" },
-        { key: K.location,       label: "Location",             kind: "text",     minWidth: 180 },
     ],
 
     dimensions: [

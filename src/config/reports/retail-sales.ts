@@ -43,6 +43,7 @@ export const RETAIL_SALES_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.dateISO,           label: "Date",              kind: "date",     minWidth: 130 },
+        { key: K.location,          label: "Location",          kind: "text",     minWidth: 180 },
         { key: K.transactionNumber, label: "Transaction #",     kind: "id",       minWidth: 200 },
         { key: K.transactionType,   label: "Transaction type",  kind: "status",   minWidth: 140 },
         { key: K.customerName,      label: "Customer name",     kind: "text",     minWidth: 200 },
@@ -61,7 +62,6 @@ export const RETAIL_SALES_REPORT: ReportDefinition = {
         { key: K.attachedTo,        label: "Attached to",       kind: "status",   minWidth: 130 },
         { key: K.salesChannel,      label: "Sales channel",     kind: "status",   minWidth: 140 },
         { key: K.staffId,           label: "Staff ID",          kind: "id",       minWidth: 160, hiddenByDefault: true },
-        { key: K.location,          label: "Location",          kind: "text",     minWidth: 180 },
     ],
 
     // Plan doc default: by product; secondary breakdowns available.

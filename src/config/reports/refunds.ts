@@ -47,6 +47,7 @@ export const REFUNDS_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.refundDateISO,        label: "Date",                  kind: "date",     minWidth: 130 },
+        { key: K.location,             label: "Location",              kind: "text",     minWidth: 180 },
         { key: K.txnId,                label: "Transaction #",         kind: "id",       minWidth: 200 },
         { key: K.originalTxnId,        label: "Original transaction #", kind: "id",      minWidth: 200 },
         { key: K.customerName,         label: "Customer name",         kind: "text",     minWidth: 200 },
@@ -59,7 +60,6 @@ export const REFUNDS_REPORT: ReportDefinition = {
         { key: K.reason,               label: "Reason",                kind: "text",     minWidth: 240 },
         { key: K.salesChannel,         label: "Sales channel",         kind: "text",     minWidth: 160 },
         { key: K.staffId,              label: "Staff ID",              kind: "id",       minWidth: 160 },
-        { key: K.location,             label: "Location",              kind: "text",     minWidth: 180 },
     ],
 
     // Sheet 1 defaults: reason · revenue category · sales channel.

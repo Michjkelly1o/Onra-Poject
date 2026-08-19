@@ -35,6 +35,7 @@ export const BOOKINGS_REPORT: ReportDefinition = {
 
     columns: [
         { key: K.bookingDateISO,   label: "Booking date",     kind: "date",   minWidth: 140 },
+        { key: K.location,         label: "Location",         kind: "text",   minWidth: 180 },
         { key: K.classDateISO,     label: "Class date",       kind: "date",   minWidth: 140 },
         { key: K.typeLabel,        label: "Type",             kind: "text",   minWidth: 140 },
         { key: K.instructor,       label: "Instructor",       kind: "text",   minWidth: 180 },
@@ -44,7 +45,6 @@ export const BOOKINGS_REPORT: ReportDefinition = {
         { key: K.outcomeLabel,     label: "Status",           kind: "status", minWidth: 140 },
         { key: K.cancellationType, label: "Cancellation type", kind: "text",  minWidth: 170 },
         { key: K.salesChannel,     label: "Sales channel",    kind: "text",   minWidth: 180 },
-        { key: K.location,         label: "Location",         kind: "text",   minWidth: 180 },
     ],
 
     // Sheet 1 defaults: status · event type · customer · instructor · sales channel.
