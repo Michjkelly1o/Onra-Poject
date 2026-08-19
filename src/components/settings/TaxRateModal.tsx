@@ -354,15 +354,15 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="border-t border-[var(--colors-border-secondary)] px-6 pt-5 pb-6 flex gap-3">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
+                {/* Footer — matches the Marketing campaign side-panel footer bar
+                    (border-t · px-6 py-4 · Cancel left / primary right, size md). */}
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between w-full">
+                    <Button variant="secondary-gray" size="md" onClick={onClose}>
                         Cancel
                     </Button>
                     <Button
                         variant="primary"
-                        size="lg"
-                        className="flex-1"
+                        size="md"
                         disabled={touched && !canSubmit}
                         onClick={handleSubmit}
                     >

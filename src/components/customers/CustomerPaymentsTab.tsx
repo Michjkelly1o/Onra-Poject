@@ -26,7 +26,7 @@ import { useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, ChevronLeft, XClose, AlignLeft,
     CoinsSwap02, CreditCard01, CreditCard02, Package, Gift01, BankNote01,
-    SlashCircle01,
+    SlashCircle01, Calendar,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -147,7 +147,9 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
             ? Gift01
             : (kind === "cancellation_penalty" || kind === "freeze_fee")
                 ? SlashCircle01
-                : Package;
+                : (kind === "private" || kind === "recovery")
+                    ? Calendar   // sessions read as appointments, not boxed products
+                    : Package;
     return (
         <div className="relative shrink-0 size-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center">
             <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
