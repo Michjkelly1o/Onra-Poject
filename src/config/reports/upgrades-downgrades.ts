@@ -49,7 +49,7 @@ export const UPGRADES_DOWNGRADES_REPORT: ReportDefinition = {
         { key: K.delta,         label: "Delta",          kind: "currency", minWidth: 130, calc: "New price − Old price" },
         { key: K.salesChannel,  label: "Sales channel",  kind: "text",     minWidth: 160, hiddenByDefault: true },
         { key: K.staffName,     label: "Staff Name",     kind: "text",     minWidth: 180 },
-        { key: K.staffId,       label: "Staff ID",       kind: "id",       minWidth: 160 },
+        { key: K.staffId,       label: "Staff ID",       kind: "id",       minWidth: 160, hiddenByDefault: true },
     ],
 
     // Sheet 1 default: change type.

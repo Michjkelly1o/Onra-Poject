@@ -1156,6 +1156,7 @@ export interface RetailSalesRow {
     salesChannel: "in-person" | "online";
     /** Empty when online (self-service). */
     staffId: string;
+    staffName: string;
     branchId: string;
     location: string;
     /** Signed amount for pivot aggregation (matches other Financial
@@ -1201,6 +1202,7 @@ export interface RetailStockOnHandRow {
 export function selectRetailSales(state: AppState): RetailSalesRow[] {
     const loc = makeLocationLookup(state);
     const cust = makeCustomerLookup(state);
+    const staffName = new Map(state.staff.map(s => [s.id, s.fullName] as const));
     const productById = new Map(state.retailProducts.map(p => [p.id, p] as const));
     const categoryById = new Map(state.retailCategories.map(c => [c.id, c] as const));
 
@@ -1304,6 +1306,7 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
             attachedTo: saleAttached ? "Yes" : "No",
             salesChannel,
             staffId: t.staffId ?? "",
+            staffName: t.staffId ? (staffName.get(t.staffId) ?? "—") : "—",
             branchId: t.branchId,
             location: loc(t.branchId),
             signedAmount: net,
@@ -1336,6 +1339,7 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
                 attachedTo: refundAttached ? "Yes" : "No",
                 salesChannel,
                 staffId: t.staffId ?? "",
+                staffName: t.staffId ? (staffName.get(t.staffId) ?? "—") : "—",
                 branchId: t.branchId,
                 location: loc(t.branchId),
                 signedAmount: -net,

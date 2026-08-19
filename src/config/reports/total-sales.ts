@@ -90,7 +90,7 @@ export const TOTAL_SALES_REPORT: ReportDefinition = {
         { key: K.saleItems,        label: "Sale items",                   kind: "text",     minWidth: 240 },
         { key: K.quantity,         label: "Quantity",                     kind: "number",   minWidth: 100, hiddenByDefault: true },
         { key: K.grossSales,       label: "Gross sales",                  kind: "currency", minWidth: 140 },
-        { key: K.discountCode,     label: "Discount code",                kind: "text",     minWidth: 140 },
+        { key: K.discountCode,     label: "Discount code",                kind: "text",     minWidth: 140, hiddenByDefault: true },
         { key: K.discountValue,    label: "Discount value",               kind: "currency", minWidth: 140, calc: "Discount applied on the sale" },
         { key: K.netBeforeTax,     label: "Net sales (before tax)",       kind: "currency", minWidth: 240, calc: "Gross − Discount", hiddenByDefault: true },
         { key: K.taxCollected,     label: "Tax collected",                kind: "currency", minWidth: 140, calc: "Net(pre-tax) × rate", hiddenByDefault: true },

@@ -43,6 +43,7 @@ interface RetailSalesDisplayRow {
     grossMarginPct:     number;
     attachedTo:         string;
     salesChannel:       string;
+    staffName:          string;
     staffId:            string;
     branchId:           string;
     location:           string;
@@ -56,14 +57,15 @@ export default function RetailSalesReportPage() {
     const classSchedules         = useAppStore(s => s.classSchedules);
     const retailProducts         = useAppStore(s => s.retailProducts);
     const retailCategories       = useAppStore(s => s.retailCategories);
+    const staff                  = useAppStore(s => s.staff);
 
     const report = getReportById("retail-sales");
 
     const raw = useMemo<RetailSalesRow[]>(() => {
         if (!report) return [];
         const fn = resolveSelector(report) as unknown as (state: unknown) => RetailSalesRow[];
-        return fn({ customerTransactions, customers, branches, classBookings, classSchedules, retailProducts, retailCategories });
-    }, [report, customerTransactions, customers, branches, classBookings, classSchedules, retailProducts, retailCategories]);
+        return fn({ customerTransactions, customers, branches, classBookings, classSchedules, retailProducts, retailCategories, staff });
+    }, [report, customerTransactions, customers, branches, classBookings, classSchedules, retailProducts, retailCategories, staff]);
 
     const rows = useMemo<RetailSalesDisplayRow[]>(() => {
         return raw.map(r => ({

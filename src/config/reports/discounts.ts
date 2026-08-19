@@ -59,7 +59,7 @@ export const DISCOUNTS_REPORT: ReportDefinition = {
         { key: K.netAfterDiscount,     label: "Net sales after discount", kind: "currency", minWidth: 200, calc: "Gross − Discount", hiddenByDefault: true },
         { key: K.salesChannel,         label: "Sales channel",           kind: "text",     minWidth: 160, hiddenByDefault: true },
         { key: K.staffName,            label: "Staff Name",              kind: "text",     minWidth: 180 },
-        { key: K.staffId,              label: "Staff ID",                kind: "id",       minWidth: 160 },
+        { key: K.staffId,              label: "Staff ID",                kind: "id",       minWidth: 160, hiddenByDefault: true },
     ],
 
     // Sheet 1 defaults: discount code · revenue category.

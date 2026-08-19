@@ -36,12 +36,12 @@ export const PROMO_REDEMPTIONS_REPORT: ReportDefinition = {
         // multi-timezone deployments can tell rows apart at a glance
         // (client Jul 2026).
         { key: K.location,         label: "Location",           kind: "text",     minWidth: 200 },
-        { key: K.promoCode,        label: "Promotion",          kind: "id",       minWidth: 160 },
-        { key: K.promoName,        label: "Promotion name",     kind: "text",     minWidth: 220 },
+        { key: K.promoCode,        label: "Promo code",         kind: "id",       minWidth: 160 },
+        { key: K.promoName,        label: "Promo name",         kind: "text",     minWidth: 220 },
         { key: K.redemptions,      label: "Redemptions",        kind: "number",   minWidth: 140 },
         { key: K.discountGiven,    label: "Discount given",     kind: "currency", minWidth: 160 },
         { key: K.revenueFromPromo, label: "Sales from promo",   kind: "currency", minWidth: 180 },
-        { key: K.revenueCategory,  label: "Revenue category",   kind: "text",     minWidth: 160 },
+        { key: K.revenueCategory,  label: "Sales category",     kind: "text",     minWidth: 160 },
         { key: K.newVsExisting,    label: "New vs existing",    kind: "text",     minWidth: 160 },
     ],
 

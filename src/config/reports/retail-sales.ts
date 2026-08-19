@@ -26,6 +26,7 @@ const K = {
     grossMarginPct:     "grossMarginPct",
     attachedTo:         "attachedTo",
     salesChannel:       "salesChannel",
+    staffName:          "staffName",
     staffId:            "staffId",
     location:           "location",
 } as const;
@@ -61,6 +62,7 @@ export const RETAIL_SALES_REPORT: ReportDefinition = {
         { key: K.grossMarginPct,    label: "Gross margin %",    kind: "percent",  minWidth: 140, calc: "(Net sales − Cost) ÷ Net sales" },
         { key: K.attachedTo,        label: "Attached to",       kind: "status",   minWidth: 130 },
         { key: K.salesChannel,      label: "Sales channel",     kind: "status",   minWidth: 140 },
+        { key: K.staffName,         label: "Staff Name",        kind: "text",     minWidth: 180 },
         { key: K.staffId,           label: "Staff ID",          kind: "id",       minWidth: 160 },
     ],
 
