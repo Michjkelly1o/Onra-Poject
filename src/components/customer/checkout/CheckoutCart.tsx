@@ -233,16 +233,25 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [method, hasGiftCard]);
 
-    // Apple / Google pay are ALWAYS offered at checkout (no connect step); the
-    // saved cards + a redeemed gift card follow from the customer's records.
+    // Apple / Google Pay appear ONLY when the studio has that provider connected
+    // in Settings → Payments (admin-synced): if an admin disables/disconnects
+    // Apple or Google Pay it disappears here. Saved cards + a redeemed gift card
+    // follow from the customer's own records.
+    const paymentProviders = useAppStore((s) => s.paymentProviders);
+    const providerLive = (slug: string) =>
+        paymentProviders.some((p) => p.slug === slug && p.status === "connected");
     const { cards } = usePaymentMethods();
     const brandArt = (brand: string) =>
         brand.toLowerCase().includes("visa")
             ? { logo: "/images/pay/visa.svg", inset: "inset-[33.75%_17.1%_33.67%_13.91%]" }
             : { logo: "/images/pay/mastercard.svg", inset: "inset-[20.96%_17.8%_23.21%_17.39%]" };
     const methods: PayMethod[] = [
-        { id: "apple", label: "Apple pay", payLabel: "Apple pay", logo: "/images/pay/apple-pay.svg", inset: "inset-[29.17%_13.77%_27.42%_14.49%]" },
-        { id: "google", label: "Google pay", payLabel: "Google pay", icon: "google" as const },
+        ...(providerLive("apple_pay")
+            ? [{ id: "apple", label: "Apple pay", payLabel: "Apple pay", logo: "/images/pay/apple-pay.svg", inset: "inset-[29.17%_13.77%_27.42%_14.49%]" }]
+            : []),
+        ...(providerLive("google_pay")
+            ? [{ id: "google", label: "Google pay", payLabel: "Google pay", icon: "google" as const }]
+            : []),
         ...cards.map((c) => ({
             id: `card_${c.id}`,
             label: c.holder,

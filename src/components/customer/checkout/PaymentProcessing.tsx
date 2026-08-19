@@ -27,6 +27,7 @@ import {
     usePromo,
 } from "@/lib/customer/purchase";
 import { addPaymentRecord, methodKind } from "@/lib/customer/payment-history";
+import { formatTime12 } from "@/lib/customer/format";
 import { spendGiftCards } from "@/lib/customer/gift-cards";
 
 const STEPS = ["Processing payment", "Securing your payment", "Confirming your purchase"];
@@ -142,7 +143,7 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
                 items: orderLines,
                 txnId,
                 dateLabel: now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
-                timeLabel: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+                timeLabel: formatTime12(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`),
             };
 
             // Gift card — client 2026-07-31. The "Forma gift card" payment
@@ -173,7 +174,7 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
                 amount: totals.total,
                 status: "success",
                 dateISO: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
-                timeLabel: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+                timeLabel: formatTime12(`${pad(now.getHours())}:${pad(now.getMinutes())}`),
                 txnId,
                 items: orderLines,
                 totalItems,

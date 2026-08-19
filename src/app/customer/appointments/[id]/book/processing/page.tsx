@@ -41,12 +41,14 @@ export default function AppointmentProcessingPage() {
     const appointment = useAppointment(id);
     const instructors = useAppStore((s) => s.instructors);
     const branches = useAppStore((s) => s.branches);
+    const services = useAppStore((s) => s.services);
     const member = useCurrentCustomer();
-    const debitWallet = useAppStore((s) => s.debitWallet);
     const walletTxns = useAppStore((s) => s.walletTransactions);
-    // Mirror the booking into the shared admin store so it shows on the admin
-    // schedule + Appointment Details (Flexible badge + Reassign).
-    const addCustomerAppointment = useAppStore((s) => s.addCustomerAppointment);
+    // Route the appointment sale through the shared checkout path — it creates
+    // BOTH the shared appointment (admin schedule + Appointment Details, Flexible
+    // badge + Reassign) AND a service `customer_transaction` (the invoice that
+    // shows in Payment history), keeping admin + customer fully in sync.
+    const applyPurchase = useAppStore((s) => s.applyPurchase);
     // "Preference: Flexible" — the qualified instructors genuinely free for the
     // chosen slot. We auto-assign one at write time (below).
     const flexibleInstructorIds = useFlexibleInstructorsForSlot(
@@ -88,24 +90,52 @@ export default function AppointmentProcessingPage() {
                 ? instructors.find((i) => i.id === assignedInstructorId) ?? null
                 : null;
             const branch = branches.find((b) => b.id === appointment.branchId) ?? null;
-            // Create the shared admin appointment first so we can link its id
-            // onto the customer booking (enables admin reassign/cancel to
-            // reflect back, and the customer cancel to cascade to admin).
+            const service = services.find((sv) => sv.id === appointment.id);
+            const productType = service?.type === "recovery" ? "recovery" : "private";
+            const openSession = service?.openSession ?? appointment.type === "open";
+            // Account Credit applied toward this appointment, capped at the
+            // balance + the price. applyPurchase debits the wallet in the same
+            // tick, so there is no separate debit below.
+            const accountCreditApplied =
+                purchaseCart.redeemAccountCredit && member
+                    ? Math.min(walletBalanceAed(walletTxns, member.id), appointment.price)
+                    : 0;
+            // Commit the sale through applyPurchase (the SAME path admin POS uses)
+            // — it creates the shared appointment + the service transaction. We
+            // diff the shared appointmentBookings to recover the appointment id
+            // it created and link it onto the local booking (adminAppointmentId),
+            // so admin reassign/cancel reflect back and the customer cancel
+            // cascades to admin.
+            const bookingIdsBefore = new Set(useAppStore.getState().appointmentBookings.map((b) => b.id));
+            if (member) {
+                applyPurchase(
+                    member.id,
+                    [{
+                        productId: appointment.id,
+                        productType,
+                        name: appointment.name,
+                        unitPrice: appointment.price,
+                        quantity: 1,
+                        appointment: {
+                            dateISO: appointmentDraft.slotISO,
+                            startTime: appointmentDraft.slotTime,
+                            durationMin: appointment.durationMins,
+                            instructorId: assignedInstructorId,
+                            instructorName: inst?.name,
+                            flexible: isFlexible,
+                            openSession,
+                        },
+                    }],
+                    "customer_portal",
+                    undefined,
+                    accountCreditApplied > 0 ? accountCreditApplied : undefined,
+                );
+            }
             const adminAppointmentId = member
-                ? addCustomerAppointment({
-                    serviceId: appointment.id,
-                    dateISO: appointmentDraft.slotISO,
-                    startTime: appointmentDraft.slotTime,
-                    durationMins: appointment.durationMins,
-                    instructorId: assignedInstructorId,
-                    flexible: isFlexible,
-                    customer: {
-                        id: member.id,
-                        name: `${member.firstName} ${member.lastName}`.trim(),
-                        initials: member.initials,
-                        imageUrl: member.imageUrl,
-                    },
-                })
+                ? useAppStore
+                    .getState()
+                    .appointmentBookings.find((b) => !bookingIdsBefore.has(b.id) && b.customerId === member.id)
+                    ?.appointmentId
                 : undefined;
             bookingId = addAppointmentBooking({
                 appointmentId: appointment.id,
@@ -143,21 +173,8 @@ export default function AppointmentProcessingPage() {
                 relatedType: "appointment",
                 relatedId: bookingId,
             });
-            // Redeem Account Credit toward this AED appointment (never negative).
-            if (purchaseCart.redeemAccountCredit && member) {
-                const applied = Math.min(walletBalanceAed(walletTxns, member.id), appointment.price);
-                if (applied > 0) {
-                    debitWallet({
-                        customerId: member.id,
-                        amountAed: applied,
-                        reason: "Appointment payment — Account Credit redeemed",
-                        referenceType: "pos_sale",
-                        referenceId: bookingId,
-                        createdBy: "customer_portal",
-                        silent: true,
-                    });
-                }
-            }
+            // Account Credit was already applied + debited inside applyPurchase
+            // above (5th arg) — just clear the checkout toggle.
             purchaseCart.redeemAccountCredit = false;
         }
         const t1 = setTimeout(() => setStep(1), STEP_MS);
