@@ -167,6 +167,7 @@ function POSCheckoutInner() {
         if (paymentMethod === "card") return selectedCardId !== null;
         if (paymentMethod === "applepay") return true;
         if (paymentMethod === "googlepay") return true;
+        if (paymentMethod === "banktransfer") return true;
         return false;
     }
 
