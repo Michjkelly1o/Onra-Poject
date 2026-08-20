@@ -589,7 +589,7 @@ export default function InstructorDashboardPage() {
                     <div className="relative h-[280px]">
                         <EmptyState
                             title="No upcoming classes today"
-                            subtitle="When the admin adds a class with you assigned as the instructor, it will appear here. Classes that have already finished or were cancelled don't surface in this view."
+                            subtitle="When the admin adds a class with you assigned as the instructor, it will appear here."
                             icon={CalendarCheck01}
                         />
                     </div>
