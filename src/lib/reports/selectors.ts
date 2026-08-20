@@ -1112,6 +1112,15 @@ export function selectMarketingSpend(state: AppState): import("./selectors").Mar
     return rows;
 }
 
+/** marketingSpendLedgerRows — the derived spend (campaigns + referral) mapped
+ *  back to the legacy `{ month, spend_aed, branch_id }` shape that predates the
+ *  reshaped MarketingSpendRow. Lets the older consumers (dashboard KPI series +
+ *  CSV export) read the SAME source as the Acquisition Efficiency report, so
+ *  every marketing-spend / CPL / CAC / ROAS surface agrees. */
+export function marketingSpendLedgerRows(state: AppState): { month: string; spend_aed: number; branch_id: string }[] {
+    return selectMarketingSpend(state).map(r => ({ month: r.month, spend_aed: r.marketingSpend, branch_id: r.branchId }));
+}
+
 /** selectStaffAttendanceLog — one row per (staff × class) with clock-in
  *  metrics. Joins to classSchedules for date/time/class name. Feeds
  *  Staff Attendance report. */

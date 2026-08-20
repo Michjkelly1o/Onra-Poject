@@ -31,6 +31,7 @@ import { computeRecognizedRevenue } from "@/lib/reports/recognized-revenue";
 import { exportAoa } from "@/lib/export/export-data";
 import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
 import { computeWidgetSeries } from "@/lib/dashboard/widget-series";
+import { marketingSpendLedgerRows } from "@/lib/reports/selectors";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -643,7 +644,10 @@ export default function AdminDashboard() {
     // widgets (leads-by-source / campaign perf / efficiency / funnel / etc.).
     const leads                = useAppStore(s => s.leads);
     const marketingCampaignStats = useAppStore(s => s.marketingCampaignStats);
-    const marketingSpend       = useAppStore(s => s.marketingSpend);
+    // Spend derives from campaigns + referral (client 2026-08); the CSV export's
+    // marketing widgets read the same source as the Acquisition Efficiency report.
+    const marketingItems       = useAppStore(s => s.marketingItems);
+    const referralSettings     = useAppStore(s => s.referralSettings);
     const customerReferrals    = useAppStore(s => s.customerReferrals);
     const packages            = useAppStore(s => s.packages);
     // memberships slice — needed alongside `packages` for the accrual-based
@@ -1757,7 +1761,7 @@ export default function AdminDashboard() {
                                                 appointmentBookings: appointmentBookings.map(bk => ({ appointmentId: bk.appointmentId, customerId: bk.customerId, status: bk.status })),
                                                 leads: leads.map(l => ({ source: l.source, stage: l.stage, added_at: l.added_at, branch_id: l.branch_id })),
                                                 campaignStats: marketingCampaignStats.map(c => ({ campaign_id: c.campaign_id, campaign_name: c.campaign_name, sent_at: c.sent_at, sends: c.sends, opens_reads: c.opens_reads, clicks_taps: c.clicks_taps, attributed_bookings: c.attributed_bookings, attributed_revenue_aed: c.attributed_revenue_aed, branch_id: c.branch_id })),
-                                                marketingSpend: marketingSpend.map(s => ({ month: s.month, spend_aed: s.spend_aed, branch_id: s.branch_id })),
+                                                marketingSpend: marketingSpendLedgerRows({ marketingItems, marketingCampaignStats, referralSettings, branches } as unknown as import("@/lib/store").AppState),
                                                 referrals: customerReferrals.map(r => ({ referrer_customer_id: r.referrerCustomerId, referred_at: r.referredAtISO })),
                                                 branchIds: branchScopeIds ?? undefined,
                                             })]),

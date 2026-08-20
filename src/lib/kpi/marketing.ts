@@ -30,7 +30,7 @@
 
 import type { AppState } from "@/lib/store";
 import type { Metric } from "@/components/insights/InsightMetricCard";
-import { selectCustomers } from "@/lib/reports/selectors";
+import { selectCustomers, selectMarketingSpend } from "@/lib/reports/selectors";
 import type { Window, RangePair } from "./date-range";
 import { aed, num, pct, delta, inWindow, branchOk } from "./financial";
 
@@ -46,7 +46,11 @@ export function computeMarketingKpis(
 
     const leads = state.leads.filter(l => branchOk(l.branch_id, branchFilter));
     const campaigns = state.marketingCampaignStats.filter(c => branchOk(c.branch_id, branchFilter));
-    const spend = state.marketingSpend.filter(s => branchOk(s.branch_id, branchFilter));
+    // Spend is derived from where the money is committed — campaign budgets
+    // (split by channel message-volume) + the referral program budget — so the
+    // Insights CPL/CAC/ROAS tiles agree with the Acquisition Efficiency report.
+    // (The standalone Marketing Spend ledger was retired; client 2026-08.)
+    const spend = selectMarketingSpend(state).filter(s => branchOk(s.branchId, branchFilter));
     // Branch-scope referrals by the referrer's origin branch, like every other
     // slice on this tab (was previously read raw, ignoring the Location filter).
     const referrals = state.customerReferrals.filter(r => branchOk(r.originBranchId ?? "", branchFilter));
@@ -149,8 +153,8 @@ export function computeMarketingKpis(
         const last = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0).toISOString().slice(0, 10);
         return !(last < w.fromISO || first > w.toISO);
     }
-    const spendCur   = spend.filter(s => monthInWindow(s.month, current)).reduce((sum, s) => sum + s.spend_aed, 0);
-    const spendPrior = spend.filter(s => monthInWindow(s.month, prior)).reduce((sum, s)   => sum + s.spend_aed, 0);
+    const spendCur   = spend.filter(s => monthInWindow(s.month, current)).reduce((sum, s) => sum + s.marketingSpend, 0);
+    const spendPrior = spend.filter(s => monthInWindow(s.month, prior)).reduce((sum, s)   => sum + s.marketingSpend, 0);
     // Leads = leadsInWin.length (already computed).
     // New members = paidCur (leads who reached paid stage).
     const cplCur   = newLeadsCur   > 0 ? spendCur   / newLeadsCur   : 0;

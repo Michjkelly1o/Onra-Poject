@@ -141,13 +141,16 @@ export default function InsightsPage() {
     // switching to that tab doesn't lag on first render.
     const leads                  = useAppStore(s => s.leads);
     const marketingCampaignStats = useAppStore(s => s.marketingCampaignStats);
-    const marketingSpend         = useAppStore(s => s.marketingSpend);
+    // Spend now derives from campaigns + referral (client 2026-08), so the
+    // Marketing KPIs need those slices instead of the retired spend ledger.
+    const marketingItems         = useAppStore(s => s.marketingItems);
+    const referralSettings       = useAppStore(s => s.referralSettings);
 
     const marketingState = useMemo(() => ({
         ...kpiState,
-        leads, marketingCampaignStats, marketingSpend,
+        leads, marketingCampaignStats, marketingItems, referralSettings,
     } as unknown as import("@/lib/store").AppState),
-    [kpiState, leads, marketingCampaignStats, marketingSpend]);
+    [kpiState, leads, marketingCampaignStats, marketingItems, referralSettings]);
 
     // KPI compute — memoised per tab, recomputed when slices or range change.
     const financialKpis = useMemo(() => computeFinancialKpis(kpiState, range, branchFilter), [kpiState, range, branchFilter]);

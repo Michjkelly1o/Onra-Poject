@@ -5,10 +5,11 @@ import { DotsVertical, Trash01, Plus, DotsGrid, InfoCircle } from "@untitledui/i
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { cn } from "@/lib/utils";
 import { WIDGET_CATALOG } from "./widget-catalog";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, type AppState } from "@/lib/store";
 import type { DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange } from "@/lib/period-filter";
 import { computeWidgetSeries } from "@/lib/dashboard/widget-series";
+import { marketingSpendLedgerRows } from "@/lib/reports/selectors";
 import {
     LineChart, Line, BarChart, Bar, ComposedChart, Area, AreaChart,
     XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
@@ -2322,10 +2323,14 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
     const seApptBookings = useAppStore(s => isSeriesWidget ? s.appointmentBookings : null);
     const seLeads       = useAppStore(s => isSeriesWidget ? s.leads : null);
     const seCampaigns   = useAppStore(s => isSeriesWidget ? s.marketingCampaignStats : null);
-    const seSpend       = useAppStore(s => isSeriesWidget ? s.marketingSpend : null);
+    // Spend is derived from campaigns + referral (client 2026-08) — read the
+    // source slices instead of the retired marketingSpend ledger.
+    const seItems           = useAppStore(s => isSeriesWidget ? s.marketingItems : null);
+    const seReferralSettings = useAppStore(s => isSeriesWidget ? s.referralSettings : null);
+    const seBranches        = useAppStore(s => isSeriesWidget ? s.branches : null);
     const seReferrals   = useAppStore(s => isSeriesWidget ? s.customerReferrals : null);
     const financialSeries = useMemo(() => {
-        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans || !seSchedules || !seAppts || !seApptBookings || !seLeads || !seCampaigns || !seSpend || !seReferrals) return null;
+        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans || !seSchedules || !seAppts || !seApptBookings || !seLeads || !seCampaigns || !seItems || !seReferralSettings || !seBranches || !seReferrals) return null;
         return computeWidgetSeries(widgetId, period ?? DEFAULT_PERIOD, {
             transactions: seTxns,
             bookings: seBookings,
@@ -2338,11 +2343,11 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
             appointmentBookings: seApptBookings.map(bk => ({ appointmentId: bk.appointmentId, customerId: bk.customerId, status: bk.status })),
             leads: seLeads.map(l => ({ source: l.source, stage: l.stage, added_at: l.added_at, branch_id: l.branch_id })),
             campaignStats: seCampaigns.map(c => ({ campaign_id: c.campaign_id, campaign_name: c.campaign_name, sent_at: c.sent_at, sends: c.sends, opens_reads: c.opens_reads, clicks_taps: c.clicks_taps, attributed_bookings: c.attributed_bookings, attributed_revenue_aed: c.attributed_revenue_aed, branch_id: c.branch_id })),
-            marketingSpend: seSpend.map(s => ({ month: s.month, spend_aed: s.spend_aed, branch_id: s.branch_id })),
+            marketingSpend: marketingSpendLedgerRows({ marketingItems: seItems, marketingCampaignStats: seCampaigns, referralSettings: seReferralSettings, branches: seBranches } as unknown as AppState),
             referrals: seReferrals.map(r => ({ referrer_customer_id: r.referrerCustomerId, referred_at: r.referredAtISO })),
             branchIds,
         });
-    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, seSchedules, seAppts, seApptBookings, seLeads, seCampaigns, seSpend, seReferrals, branchIds]);
+    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, seSchedules, seAppts, seApptBookings, seLeads, seCampaigns, seItems, seReferralSettings, seBranches, seReferrals, branchIds]);
 
     if (!meta) return null;
 
