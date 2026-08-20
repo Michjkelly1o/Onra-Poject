@@ -68,8 +68,8 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/pos",                          // checkout flow
 
     // ── Promo module ── (ENABLED — pushed)
-    //"/admin/products/promo-codes",   // list view
-    //"/products/promo-codes",         // create / detail / edit
+    //"/admin/marketing/promotions",   // list view
+    //"/marketing/promotions",         // create / detail / edit
 
     // ── Marketing module ── (ENABLED — pushed)
     //"/admin/marketing",              // list view

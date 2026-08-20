@@ -4,7 +4,7 @@
 // Onra Studio — Create / Edit promo
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Full-page modal flow at /products/promo-codes/new — same shell as the
+// Full-page modal flow at /marketing/promotions/new — same shell as the
 // membership / gift-card create flows (lives OUTSIDE the admin sidebar).
 //
 // Two-step flow (Figma 7041:101711 / 102299 / 102588):
@@ -537,7 +537,7 @@ export interface PromoFormPageProps {
     onClose?: () => void;
 }
 
-export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/products/promo-codes", onClose }: PromoFormPageProps) {
+export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/marketing/promotions", onClose }: PromoFormPageProps) {
     const router = useRouter();
     const isEdit = mode === "edit";
 
@@ -679,11 +679,11 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
         if (isEdit && promoId) {
             updatePromoCode(promoId, fields);
             showToast("Promotion was updated", `${fields.name} has been saved${viaText}.`, "success", "check");
-            finish(`/products/promo-codes/${promoId}`);
+            finish(`/marketing/promotions/${promoId}`);
         } else {
             const newId = addPromoCode({ ...fields, usage_count: 0, status: "active" });
             showToast("New promotion was created", `Your promotion is ready${viaText || " to publish"}.`, "success", "check");
-            finish(`/products/promo-codes/${newId}`);
+            finish(`/marketing/promotions/${newId}`);
         }
     }
 
@@ -983,7 +983,7 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
         );
     }
 
-    // ── Full-page shell (legacy /products/promo-codes/new + [id]/edit) ────────
+    // ── Full-page shell (legacy /marketing/promotions/new + [id]/edit) ────────
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header */}

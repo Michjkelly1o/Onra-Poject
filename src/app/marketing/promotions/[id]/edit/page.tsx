@@ -14,7 +14,7 @@ function EditPromoRouteInner() {
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
     const searchParams = useSearchParams();
-    const returnTo = searchParams.get("returnTo") ?? "/admin/products/promo-codes";
+    const returnTo = searchParams.get("returnTo") ?? "/admin/marketing/promotions";
     const promo = useAppStore(s => s.promoCodes.find(p => p.id === id));
 
     if (!promo) {

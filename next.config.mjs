@@ -13,6 +13,9 @@ const nextConfig = {
             // Phase 2 · Referrals: /admin/settings/referral → /admin/marketing/referrals
             { source: "/admin/settings/referral",   destination: "/admin/marketing/referrals", permanent: true },
             { source: "/settings/referral/:path*",  destination: "/marketing/referrals/:path*", permanent: true },
+            // Phase 3 · Promotions: /admin/products/promo-codes → /admin/marketing/promotions
+            { source: "/admin/products/promo-codes",  destination: "/admin/marketing/promotions", permanent: true },
+            { source: "/products/promo-codes/:path*", destination: "/marketing/promotions/:path*", permanent: true },
 
             // Financial legacy → new consolidated / renamed reports
             { source: "/reports/memberships",         destination: "/reports/memberships-packages", permanent: true },

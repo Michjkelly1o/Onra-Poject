@@ -79,7 +79,7 @@ const NAV_ITEMS: NavItemDef[] = [
         label: "Marketing", icon: Announcement01, permission: "manage_marketing",
         children: [
             { label: "Campaigns",     href: "/admin/marketing"               },
-            { label: "Promotions",    href: "/admin/products/promo-codes"    },
+            { label: "Promotions",    href: "/admin/marketing/promotions"    },
             // Announcements — its own single menu, split out of Campaigns.
             // (Events removed — bookable events live in Schedule, not Marketing.)
             { label: "Announcements", href: "/admin/marketing/announcements" },
@@ -146,7 +146,7 @@ function isUserMenuRoute(pathname: string): boolean {
 // `pathname`. Prevents two rows from lighting up when one item's href is a
 // prefix of another's — even across different parent groups.
 //
-// Example: a user on `/admin/products/promo-codes` (Marketing → Promotions)
+// Example: a user on `/admin/marketing/promotions` (Marketing → Promotions)
 // must NOT also highlight Products & pricing → Memberships & packages
 // (`/admin/products`), because the latter is a prefix of the former. Per-
 // parent resolution can't catch this since each parent's resolver runs in
@@ -363,7 +363,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
     // Initial open state uses the same global-winner resolver as the active
     // highlight, so only ONE parent group auto-expands when a deeply-nested
     // route also prefix-matches a different parent's leaf (e.g. on
-    // /admin/products/promo-codes only Marketing opens, not Services &
+    // /admin/marketing/promotions only Marketing opens, not Services &
     // pricing). Without this, raw startsWith() would open both groups.
     // Bumped whenever the pointer enters the nav list — lets the footer Settings
     // dropdown auto-close so a nav flyout (Staff / Marketing / …) never overlaps it.
@@ -538,7 +538,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                 winner. Fixes the dual-highlight bug where two rows from
                 different parent groups both lit up when one's href was a
                 prefix of the other's (e.g. /admin/products vs
-                /admin/products/promo-codes). Longest match wins; ties
+                /admin/marketing/promotions). Longest match wins; ties
                 impossible since hrefs are unique across the nav. */}
             <nav
                 className="flex-1 overflow-y-auto pt-3 pb-3 px-4 flex flex-col gap-1 min-h-0"
@@ -649,7 +649,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                 // winner only if it belongs to one of this
                                 // parent's children. Cross-parent overlaps
                                 // (e.g. /admin/products under Services &
-                                // pricing vs /admin/products/promo-codes
+                                // pricing vs /admin/marketing/promotions
                                 // under Marketing) can't double-light.
                                 const activeHref = activeChildHrefFor(item.children, navWinner);
                                 const kids = item.children!;

@@ -86,7 +86,7 @@ const PAGES: PageEntry[] = [
     // + Promo keep their own glyphs since those are universally recognised.
     { title: "Plans",                  href: "/admin/products",                   icon: ShoppingBag01 },
     { title: "Gift Cards",             href: "/admin/products/gift-cards",        icon: Tag01 },
-    { title: "Promotions",             href: "/admin/products/promo-codes",       icon: Percent01 },
+    { title: "Promotions",             href: "/admin/marketing/promotions",       icon: Percent01 },
     // Analytics group — Sidebar parent is BarChartSquare01. The live Insights
     // page (formerly KPI) lives at /admin/insights (renamed 2026-08-11).
     { title: "Insights",               href: "/admin/insights",                   icon: BarChartSquare01 },
@@ -314,7 +314,7 @@ export function useSearchIndex(
             for (const pr of promoCodes) {
                 const s = Math.max(score(pr.code, q), score(pr.name, q));
                 if (s === 0) continue;
-                const href = `/products/promo-codes/${pr.id}`;
+                const href = `/marketing/promotions/${pr.id}`;
                 if (isRouteDisabled(href)) continue;
                 results.push({
                     id: `pro-${pr.id}`,
@@ -518,7 +518,7 @@ export function useDefaultSuggestions(
                 });
             }
             for (const pr of promoCodes.slice(0, 1)) {
-                const href = `/products/promo-codes/${pr.id}`;
+                const href = `/marketing/promotions/${pr.id}`;
                 if (isRouteDisabled(href)) continue;
                 results.push({
                     id: `pro-${pr.id}`,

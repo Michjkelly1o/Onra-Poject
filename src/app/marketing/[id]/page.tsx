@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Full-screen detail page — the same shell as the promo detail
-// (/products/promo-codes/[id]):
+// (/marketing/promotions/[id]):
 //   • 72px top header (X close + page title)
 //   • h-[832px] two-column frame inside px-6 py-6 outer padding
 //   • 320px left sidebar (marketing banner + key stats + actions)

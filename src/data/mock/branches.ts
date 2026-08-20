@@ -20,7 +20,7 @@
 //   • /admin/pos (branch picker)
 //   • /admin/staff/payroll + /admin/staff/pay-rate (rate scope)
 //   • /admin/settings/agreements (Applies to)
-//   • /products/promo-codes (Branches multi-select)
+//   • /marketing/promotions (Branches multi-select)
 //
 // Migrating those to `useAppStore` is a Phase 4.1 / 5 cleanup — each is a
 // one-line swap from `BRANCHES` to `useAppStore(s => s.branches)`.

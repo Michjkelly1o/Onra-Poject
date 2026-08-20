@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Promo module list view (/admin/products/promo-codes)
+// Onra Studio — Promo module list view (/admin/marketing/promotions)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Figma: 6160:180145 (list view) + 5284:46589 (filter content).
@@ -546,7 +546,7 @@ export default function PromoListPage() {
                 <div className="grid grid-cols-4 gap-4">
                     {activePromos.map(p => (
                         <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
-                            onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
+                            onOpen={() => router.push(`/marketing/promotions/${p.id}?returnTo=${encodeURIComponent("/admin/marketing/promotions")}`)} />
                     ))}
                 </div>
             )}
@@ -558,7 +558,7 @@ export default function PromoListPage() {
                     <div className="grid grid-cols-4 gap-4">
                         {archivedPromos.map(p => (
                             <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
-                                onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
+                                onOpen={() => router.push(`/marketing/promotions/${p.id}?returnTo=${encodeURIComponent("/admin/marketing/promotions")}`)} />
                         ))}
                     </div>
                 </div>

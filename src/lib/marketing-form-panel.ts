@@ -12,7 +12,7 @@
 // `openMarketingFormPanel(...)`; a single `<MarketingFormPanelHost>` mounted in
 // the admin layout renders the matching form inside a `SlidePanel`.
 //
-// The legacy full-page routes (/marketing/new, /products/promo-codes/[id]/edit,
+// The legacy full-page routes (/marketing/new, /marketing/promotions/[id]/edit,
 // …) still render as a fallback — the form components keep their page shell when
 // no `onClose` is passed — so direct-URL access never breaks.
 //
@@ -21,7 +21,7 @@
 
 import { create } from "zustand";
 
-// Promotions live under /admin/products/promo-codes but are surfaced from the
+// Promotions live under /admin/marketing/promotions but are surfaced from the
 // Marketing menu, so they share this panel host.
 export type MarketingFormKind = "campaign" | "promotion" | "announcement";
 

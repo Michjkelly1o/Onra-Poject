@@ -24,7 +24,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/products/gift-cards": "Gift Cards",
     "/admin/products/retail": "Retail",
     "/admin/products/retail-categories": "Retail categories",
-    "/admin/products/promo-codes": "Promotions",
+    "/admin/marketing/promotions": "Promotions",
     "/admin/marketing": "Campaigns",
     "/admin/marketing/announcements": "Announcements",
     "/admin/marketing/spend": "Marketing Spend",

@@ -221,7 +221,7 @@ const CREATE_SHORTCUTS = [
     {
         title: "New promo code",
         subtitle: "Discount code — percentage or fixed AED, usage limits.",
-        href: "/products/promo-codes/new",
+        href: "/marketing/promotions/new",
     },
     {
         title: "New gift card design",

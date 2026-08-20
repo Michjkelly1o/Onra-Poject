@@ -12,7 +12,7 @@ import { PromoFormPage } from "@/components/products/PromoFormPage";
 
 function CreatePromoRouteInner() {
     const searchParams = useSearchParams();
-    const returnTo = searchParams.get("returnTo") ?? "/admin/products/promo-codes";
+    const returnTo = searchParams.get("returnTo") ?? "/admin/marketing/promotions";
     return <PromoFormPage mode="create" returnTo={returnTo} />;
 }
 

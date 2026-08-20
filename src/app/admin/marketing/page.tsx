@@ -6,7 +6,7 @@
 //
 // Figma: 5885:176274 (list view) + 5885:174980 (filter content).
 //
-// Structurally a sibling of the Promo list (/admin/products/promo-codes) — a
+// Structurally a sibling of the Promo list (/admin/marketing/promotions) — a
 // 3-column grid of banner cards. Each marketing card paints a cover image (or
 // gradient fallback) with a type badge + status badge, then the title /
 // description / attribute row (action · branches) and the valid-until row.

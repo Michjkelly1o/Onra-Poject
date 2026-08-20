@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Promo detail page (/products/promo-codes/[id])
+// Onra Studio — Promo detail page (/marketing/promotions/[id])
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Full-screen detail page matching the membership detail (/products/[id])
@@ -522,7 +522,7 @@ function PromoDetailPageInner() {
     const params = useParams<{ id: string }>();
     const id = params?.id ?? "";
     const searchParams = useSearchParams();
-    const returnTo = searchParams.get("returnTo") ?? "/admin/products/promo-codes";
+    const returnTo = searchParams.get("returnTo") ?? "/admin/marketing/promotions";
 
     const promoCodes      = useAppStore(s => s.promoCodes);
     const memberships     = useAppStore(s => s.memberships);
