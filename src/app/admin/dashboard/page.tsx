@@ -33,6 +33,7 @@ import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard"
 import { computeWidgetSeries } from "@/lib/dashboard/widget-series";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore, SCHEDULE_INSTRUCTORS, appointmentToClassInstance, isAppointmentId, type SessionType } from "@/lib/store";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { SESSION_TYPE_ORDER, SESSION_TYPE_TAG_COLORS, SESSION_TYPE_TAG_LABEL } from "@/lib/session-type";
@@ -1907,7 +1908,13 @@ export default function AdminDashboard() {
 
                     {/* Schedule Timeline — one flex row per slot keeps the divider continuous across time + cards. */}
                     <div className="flex flex-1 flex-col min-h-0 w-full overflow-y-auto scrollbar-hide">
-                        {timeSlots.map((slot, idx) => {
+                        {timeSlots.length === 0 ? (
+                            <EmptyState
+                                absolute={false}
+                                title="No classes scheduled"
+                                subtitle="Add a class to get started."
+                            />
+                        ) : timeSlots.map((slot, idx) => {
                             const isLast = idx === timeSlots.length - 1;
                             const multi = slot.classes.length > 1;
                             return (
@@ -1978,7 +1985,13 @@ export default function AdminDashboard() {
 
                     {/* Activity list */}
                     <div className="flex flex-1 flex-col gap-4 items-start min-h-0 overflow-y-auto scrollbar-hide w-full">
-                        {recentActivity.map((item, idx) => (
+                        {recentActivity.length === 0 ? (
+                            <EmptyState
+                                absolute={false}
+                                title="No recent activity"
+                                subtitle="Bookings, payments, and updates will show up here."
+                            />
+                        ) : recentActivity.map((item, idx) => (
                             <div key={item.id} className="w-full flex flex-col gap-4">
                                 <ActivityRow item={item} />
                                 {idx < recentActivity.length - 1 && (
