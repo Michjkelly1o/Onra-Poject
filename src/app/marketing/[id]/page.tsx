@@ -26,6 +26,7 @@ import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     ChevronUp, ChevronDown, HelpCircle,
     Grid01, CursorBox, Calendar, Link01, CheckVerified02, Send01, Eye,
+    CoinsStacked01,
 } from "@untitledui/icons";
 import { cn, to12h } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
@@ -403,6 +404,12 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                         label={vm.deliveryStatus === "scheduled" ? "Scheduled for" : "Sent on"}
                         value={formatDateTime(vm.deliveryDateISO)} />
                     <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Call to action" value={ACTION_LABEL[vm.actionType]} />
+                    <InlineStat
+                        icon={<CoinsStacked01 className="w-4 h-4" />}
+                        label="Budget"
+                        value={vm.budgetAed > 0 ? `AED ${vm.budgetAed.toLocaleString("en-US")}` : "Not set"}
+                        tooltip="Marketing spend for this campaign — feeds the Acquisition Efficiency report."
+                    />
                     {vm.actionType === "external_link" && (
                         <InlineStat icon={<Link01 className="w-4 h-4" />} label="External link" value={vm.externalUrl || "—"} />
                     )}
@@ -458,6 +465,8 @@ interface MarketingDetailVM {
     type: MarketingItem["type"];
     actionType: MarketingItem["action_type"];
     ticketPrice?: number;
+    /** Marketing spend (AED) for this campaign. 0 = not set. */
+    budgetAed: number;
     externalUrl?: string;
     /** book_event → "Class name · date · time" of the booked class. */
     ctaClassLabel?: string;
@@ -560,6 +569,7 @@ function MarketingDetailPageInner() {
         type: item.type,
         actionType: item.action_type,
         ticketPrice: item.ticket_price,
+        budgetAed: item.budget_aed ?? 0,
         externalUrl: item.external_url,
         ctaClassLabel,
         coverImageUrl: item.cover_image_url,
