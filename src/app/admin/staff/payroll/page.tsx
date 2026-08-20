@@ -45,6 +45,7 @@ import { RoleBadge } from "@/components/staff/RoleBadge";
 import { ChangePayRateModal } from "@/components/staff/PayrollInstructorDetailPage";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
+import { useHasMounted } from "@/lib/use-has-mounted";
 import { Pagination } from "@/components/ui/Pagination";
 import {
     useAppStore,
@@ -139,6 +140,13 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function CompensationPage() {
+    // Every metric card + table row is derived from the localStorage-backed
+    // store, so the server render (seed data) and the first client render
+    // (rehydrated demo data) disagree — a hydration mismatch. Surfaces on any
+    // FRESH load of this page, e.g. landing here via the /admin/compensation →
+    // /admin/staff/payroll redirect. Render a stable, height-preserving shell
+    // until mounted, then the real data. Same pattern as /admin/schedule.
+    const mounted = useHasMounted();
     const router = useRouter();
     const payrollEntries = useAppStore(s => s.payrollEntries);
     const instructors    = useAppStore(s => s.instructors);
@@ -394,6 +402,10 @@ export default function CompensationPage() {
     // simply show 0 classes / AED 0 for periods with no entries.
     const isTrulyEmpty = allRows.length === 0
         || (branchId !== "" && allRows.every(r => r.branchId !== branchId));
+
+    // Stable shell until mounted — keeps the page height so the sidebar/header
+    // chrome doesn't jump when the real content pops in on the next tick.
+    if (!mounted) return <div className="flex-1 min-h-0" />;
 
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">
