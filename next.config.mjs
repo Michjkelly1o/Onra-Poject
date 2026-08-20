@@ -22,6 +22,9 @@ const nextConfig = {
             // Phase 5 · Instructor takeover details → under /instructor/*
             { source: "/class/:path*",    destination: "/instructor/class/:path*",    permanent: true },
             { source: "/earnings/:path*", destination: "/instructor/earnings/:path*", permanent: true },
+            // Phase 6 · Private / Recovery: /admin/services?type=… → own paths
+            { source: "/admin/services", has: [{ type: "query", key: "type", value: "private" }],  destination: "/admin/products/private",  permanent: true },
+            { source: "/admin/services", has: [{ type: "query", key: "type", value: "recovery" }], destination: "/admin/products/recovery", permanent: true },
 
             // Financial legacy → new consolidated / renamed reports
             { source: "/reports/memberships",         destination: "/reports/memberships-packages", permanent: true },

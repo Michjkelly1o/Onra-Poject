@@ -21,6 +21,8 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/customers": "Customers",
     "/admin/pos": "Point of Sale",
     "/admin/products": "Plans",
+    "/admin/products/private": "Private sessions",
+    "/admin/products/recovery": "Recovery",
     "/admin/products/gift-cards": "Gift Cards",
     "/admin/products/retail": "Retail",
     "/admin/products/retail-categories": "Retail categories",

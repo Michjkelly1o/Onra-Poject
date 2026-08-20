@@ -51,6 +51,8 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/customers":                "Customers",
     "/admin/pos":                      "Point of sale",
     "/admin/products":                 "Plans",
+    "/admin/products/private":         "Private sessions",
+    "/admin/products/recovery":        "Recovery",
     "/admin/products/gift-cards":      "Gift cards",
     "/admin/products/retail":          "Retail",
     "/admin/products/retail-categories": "Retail categories",

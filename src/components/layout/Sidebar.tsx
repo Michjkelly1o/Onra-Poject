@@ -101,8 +101,8 @@ const NAV_ITEMS: NavItemDef[] = [
         // standalone entry.
         children: [
             { label: "Classes",                href: "/admin/products/classes"           },
-            { label: "Private sessions",       href: "/admin/services?type=private" },
-            { label: "Recovery",               href: "/admin/services?type=recovery" },
+            { label: "Private sessions",       href: "/admin/products/private" },
+            { label: "Recovery",               href: "/admin/products/recovery" },
             { label: "Plans",                  href: "/admin/products"              },
             { label: "Retail",                 href: "/admin/products/retail"        },
             { label: "Gift cards",             href: "/admin/products/gift-cards"    },
@@ -168,8 +168,8 @@ function activeHrefFor(items: NavItemDef[], pathname: string, search = ""): stri
     const settingsGroup = findSettingsGroupFor(pathname);
     const matchPath = settingsGroup ? settingsGroup.tabs[0].href : pathname;
     // Full path incl. query — used ONLY to match query-param deep-links
-    // (e.g. /admin/services?type=private vs …?type=recovery, which share a
-    // pathname). Plain hrefs keep the pathname-prefix match below.
+    // (e.g. /admin/staff?subtab=staff vs …?subtab=shift-management, which
+    // share a pathname). Plain hrefs keep the pathname-prefix match below.
     const fullPath = search ? `${pathname}?${search}` : pathname;
     let bestHref: string | null = null;
     let bestLen = -1;
