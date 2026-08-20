@@ -232,6 +232,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Typography Phase 2 — semantic headings in Urbanist ─────────────────────
+   Every real <h1>/<h2>/<h3> renders in Urbanist (headline/subheadline). Body,
+   captions, data and numbers stay DM Sans (they never inherit from these tags).
+   DM Sans is the fallback so headings degrade gracefully if Urbanist fails.
+   Utility/inline font classes still win over this element rule (specificity),
+   which is how Phase 3's `font-heading` on <p>-titles and any explicit override
+   keep working.
+
+   The CUSTOMER app is EXCLUDED (stays 100% DM Sans, per the locked plan): its
+   shell root carries `data-brand-scope="customer"`, so we revert its headings. */
+h1, h2, h3 {
+  font-family: 'Urbanist', 'DM Sans', system-ui, sans-serif;
+}
+[data-brand-scope="customer"] :is(h1, h2, h3) {
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
