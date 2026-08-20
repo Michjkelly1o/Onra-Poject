@@ -259,7 +259,7 @@ export function StudioProfileFormPage() {
                     <div className="w-[360px] shrink-0 self-start">
                         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                             <div className="flex flex-col gap-1 px-6 pt-6 pb-5">
-                                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Studio preview</p>
+                                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Studio preview</p>
                                 <p className="text-[14px] text-[#667085] leading-5">This is how studio overview will look like.</p>
                             </div>
                             <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
@@ -267,7 +267,7 @@ export function StudioProfileFormPage() {
                                 <div className="w-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-5 flex flex-col gap-3">
                                     <LogoPreview src={logoDataUrl} size={96} />
                                     <div>
-                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{studioName || "Forma Studio"}</p>
+                                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{studioName || "Forma Studio"}</p>
                                     </div>
                                     <div className="flex flex-col gap-1.5 mt-1">
                                         <PreviewLine icon={<MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} text={country} />

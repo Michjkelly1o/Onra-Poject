@@ -241,7 +241,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Reward rules &amp; limits</p>
+                        <p className="font-heading font-semibold text-[18px] text-[var(--colors-text-primary)]">Reward rules &amp; limits</p>
                         <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Decide who qualifies &amp; block the common ways referral programs get gamed.
                         </p>

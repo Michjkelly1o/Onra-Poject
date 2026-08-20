@@ -505,7 +505,7 @@ function StudioCard({ name, logoUrl, legalBusinessName, tradeLicenseNumber, coun
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex items-center gap-6 w-full">
             <StudioAvatar logoUrl={logoUrl} />
             <div className="flex-1 min-w-0 flex flex-col gap-3">
-                <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
+                <p className="font-heading text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
                     {name}
                 </p>
                 {/* Studio-wide "Time zone" tile removed per client Jul 2026 —

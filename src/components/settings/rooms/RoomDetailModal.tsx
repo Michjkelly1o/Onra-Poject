@@ -50,7 +50,7 @@ export function RoomDetailModal({ room, onClose }: {
                         <LayoutGrid01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                     </div>
                     <div className="flex-1 flex flex-col">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{room.name}</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{room.name}</p>
                         <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{room.capacity} max</p>
                     </div>
                     <button

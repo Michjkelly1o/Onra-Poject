@@ -92,7 +92,7 @@ export function ArchivedSection({
                         {/* Header */}
                         <div className="shrink-0 flex items-center justify-between px-6 h-[64px] border-b border-[var(--colors-border-secondary)]">
                             <div className="flex items-center gap-2">
-                                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] capitalize">Archived {entitySingular}</p>
+                                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] capitalize">Archived {entitySingular}</p>
                                 <span className="text-[14px] text-[var(--colors-text-quaternary)]">({count})</span>
                             </div>
                             <button type="button" onClick={() => setOpen(false)} aria-label="Close"

@@ -96,7 +96,7 @@ export function AssignStaffModal({ shift, onClose, onPick }: {
                 {/* Header */}
                 <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[var(--colors-border-secondary)]">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Assign staff</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Assign staff</p>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             Pick a staff member to assign to <span className="font-medium text-[var(--colors-text-secondary)]">{shift.name}</span>.
                         </p>

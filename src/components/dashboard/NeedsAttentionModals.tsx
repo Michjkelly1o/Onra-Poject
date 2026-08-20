@@ -123,7 +123,7 @@ export function ModalShell({
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6 pb-5 shrink-0">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <p className="font-semibold text-[20px] text-[var(--colors-text-primary)] leading-[30px]">
+                        <p className="font-heading font-semibold text-[20px] text-[var(--colors-text-primary)] leading-[30px]">
                             {title}
                         </p>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
@@ -1299,7 +1299,7 @@ function WinBackModal({
                 <div className="flex items-start gap-3 px-6 pt-6 pb-4 shrink-0">
                     <Avatar imageUrl={customer.imageUrl} initials={initials} name={name} size={48} />
                     <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)] truncate">Win back — {name}</p>
+                        <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)] truncate">Win back — {name}</p>
                         <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Last visit {lastVisitLabel} · {daysAgo} days ago</p>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Close"

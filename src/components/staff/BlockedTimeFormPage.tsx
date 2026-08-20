@@ -431,7 +431,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
     if (mode === "edit" && !existing) {
         const notFound = (
             <div className="flex flex-1 flex-col items-center justify-center gap-3">
-                <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Time off not found</p>
+                <p className="font-heading font-semibold text-[18px] text-[var(--colors-text-primary)]">Time off not found</p>
                 <p className="text-[14px] text-[var(--colors-text-quaternary)]">The entry you're trying to edit no longer exists.</p>
                 <Button variant="primary" size="md" onClick={exit}>Back to list</Button>
             </div>

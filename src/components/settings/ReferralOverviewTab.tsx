@@ -189,7 +189,7 @@ export function ReferralOverviewTab({ period }: { period: DateFilter }) {
             <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex items-center gap-4 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex-1 flex flex-col gap-1">
                     <div className="flex items-center gap-2.5">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Referral program</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Referral program</p>
                         <span className={cn(
                             "inline-flex items-center gap-1.5 px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1",
                             settings.programActive

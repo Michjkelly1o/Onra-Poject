@@ -462,7 +462,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                     <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">
+                    <p className="font-heading text-[20px] font-semibold text-[var(--colors-text-primary)]">
                         {isEditing ? "Edit customer" : "Add customer"}
                     </p>
                     <Breadcrumbs className="p-0 text-[12px]" />

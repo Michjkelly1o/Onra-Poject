@@ -682,7 +682,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
         <div className="w-[352px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="px-6 pt-6 pb-4">
-                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class preview</p>
+                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Class preview</p>
                 <p className="text-[14px] text-[#667085] mt-1">This is how your class schedule will look like.</p>
             </div>
             {/* Preview content */}
@@ -2312,7 +2312,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                         <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                        <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">{isEditing ? "Edit class" : isDuplicating ? "Duplicate class" : "Add schedule"}</p>
+                        <p className="font-heading text-[20px] font-semibold text-[var(--colors-text-primary)]">{isEditing ? "Edit class" : isDuplicating ? "Duplicate class" : "Add schedule"}</p>
                         <Breadcrumbs className="p-0 text-[12px]" />
                     </div>
                 </div>
@@ -2339,7 +2339,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     Date & time block instead. */}
                                 {isEditing && editing && !canReschedule && (
                                     <div className="flex flex-col gap-4">
-                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Date &amp; time</p>
+                                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Date &amp; time</p>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1.5">
                                                 <label className={labelCls}>Date</label>
@@ -2363,7 +2363,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
                                 {/* Template selector */}
                                 <div className="flex flex-col gap-4">
-                                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class template</p>
+                                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Class template</p>
                                     <div className="flex flex-col gap-1.5">
                                         <label className={labelCls}>Class template</label>
                                         <TemplateDropdown
@@ -2386,7 +2386,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 {/* Template detail (visible after template selected) */}
                                 {templateId && (
                                     <div className="flex flex-col gap-5">
-                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">
+                                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">
                                             {isScratch ? "Class details" : "Class template detail"}
                                         </p>
 
@@ -2474,7 +2474,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                             <>
                                 {/* Class location */}
                                 <div className="flex flex-col gap-4">
-                                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class location</p>
+                                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Class location</p>
                                     <div className="flex flex-col gap-1.5">
                                         <label className={labelCls}>Location</label>
                                         <LocationDropdown
@@ -2511,7 +2511,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-start justify-between gap-6">
                                         <div className="flex flex-col gap-1">
-                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot selection</p>
+                                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot selection</p>
                                             <p className="text-[14px] text-[#667085]">Turn on spot selection to let your customers choose a spot in the room when booking this class.</p>
                                         </div>
                                         {/* Toggle — disabled until room selected */}
@@ -2542,7 +2542,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 {/* Instructor */}
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Instructor</p>
+                                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Instructor</p>
                                         <div className="relative w-[220px]">
                                             <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)]" />
                                             <input type="text" value={instrSearch} onChange={e => setInstrSearch(e.target.value)}
@@ -2587,7 +2587,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 <div className="flex flex-col gap-8">
                                     {/* Date & time section */}
                                     <div className="flex flex-col gap-4">
-                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Date & time</p>
+                                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Date & time</p>
 
                                         {/* Row 1: Repeat + Date.
                                             In edit mode the form targets a single class instance, so
@@ -2675,7 +2675,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                         so the section reads top-down. */}
                                     {repeat === "Repeat weekly" && (
                                         <div className="flex flex-col gap-4">
-                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Recurring Ends</p>
+                                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Recurring Ends</p>
 
                                             <div className="flex flex-col items-start gap-3">
                                                 <RepeatEndRadio
@@ -2731,7 +2731,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     {/* Select days */}
                                     {repeat === "Repeat weekly" && (
                                         <div className="flex flex-col gap-4">
-                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Select days</p>
+                                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Select days</p>
                                             <div className="flex gap-3">
                                                 {WEEK_DAYS.map(d => {
                                                     const isSel = selectedDays.includes(d);
@@ -2754,7 +2754,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     {/* General schedule */}
                                     {repeat === "Repeat weekly" && selectedDays.length > 0 && (
                                         <div className="flex flex-col gap-4">
-                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">General schedule</p>
+                                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">General schedule</p>
 
                                             {/* Past-time booking notice — only surfaces once the admin
                                                 has actually picked a slot whose first occurrence is today
@@ -3057,7 +3057,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                     <ChevronLeft className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                                 </button>
-                                <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">Customize spot</p>
+                                <p className="font-heading text-[20px] font-semibold text-[var(--colors-text-primary)]">Customize spot</p>
                             </div>
                         </div>
 
@@ -3069,7 +3069,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-end justify-between">
                                         <div className="flex flex-col gap-1">
-                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Customize area</p>
+                                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Customize area</p>
                                             <p className="text-[14px] text-[#667085]">Select spot to block or unblock.</p>
                                         </div>
                                         <div className="flex items-center gap-4">
@@ -3110,7 +3110,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 {/* Spot layout */}
                                 <div className="flex flex-col gap-4">
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot layout</p>
+                                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot layout</p>
                                         <p className="text-[14px] text-[#667085]">
                                             Define the number of rows and columns to arrange the {roomCap} spots in this room.
                                         </p>

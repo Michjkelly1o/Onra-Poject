@@ -174,7 +174,7 @@ export function GuestBookingPanel({ open, onClose }: { open: boolean; onClose: (
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[#101828]">Guest bookings</p>
+                        <p className="font-heading font-semibold text-[18px] text-[#101828]">Guest bookings</p>
                         <p className="text-[14px] text-[#667085] leading-[20px]">
                             Control how customers can bring and pay for a guest.
                         </p>

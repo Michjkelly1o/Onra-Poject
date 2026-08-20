@@ -606,7 +606,7 @@ function StaffPreview({ form, roleName, payRateName, branchLabel, joinedLabel }:
     return (
         <div className="w-[400px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shrink-0">
             <div className="p-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">User preview</p>
+                <p className="font-heading font-semibold text-[18px] leading-[28px] text-[#101828]">User preview</p>
                 <p className="text-[14px] text-[#667085] leading-[20px]">This is how user overview will look like.</p>
             </div>
             <div className="bg-[#f6f6f3] flex flex-col gap-5 p-6 w-full">
@@ -622,7 +622,7 @@ function StaffPreview({ form, roleName, payRateName, branchLabel, joinedLabel }:
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                        <p className="font-heading font-semibold text-[20px] leading-[30px] text-[#101828]">
                             {fullName || "User name"}
                         </p>
                         <p className="text-[14px] text-[#667085]">{form.email.trim() || "User email"}</p>
@@ -700,7 +700,7 @@ function PayToggleRow({ title, subtitle, enabled, onToggle, disabled }: {
 
 /** 18px section header for the pay-rate configuration groups. */
 function PaySectionHeader({ title }: { title: string }) {
-    return <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{title}</p>;
+    return <p className="font-heading text-[18px] font-semibold text-[#101828] leading-[28px]">{title}</p>;
 }
 
 /** AED-prefixed amount input (matches PayRateFormPage's AedInput chrome). */
@@ -1058,7 +1058,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
 
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-5">
                         <div className="flex flex-col gap-5 w-full">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{step === 1 ? "Staff details" : "Pay rate"}</p>
+                            <p className="font-heading font-semibold text-[18px] leading-[28px] text-[#101828]">{step === 1 ? "Staff details" : "Pay rate"}</p>
 
                             {step === 1 && (<>
                             <ImageUpload

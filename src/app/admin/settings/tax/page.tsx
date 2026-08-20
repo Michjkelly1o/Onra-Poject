@@ -1215,7 +1215,7 @@ function PricesIncludeTaxConfirmModal({ next, onCancel, onConfirm }: {
                         }
                     </div>
                     <div className="flex flex-col gap-1 items-center text-center w-full">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 w-full">{title}</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 w-full">{title}</p>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 w-full">{supporting}</p>
                     </div>
                 </div>

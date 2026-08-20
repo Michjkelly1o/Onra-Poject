@@ -454,7 +454,7 @@ function ReassignInstructorModal({ open, instructors, currentInstructorId, servi
                 {/* Header */}
                 <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[var(--colors-border-secondary)]">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Reassign instructor</p>
+                        <p className="font-heading text-[18px] font-semibold text-[#101828] leading-[28px]">Reassign instructor</p>
                         <p className="text-[14px] text-[#475467] leading-[20px]">Pick an available instructor for {serviceName}.</p>
                     </div>
                     <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
@@ -1385,7 +1385,7 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
         return (
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-[18px] font-semibold text-[#101828]">Appointment not found</p>
+                    <p className="font-heading text-[18px] font-semibold text-[#101828]">Appointment not found</p>
                     <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[#164e52] hover:underline">
                         Go back

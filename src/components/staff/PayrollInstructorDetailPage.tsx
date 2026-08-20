@@ -286,7 +286,7 @@ function PayRateSection({ title, value, options, onChange }: {
 }) {
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{title}</p>
+            <p className="font-heading text-[18px] font-semibold text-[#101828] leading-[28px]">{title}</p>
             <div className="flex flex-col gap-[6px]">
                 <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
                 <SelectInput placeholder="Select pay rate" options={options} value={value} onChange={onChange} width="w-full" />
@@ -318,7 +318,7 @@ function PayPerClassSection({ payRateId, substitutePayRateId, substitutionAmount
 }) {
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Pay per class</p>
+            <p className="font-heading text-[18px] font-semibold text-[#101828] leading-[28px]">Pay per class</p>
             <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-[6px]">
                     <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
@@ -421,7 +421,7 @@ export function ChangePayRateModal({ instructor, isInstructor, initialConfig, al
                 <div className="px-6 pt-6 pb-2 flex flex-col gap-8 overflow-y-auto scrollbar-hide">
                     {/* Section 1 — the toggles, grouped (Figma 8132:481109) */}
                     <div className="flex flex-col gap-4">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Pay rate configuration</p>
+                        <p className="font-heading text-[18px] font-semibold text-[#101828] leading-[28px]">Pay rate configuration</p>
                         <div className="flex flex-col gap-4">
                             <PayToggleRow title="Fixed salary" subtitle="Base salary for this staff."
                                 enabled={cfg.default.enabled} onToggle={n => toggleTrack("default", n)} disabled={defaultToggleDisabled} />
@@ -1076,7 +1076,7 @@ export default function PayrollInstructorDetailPage({
                                 <InstructorStatusBadge status={instructor.status} />
                             </div>
                             <div className="flex flex-col gap-1.5 items-start">
-                                <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">{instructor.name}</p>
+                                <p className="font-heading font-semibold text-[20px] leading-[30px] text-[#101828]">{instructor.name}</p>
                                 <p className="text-[14px] text-[#667085]">{instructor.email}</p>
                             </div>
                         </div>

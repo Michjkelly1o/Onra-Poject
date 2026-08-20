@@ -80,7 +80,7 @@ export function CheckoutShell({ step, body, onClose }: { step: 1 | 2; body: Reac
                     <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">Create payment</p>
+                    <p className="font-heading text-[20px] font-semibold text-[var(--colors-text-primary)]">Create payment</p>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </header>
@@ -219,7 +219,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                     OPTIONAL (client 2026-08-04): leave blank for an unattributed
                     sale (no commission), like a self-service portal sale. */}
                 <div className="flex flex-col gap-2">
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">
+                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">
                         Credited to <span className="text-[16px] text-[var(--colors-text-quaternary)] font-normal">(optional)</span>
                     </p>
                     <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
@@ -266,7 +266,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                 )}
 
                 <div className="flex flex-col gap-4">
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Payment method</p>
+                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Payment method</p>
                     {noPaymentDue ? (
                         <div className="rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-4 py-3 text-[14px] text-[var(--colors-text-tertiary)]">
                             {coveredNote}
@@ -319,7 +319,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
 
                 {!noPaymentDue && p.paymentMethod !== null && show(p.paymentMethod) && (
                     <div className="flex flex-col gap-4">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Payment confirmation</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Payment confirmation</p>
                         {p.paymentMethod === "cash" && (
                             <CashConfirmation cashReceived={p.cashReceived} setCashReceived={p.setCashReceived} total={p.total} change={p.change} />
                         )}
@@ -371,7 +371,7 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
     // the picker in PaymentConfirmationStep above (commission refactor Phase 2).
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Payment information</p>
+            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Payment information</p>
             <div className="flex items-center justify-between">
                 <p className="text-[14px] text-[var(--colors-text-quaternary)]">Customer</p>
                 <div className="flex items-center gap-2">
@@ -570,7 +570,7 @@ function GiftCardSection({ balance, applied, enabled, onToggle }: {
     const hasBalance = balance > 0;
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Gift card</p>
+            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Gift card</p>
             <div className={cn(
                 "flex items-center gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]",
                 !hasBalance && "opacity-70",
@@ -624,7 +624,7 @@ function AccountCreditSection({ balance, applied, enabled, onToggle }: {
     const hasBalance = balance > 0;
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Account credit</p>
+            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Account credit</p>
             <div className={cn(
                 "flex items-center gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]",
                 !hasBalance && "opacity-70",
@@ -813,7 +813,7 @@ function BankTransferConfirmation({ total }: { total: number }) {
 export function ProcessingPaymentCard({ method, chargedTo }: { method: PaymentMethod; chargedTo: string }) {
     return (
         <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-8">
-            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] text-center">Processing payment</p>
+            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] text-center">Processing payment</p>
             <div className="flex-1 flex flex-col items-center justify-center gap-6">
                 <div className="bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[16px] h-[150px] w-[320px] p-3 flex flex-col justify-between animate-pulse">
                     <div className="bg-white rounded-[10px] shadow-[0px_1.5px_4px_rgba(0,0,0,0.04)] w-[51px] h-[51px] flex items-center justify-center">
@@ -908,7 +908,7 @@ export function ReceiptStep(p: ReceiptStepProps) {
                         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-[0_0_0_4px_rgba(123,160,140,0.3),0_0_0_12px_rgba(123,160,140,0.1)]">
                             <CheckCircle className="w-7 h-7 text-[var(--colors-secondary-600)]" />
                         </div>
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] text-center">Transaction complete</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] text-center">Transaction complete</p>
                     </div>
 
                     <div className="flex flex-col gap-2">

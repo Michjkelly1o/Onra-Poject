@@ -167,7 +167,7 @@ export default function AccountSettingsPage() {
                     <div className="relative flex items-center gap-4 w-full">
                         <Avatar src={avatarFor(currentUser)} alt={fullNameOf(currentUser)} />
                         <div className="flex-1 min-w-0 flex flex-col">
-                            <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
+                            <p className="font-heading text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
                                 {fullNameOf(currentUser)}
                             </p>
                             <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 break-words">
@@ -351,7 +351,7 @@ function Avatar({ src, alt }: { src: string; alt: string }) {
 function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-4 w-full">
-            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">
+            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">
                 {title}
             </p>
             <div className="flex flex-col gap-4 w-full">{children}</div>

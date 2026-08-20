@@ -46,8 +46,8 @@ export function SectionHeader({ title, subtitle, right, small = false, className
     // they follow a sibling block (matches the existing
     // StudioProfileFormPage `small` chrome).
     const titleCls = small
-        ? "font-semibold text-[16px] leading-6 pt-2 text-[var(--colors-text-primary)]"
-        : "font-semibold text-[18px] leading-7 text-[var(--colors-text-primary)]";
+        ? "font-heading font-semibold text-[16px] leading-6 pt-2 text-[var(--colors-text-primary)]"
+        : "font-heading font-semibold text-[18px] leading-7 text-[var(--colors-text-primary)]";
     // Compact rendering when there's no subtitle/right slot — keeps the DOM
     // tree as flat as the original local `<p>` callers (branding/portal,
     // notifications, RoleFormPage) so flex layouts don't shift.

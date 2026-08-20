@@ -672,7 +672,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
     if (mode === "edit" && !existing) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center gap-3">
-                <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Service not found</p>
+                <p className="font-heading font-semibold text-[18px] text-[var(--colors-text-primary)]">Service not found</p>
                 <p className="text-[14px] text-[var(--colors-text-quaternary)]">The service you're trying to edit no longer exists.</p>
                 <Button variant="primary" size="md" onClick={() => router.push(returnTo)}>
                     Back to services
@@ -763,7 +763,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
                         {/* Right: live preview */}
                         <div className="w-[340px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden self-start">
                             <div className="p-6 pb-4">
-                                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Service preview</p>
+                                <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Service preview</p>
                                 <p className="text-[14px] text-[#667085] mt-1">This is how your service will look like.</p>
                             </div>
                             <div className="bg-[#f6f6f3] px-6 py-10">

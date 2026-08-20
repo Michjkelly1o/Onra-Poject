@@ -241,7 +241,7 @@ export function SessionPickerModal({ product, customerId, cartSessions = [], onC
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6 pb-5">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Book a session</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Book a session</p>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)]">
                             {isPrivate ? "Pick the instructor, date and time" : "Pick the date and time"}
                         </p>

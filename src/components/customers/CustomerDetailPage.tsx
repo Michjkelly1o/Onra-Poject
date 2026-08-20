@@ -545,7 +545,7 @@ function CancelPlanModal({ plan, onClose, onConfirm }: {
             </>}
         >
             <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Plan details</p>
+                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Plan details</p>
                 <div className="flex flex-col">
                     <p className="text-[14px] text-[var(--colors-text-quaternary)]">{plan.planTypeLabel}</p>
                     <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{plan.name}</p>
@@ -599,7 +599,7 @@ function RemoveComplimentaryModal({ plan, customer, onClose, onConfirm }: {
             </>}
         >
             <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
+                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
                 <div className="flex flex-col gap-2">
                     <InfoRow label="Issued by">
                         <span>{plan.grantIssuedBy ?? "—"}</span>
@@ -639,7 +639,7 @@ function ViewComplimentaryModal({ plan, customer, onClose }: {
             onClose={onClose}
         >
             <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
+                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
                 <div className="flex flex-col gap-2">
                     <InfoRow label="Status">
                         <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]">
@@ -838,7 +838,7 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <p className="font-heading flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
@@ -1611,7 +1611,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
             {lifecycleResult && (
                 <SlidePanel open={lifecycleDrawerOpen} onClose={() => setLifecycleDrawerOpen(false)} width={440}>
                     <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                        <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Lifecycle stage</p>
+                        <p className="font-heading flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Lifecycle stage</p>
                         <button
                             type="button"
                             onClick={() => setLifecycleDrawerOpen(false)}

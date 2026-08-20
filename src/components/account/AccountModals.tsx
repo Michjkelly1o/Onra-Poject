@@ -97,7 +97,7 @@ export function ModalHeaderLeft({ title }: { title: string }) {
     return (
         <div className="flex flex-col w-full">
             <div className="pt-6 px-6 pb-0">
-                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{title}</p>
+                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{title}</p>
             </div>
             <div className="h-5 w-full" />
             <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
@@ -120,7 +120,7 @@ function ModalHeaderCenter({
         <div className="flex flex-col gap-4 items-center pt-6 px-6 pb-5 w-full">
             <FeaturedIcon>{icon}</FeaturedIcon>
             <div className="flex flex-col gap-1 items-center text-center w-full">
-                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 w-full">{title}</p>
+                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 w-full">{title}</p>
                 <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 w-full">{supporting}</p>
             </div>
         </div>

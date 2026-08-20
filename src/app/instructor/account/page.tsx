@@ -386,7 +386,7 @@ function PersonalInformationTab({
                         )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
+                        <p className="font-heading text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
                             {fullName}
                         </p>
                         <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 break-words">
@@ -544,7 +544,7 @@ function Divider() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-5 w-full">
-            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{title}</p>
+            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{title}</p>
             {children}
         </div>
     );

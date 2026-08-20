@@ -384,7 +384,7 @@ export function FreezePolicyPanel({ open, onClose }: {
                 {/* Header */}
                 <div className="flex items-center gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4">
                     <div className="flex-1">
-                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Plan freeze</p>
+                        <p className="font-heading font-semibold text-[18px] text-[var(--colors-text-primary)]">Plan freeze</p>
                     </div>
                     <button type="button" onClick={onClose}
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">

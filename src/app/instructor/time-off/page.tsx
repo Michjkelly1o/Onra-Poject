@@ -262,7 +262,7 @@ export default function InstructorTimeOffPage() {
                 <div className="fixed inset-0 z-[300] bg-black/40 flex items-center justify-center px-4">
                     <div className="bg-white rounded-[16px] w-full max-w-[420px] overflow-hidden flex flex-col shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)]">
                         <div className="px-6 py-5 flex flex-col gap-2">
-                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Delete this time off?</p>
+                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Delete this time off?</p>
                             <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                                 This will remove the entry from your schedule and from admin&apos;s view. This can&apos;t be undone.
                             </p>

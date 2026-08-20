@@ -331,7 +331,7 @@ export function CancellationPolicyPanel({ open, onClose }: {
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Booking cancellations & no-shows</p>
+                        <p className="font-heading font-semibold text-[18px] text-[var(--colors-text-primary)]">Booking cancellations & no-shows</p>
                         <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Build one or more cutoff tiers. Add graduated penalties if you want.
                         </p>

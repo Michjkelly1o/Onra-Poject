@@ -202,7 +202,7 @@ function RolePreview({ form }: { form: FormValue }) {
     return (
         <div className="w-[400px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shrink-0">
             <div className="p-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Role preview</p>
+                <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Role preview</p>
                 <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">This is how role overview will look like.</p>
             </div>
             <div className="bg-[#f6f6f3] flex flex-col gap-5 p-6 w-full">
@@ -212,7 +212,7 @@ function RolePreview({ form }: { form: FormValue }) {
                         <User01 className="w-9 h-9 text-[var(--colors-text-tertiary)]" />
                     </div>
                     <div className="flex flex-col gap-1">
-                        <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
+                        <p className="font-heading font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                             {form.name.trim() || "Role name"}
                         </p>
                         <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] line-clamp-3">
@@ -366,7 +366,7 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
         <div className="flex flex-col gap-4 w-full">
             <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Grant limits</p>
+                    <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Grant limits</p>
                     <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Control how this role can grant complimentary credits.</p>
                 </div>
                 <Toggle value={gl.enabled} onChange={v => update({ enabled: v })} />

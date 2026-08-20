@@ -79,7 +79,7 @@ export function AssignShiftModal({ staff, onClose, onPick }: {
                 {/* Header */}
                 <div className="flex items-start justify-between border-b border-[#e4e7ec] px-6 pb-5 pt-6">
                     <div className="flex min-w-0 flex-col gap-1">
-                        <p className="text-[18px] font-semibold leading-[28px] text-[#101828]">Assign shift</p>
+                        <p className="font-heading text-[18px] font-semibold leading-[28px] text-[#101828]">Assign shift</p>
                         <p className="text-[14px] leading-[20px] text-[#475467]">
                             Pick a shift to assign to <span className="font-medium text-[#344054]">{staff.fullName}</span>.
                         </p>

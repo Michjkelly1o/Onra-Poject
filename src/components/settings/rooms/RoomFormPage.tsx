@@ -208,7 +208,7 @@ export function RoomFormPage({ mode, roomId, defaultBranchId, returnTo }: {
                     <div className="w-[360px] shrink-0 flex flex-col min-h-0">
                         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex-1 flex flex-col overflow-hidden min-h-0">
                             <div className="flex flex-col gap-1 px-6 pt-6 pb-5 shrink-0">
-                                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Room preview</p>
+                                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Room preview</p>
                                 <p className="text-[14px] text-[#667085] leading-5">This is how room overview will look like.</p>
                             </div>
                             <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
@@ -219,7 +219,7 @@ export function RoomFormPage({ mode, roomId, defaultBranchId, returnTo }: {
                                             <LayoutGrid01 className="w-6 h-6 text-[var(--colors-text-tertiary)]" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{name || "Room name"}</p>
+                                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{name || "Room name"}</p>
                                             <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{capacityNum > 0 ? `${capacityNum} max` : "Capacity"}</p>
                                         </div>
                                     </div>

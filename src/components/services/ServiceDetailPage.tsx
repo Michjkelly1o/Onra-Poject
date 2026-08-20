@@ -904,7 +904,7 @@ export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: S
         return (
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Service not found</p>
+                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Service not found</p>
                     <button type="button" onClick={() => router.push(returnTo)}
                         className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                         Back to services

@@ -46,7 +46,7 @@ export function EmptyState({ title, subtitle, icon: Icon = AlignLeft, absolute =
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="font-heading text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
                     <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>

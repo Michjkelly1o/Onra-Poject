@@ -179,7 +179,7 @@ export function BookingWindowPanel({ open, onClose }: {
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Booking window</p>
+                        <p className="font-heading font-semibold text-[18px] text-[var(--colors-text-primary)]">Booking window</p>
                         <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Define when bookings open and the cutoff time before the scheduled start.
                         </p>

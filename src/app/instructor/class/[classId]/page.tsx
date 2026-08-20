@@ -530,7 +530,7 @@ export default function InstructorClassDetailPage() {
         return (
             <div className="h-screen bg-white flex items-center justify-center">
                 <div className="text-center max-w-[360px] px-6">
-                    <p className="text-[18px] font-semibold text-[#101828]">Class not found</p>
+                    <p className="font-heading text-[18px] font-semibold text-[#101828]">Class not found</p>
                     <p className="text-[14px] text-[#475467] mt-1">This class isn&apos;t on your schedule.</p>
                     <button
                         type="button"

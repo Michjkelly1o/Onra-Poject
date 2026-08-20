@@ -196,7 +196,7 @@ export default function EditReferralInformationPage({ returnTo = "/admin/marketi
                     {/* Header */}
                     <div className="flex flex-col">
                         <div className="pt-6 px-6 flex flex-col gap-1">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Referral preview</p>
+                            <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Referral preview</p>
                             <p className="text-[14px] text-[#667085] leading-5">This is how your referral will look like.</p>
                         </div>
                         <div className="h-5" />
@@ -208,7 +208,7 @@ export default function EditReferralInformationPage({ returnTo = "/admin/marketi
                             <DecorativeBanner bannerHeight={120} iconBox={56} icon={HeartHand} {...BANNER_TINTS.package} />
                             <div className="flex flex-col gap-4 px-5">
                                 <div className="flex flex-col gap-2 text-center">
-                                    <p className="text-[18px] leading-[24px] font-semibold text-[var(--colors-text-primary)]">
+                                    <p className="font-heading text-[18px] leading-[24px] font-semibold text-[var(--colors-text-primary)]">
                                         {previewTitle}
                                     </p>
                                     <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-[18px]">

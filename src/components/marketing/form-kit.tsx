@@ -622,7 +622,7 @@ export function MarketingPreviewPanel({ form, branches, noun = "campaign", hideA
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
             {/* Header */}
             <div className="pt-6 px-6 pb-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Marketing preview</p>
+                <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Marketing preview</p>
                 <p className="text-[14px] text-[#667085] leading-5">This is how your marketing card will look like.</p>
             </div>
             {/* Stage */}

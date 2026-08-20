@@ -2377,7 +2377,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                     )}
                     <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)] truncate">{meta.title}</p>
+                            <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)] truncate">{meta.title}</p>
                             {/* Info glyph — added for widgets whose value
                                 isn't obvious from the title alone (client
                                 2026-07-22: Utilization / Under-filled trend

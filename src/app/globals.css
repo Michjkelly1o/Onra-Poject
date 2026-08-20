@@ -245,7 +245,8 @@ body {
 h1, h2, h3 {
   font-family: 'Urbanist', 'DM Sans', system-ui, sans-serif;
 }
-[data-brand-scope="customer"] :is(h1, h2, h3) {
+[data-brand-scope="customer"] :is(h1, h2, h3),
+[data-brand-scope="customer"] .font-heading {
   font-family: 'DM Sans', system-ui, sans-serif;
 }
 

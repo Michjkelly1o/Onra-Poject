@@ -401,7 +401,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                 the POS "Add new customer" panel. */}
             <SlidePanel open={enquiryOpen} onClose={() => setEnquiryOpen(false)} width={480}>
                 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Log enquiry</p>
+                    <p className="font-heading flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Log enquiry</p>
                     <button
                         type="button"
                         onClick={() => setEnquiryOpen(false)}
@@ -499,7 +499,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                 panel above so the two feel like a set. */}
             <SlidePanel open={settingsOpen} onClose={() => setSettingsOpen(false)} width={480}>
                 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Follow-up settings</p>
+                    <p className="font-heading flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Follow-up settings</p>
                     <button
                         type="button"
                         onClick={() => setSettingsOpen(false)}

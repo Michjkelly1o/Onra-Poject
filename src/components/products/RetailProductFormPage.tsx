@@ -651,7 +651,7 @@ function TemplatePreviewCard({ basic, pricing, categoryLabel }: {
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
             <div className="flex flex-col">
                 <div className="pt-6 px-6 flex flex-col gap-1">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
+                    <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
                     <p className="text-[14px] text-[#667085] leading-5">This is how your product will look like.</p>
                 </div>
                 <div className="h-5" />
@@ -686,7 +686,7 @@ function TemplatePreviewCard({ basic, pricing, categoryLabel }: {
                                 </div>
                             </div>
                         </div>
-                        <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-secondary-600)]">
+                        <p className="font-heading font-semibold text-[20px] leading-[30px] text-[var(--colors-secondary-600)]">
                             AED {price.toLocaleString("en-US")}
                         </p>
                     </div>
@@ -979,7 +979,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         return (
             <div className="h-screen bg-white flex items-center justify-center px-6 py-10">
                 <div className="max-w-md text-center flex flex-col gap-3">
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Product not found</p>
+                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Product not found</p>
                     <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                         The product you were editing may have been deleted. Head back to the retail list.
                     </p>

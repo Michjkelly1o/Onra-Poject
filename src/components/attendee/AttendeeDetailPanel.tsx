@@ -436,7 +436,7 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
         return (
             <div className="flex h-full flex-col bg-white">
                 <div className="flex items-center justify-between h-[64px] shrink-0 border-b border-[var(--colors-border-secondary)] px-6">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{isAppt ? "Appointment" : "Class"}</p>
+                    <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{isAppt ? "Appointment" : "Class"}</p>
                     {variant === "panel" && (
                         <button type="button" onClick={onClose} aria-label="Close"
                             className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
@@ -446,7 +446,7 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
                 </div>
                 <div className="flex-1 flex items-center justify-center text-center px-6">
                     <div>
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">This {isAppt ? "appointment" : "class"} is no longer available</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">This {isAppt ? "appointment" : "class"} is no longer available</p>
                         {variant === "panel" && (
                             <button type="button" onClick={onClose}
                                 className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
@@ -571,7 +571,7 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
         <div className="flex h-full flex-col bg-white">
             {/* Header — booking name; close (X) only in the side-panel variant. */}
             <div className="flex items-center justify-between h-[64px] shrink-0 border-b border-[var(--colors-border-secondary)] px-6">
-                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{headerTitle}</p>
+                <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{headerTitle}</p>
                 {variant === "panel" && (
                     <button type="button" onClick={onClose} aria-label="Close"
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
@@ -586,7 +586,7 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
                 <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px]">
                     {/* Participants header — title + Search participant (no tabs, no filter). */}
                     <div className="shrink-0 flex items-center gap-3 flex-wrap px-6 pt-6 pb-4">
-                        <p className="flex-1 min-w-0 text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Participants</p>
+                        <p className="font-heading flex-1 min-w-0 text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Participants</p>
                         <div className="relative w-[240px]">
                             <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)] pointer-events-none" />
                             <input

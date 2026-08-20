@@ -445,7 +445,7 @@ function DeleteConfirmModal({ name, description, onCancel, onConfirm }: {
                         <Trash04 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 items-center text-center w-full">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">
+                        <p className="font-heading text-[18px] font-semibold text-[#101828] leading-7 w-full">
                             Delete {name}?
                         </p>
                         <p className="text-[14px] text-[#475467] leading-5 w-full">

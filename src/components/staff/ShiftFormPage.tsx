@@ -235,7 +235,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
     if (mode === "edit" && !existing) {
         const notFound = (
             <div className="flex flex-1 flex-col items-center justify-center gap-3">
-                <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Shift not found</p>
+                <p className="font-heading font-semibold text-[18px] text-[var(--colors-text-primary)]">Shift not found</p>
                 <p className="text-[14px] text-[var(--colors-text-quaternary)]">The shift you're trying to edit no longer exists.</p>
                 <Button variant="primary" size="md" onClick={exit}>Back to shifts</Button>
             </div>

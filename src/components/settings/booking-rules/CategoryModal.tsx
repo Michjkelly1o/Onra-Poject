@@ -117,7 +117,7 @@ export function CategoryModal({ existing, onClose, onSubmit, takenNames, entityL
             <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[440px] flex flex-col">
                 {/* ── Header ─────────────────────────────────────────── */}
                 <div className="relative px-6 pt-6 pb-5">
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 pr-12">
+                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 pr-12">
                         {title}
                     </p>
                     <button

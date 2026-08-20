@@ -590,7 +590,7 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
                     <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-3">Rating summary</p>
                     <RatingStars rating={avgRating} size="lg" />
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 mt-2">
+                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 mt-2">
                         {avgRating > 0 ? avgRating.toFixed(1) : "0"}
                         <span className="text-[14px] font-normal text-[var(--colors-text-quaternary)]"> ({ratingCount} ratings)</span>
                     </p>

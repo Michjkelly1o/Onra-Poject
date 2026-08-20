@@ -57,7 +57,7 @@ export function NotificationSettingsTab() {
         // Personal info one so the page doesn't jump between tabs.
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full min-h-[760px]">
             <div className="flex flex-col gap-5 w-full">
-                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Notification settings</p>
+                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Notification settings</p>
 
                 <div className="flex flex-col gap-3 w-full">
                     {CHANNELS.map(ch => {

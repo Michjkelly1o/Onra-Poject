@@ -273,7 +273,7 @@ export function PosNewCustomerModal({
             >
                 {/* Header — matches the customer-module filter panel chrome */}
                 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Add new customer</p>
+                    <p className="font-heading flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Add new customer</p>
                     <button type="button" onClick={onClose}
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />

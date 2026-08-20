@@ -702,7 +702,7 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
                 {/* Header — verbatim admin chrome
                     ([admin/schedule/page.tsx:556-561](src/app/admin/schedule/page.tsx#L556)). */}
                 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
+                    <p className="font-heading flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button
                         type="button"
                         onClick={onClose}

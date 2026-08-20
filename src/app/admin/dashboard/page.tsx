@@ -1896,7 +1896,7 @@ export default function AdminDashboard() {
                     {/* Header — Today's classes title + See all button.
                         Click navigates to the schedule list per the brief. */}
                     <div className="flex gap-3 items-center w-full flex-shrink-0">
-                        <p className="font-semibold text-lg text-[var(--colors-text-primary)] flex-1 truncate">
+                        <p className="font-heading font-semibold text-lg text-[var(--colors-text-primary)] flex-1 truncate">
                             Today&apos;s sessions
                         </p>
                         {/* Attendee entry point removed — the attendance console
@@ -1975,7 +1975,7 @@ export default function AdminDashboard() {
                         Team activity tab, which surfaces the full feed
                         (same data source). */}
                     <div className="flex gap-3 items-center w-full flex-shrink-0">
-                        <p className="font-semibold text-lg text-[var(--colors-text-primary)] flex-1 truncate">
+                        <p className="font-heading font-semibold text-lg text-[var(--colors-text-primary)] flex-1 truncate">
                             Recent activity
                         </p>
                         <Button
@@ -2098,7 +2098,7 @@ export default function AdminDashboard() {
 
                 return (
                     <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3">
-                        <p className="font-semibold text-lg text-[var(--colors-text-primary)]">Needs Attention</p>
+                        <p className="font-heading font-semibold text-lg text-[var(--colors-text-primary)]">Needs Attention</p>
                         <div className="flex flex-col">
                             {rows.map((r, i) => (
                                 <NeedsAttentionRow

@@ -228,7 +228,7 @@ export function UnassignShiftModal({ staff, onClose }: {
                 {/* Header */}
                 <div className="flex items-start justify-between px-6 pb-4 pt-6">
                     <div className="flex min-w-0 flex-col gap-1">
-                        <p className="text-[18px] font-semibold leading-[28px] text-[var(--colors-text-primary)]">Unassign staff shift?</p>
+                        <p className="font-heading text-[18px] font-semibold leading-[28px] text-[var(--colors-text-primary)]">Unassign staff shift?</p>
                         <p className="text-[14px] leading-[20px] text-[var(--colors-text-tertiary)]">
                             Select the shifts and weeks to un-assign for <span className="font-medium text-[var(--colors-text-secondary)]">{staff.fullName}</span>. Past weeks stay as read-only history.
                         </p>

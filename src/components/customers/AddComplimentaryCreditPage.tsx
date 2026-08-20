@@ -292,7 +292,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                     <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">Add complimentary credit</p>
+                    <p className="font-heading text-[20px] font-semibold text-[var(--colors-text-primary)]">Add complimentary credit</p>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -309,7 +309,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                     <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-8">
                         {/* ─── Complimentary configuration ─── */}
                         <div className="flex flex-col gap-4">
-                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Complimentary configuration</p>
+                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Complimentary configuration</p>
 
                             <Field label="Number of free credit">
                                 {/* `max` follows the role's per-grant value cap
@@ -363,7 +363,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
 
                         {/* ─── Notification ─── */}
                         <div className="flex flex-col gap-4">
-                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Notification</p>
+                            <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Notification</p>
                             <div className="flex items-center gap-4 border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4">
                                 <div className="flex-1 min-w-0 flex flex-col">
                                     <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">Notification to customer</span>
@@ -448,7 +448,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
 
                             {/* Details */}
                             <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
+                                <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
                                 <div className="flex flex-col gap-2">
                                     <InfoRow label="Granting to">
                                         <div className="flex items-center gap-2">

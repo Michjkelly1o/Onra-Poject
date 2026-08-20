@@ -284,7 +284,7 @@ const TYPE_PREVIEW_LABEL: Record<PayRateType, string> = {
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
     return (
         <div className="flex flex-col gap-1 w-full">
-            <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</p>
+            <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</p>
             {subtitle && <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>}
         </div>
     );
@@ -853,7 +853,7 @@ function PayRatePreview({ form }: { form: FormValue }) {
     return (
         <div className="w-[400px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shrink-0">
             <div className="p-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Pay rate preview</p>
+                <p className="font-heading font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Pay rate preview</p>
                 <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">This is how pay rate overview will look like.</p>
             </div>
             <div className="bg-[#f6f6f3] flex flex-col gap-5 py-10 w-full">
@@ -874,7 +874,7 @@ function PayRatePreview({ form }: { form: FormValue }) {
                         </div>
                         {/* Content */}
                         <div className="px-6 pt-5 pb-6 flex flex-col gap-5">
-                            <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{previewName}</p>
+                            <p className="font-heading font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{previewName}</p>
                             <div className="flex flex-col gap-1">
                                 <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-secondary-600)]">{display.main}</p>
                                 <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{display.subtitle}</p>

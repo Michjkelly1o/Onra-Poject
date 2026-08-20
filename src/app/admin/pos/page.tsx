@@ -1372,7 +1372,7 @@ function PosCartPanel(props: {
                 </div>
                 <div className="flex items-center">
                     <p className="flex-1 text-[18px] font-medium text-[var(--colors-text-primary)]">Total</p>
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">AED {props.total.toLocaleString()}</p>
+                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">AED {props.total.toLocaleString()}</p>
                 </div>
 
                 <Button variant="primary" size="lg" className="w-full" disabled={cartEmpty} onClick={handleProceedClick}>
@@ -1591,7 +1591,7 @@ function PosFilterPanel({ open, onClose, applied, onApply, showCredits }: {
             <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
             <div className="relative w-[400px] h-full bg-white border-l border-[var(--colors-border-secondary)] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
                 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <p className="font-heading flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
@@ -1733,7 +1733,7 @@ function SizePickerModal({ product, branchId, branchOptions, onClose, onPick }: 
             <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[420px] max-w-[calc(100vw-32px)] flex flex-col">
                 <div className="flex items-start gap-3 p-6 pb-4">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">
                             {isSized ? "Choose a size" : "Choose a pickup branch"}
                         </p>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5 truncate">{product.name}</p>
@@ -1876,7 +1876,7 @@ function GiftCardRecipientModal({ open, designId, customer, onClose, onConfirm }
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6 pb-5">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Gift card recipient information</p>
+                        <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Gift card recipient information</p>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)]">Add information and amount to the recipient</p>
                     </div>
                     <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mt-1 -mr-2">
