@@ -341,9 +341,9 @@ interface SidebarProps {
 
 export default function Sidebar({ navItems, accountHref, showSettings = true }: SidebarProps = {}) {
     const pathname = usePathname();
-    // Query string — used only to disambiguate the two /admin/services deep-
-    // links (Private sessions vs Recovery). `.toString()` drops the
-    // leading "?"; empty when no params.
+    // Query string — used only to disambiguate query-param deep-links that
+    // share a pathname (the Staff group's Staff vs Shift tabs, /admin/staff?
+    // subtab=…). `.toString()` drops the leading "?"; empty when no params.
     const search = useSearchParams()?.toString() ?? "";
     const { sidebarCollapsed, toggleSidebar } = useAppStore();
     const { currentUser } = useAppStore();
