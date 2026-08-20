@@ -1372,7 +1372,7 @@ function PosCartPanel(props: {
                 </div>
                 <div className="flex items-center">
                     <p className="flex-1 text-[18px] font-medium text-[var(--colors-text-primary)]">Total</p>
-                    <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)]">AED {props.total.toLocaleString()}</p>
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">AED {props.total.toLocaleString()}</p>
                 </div>
 
                 <Button variant="primary" size="lg" className="w-full" disabled={cartEmpty} onClick={handleProceedClick}>
