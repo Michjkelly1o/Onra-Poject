@@ -2,7 +2,7 @@
 
 This folder documents everything in the Onra Studio (Syncfit) app that is **simulated, stubbed, or deliberately deferred in the prototype** and needs a real developer to build for production. It is the bridge from "interactive demo" to "shippable product."
 
-**Last updated:** 2026-08-13.
+**Last updated:** 2026-08-20.
 
 ---
 
@@ -17,6 +17,9 @@ Because of this, almost everything that would touch an external system in produc
 ---
 
 ## The docs
+
+**Start here (how the app is built):**
+- [`architecture-and-centralization.md`](architecture-and-centralization.md) — the store as the single source of truth (persist/versioning/hydration), the centralized mock-data / derivation / UI-pattern / config-registry conventions, the RBAC & routing model, and the conventions/gotchas a new developer must know. Read this right after the README, before the module docs.
 
 **Foundational (build first):**
 - [`backend-and-auth.md`](backend-and-auth.md) — no backend/auth today; the Zustand store → Supabase Postgres + a data/API layer; URL-driven persona flips → Supabase Auth + RLS + middleware; base64 data-URL images → object storage; mock files → migrations; client IDs/timestamps → server. **The largest effort; everything else depends on it.**
@@ -37,7 +40,7 @@ Because of this, almost everything that would touch an external system in produc
 - [`schedule.md`](schedule.md) — Class Management is largely real (live grid, real recurring create, correct category gating); gaps are whole-class-cancel customer notifications, admin-cancel Settings window, room double-booking, cancel reason, edit-all-recurring, and mark-no-show.
 - [`reports-and-insights.md`](reports-and-insights.md) — Analytics is real and correct (33 data-driven reports on a shared shell, correct refund model + recognized revenue, real Excel/CSV export, live Insights tiles); gaps are decorative RBAC + branch-admin scope, a few stubbed selector fields (cancellation charge, waitlist conversions, retail tax), and a recognition-engine consistency refactor.
 - [`settings.md`](settings.md) — every Settings section saves real, persisted mutations, and most settings drive behavior (Tax→POS, payment methods, branch scope, freeze, name+logo, referrer reward, and now cancellation policy + referral friend-reward/cap, which were wired up); still saved-but-not-enforced: brand colors (never applied to CSS vars), operator refund limit (setting doesn't exist), and the admin cancel path.
-- [`marketing.md`](marketing.md) — Marketing is real and store-wired (live campaigns/announcements/promos, real consent-gated reach, targeting against live data, customer-facing surfaces); the campaign **send is simulated** (opens/clicks are hardcoded multipliers — real engagement needs provider webhooks), and the What's-on banner isn't consent-gated (a design decision).
+- [`marketing.md`](marketing.md) — Marketing is real and store-wired (live campaigns/announcements/promos, real consent-gated reach, targeting against live data, customer-facing surfaces); the campaign **send is simulated** (opens/clicks are hardcoded multipliers — real engagement needs provider webhooks), and the What's-on banner isn't consent-gated (a design decision). **2026-08:** marketing spend moved **onto campaigns (a `budget_aed` field) + the referral budget**, the standalone Spend module is hidden, and one derived source (`selectMarketingSpend`) now feeds Acquisition Efficiency + Insights + the dashboard widget/CSV + the AI reader so every spend/CPL/CAC/ROAS figure reconciles.
 - [`staff-payroll-rbac-status.md`](staff-payroll-rbac-status.md) — what's real vs. deferred in Staff/Payroll (payroll adjustments UI, create-new-rate model, compensation report, RBAC).
 - [`services-configuration.md`](services-configuration.md) — services module configuration notes (existing).
 - [`export.md`](export.md) — CSV/Excel are done everywhere; the two remaining pieces are **wiring PDF** (still a disabled "soon" item) and a **Reports correctness pass** — a checklist for verifying each report's export columns + the data behind them (right `key`↔field, right `kind`/formats, complete hidden ID columns, `branch_id`, numbers matching the screen) so report exports can be trusted.
@@ -70,6 +73,8 @@ These are prototype simplifications or unbuilt product features found during mod
 - **Instructor "Clients taught" KPI** counts booked, not attended (cosmetic label); on-time-off instructors aren't badged "away" in the picker (their time slots do go unavailable).
 - **Account "Active Sessions"** is local-demo-only (no device-session backend concept).
 - **Seed display denormalization** — `customer_plans.name` / `customer_transactions.name` store product-name copies alongside their FK ids (harmless display denormalization).
+- **Marketing Spend ledger is now dead code** (2026-08) — spend moved onto campaign budgets + the referral budget; the `marketing_spend` seed + the hidden `/admin/marketing/spend` module are no longer the report's source. Remove or repurpose the ledger in production. See [`marketing.md`](marketing.md).
+- **Routing was realigned to the nav** (2026-08) — six routes moved so each URL matches its sidebar group, with permanent redirects in `next.config.mjs` from every old path. Detail/edit "takeover" pages intentionally live at top-level (not under `/admin/*`); see [`architecture-and-centralization.md`](architecture-and-centralization.md) §8.
 - **Synthetic data** — ~1,520 customers are generated at boot for realistic KPIs; do **not** seed these into production.
 
 ---
