@@ -1,7 +1,7 @@
 "use client";
 
 // Root-level full-page route (no admin layout) — same pattern as
-// /products/new, /customers/new, /class-types/new etc.
+// /products/new, /customers/new, /products/classes/new etc.
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";

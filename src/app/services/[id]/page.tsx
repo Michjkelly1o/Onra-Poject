@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Top-level route so the detail page renders edge-to-edge without the admin
-// sidebar + header chrome (same pattern as /class-types/[id]). Reads the
+// sidebar + header chrome (same pattern as /products/classes/[id]). Reads the
 // dynamic [id] and hands it to the shared ServiceDetailPage component.
 
 import { Suspense } from "react";

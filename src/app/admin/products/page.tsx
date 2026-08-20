@@ -10,7 +10,7 @@
 // Patterns reused (no reinvention):
 //   • CheckboxCell + floating "N selected" pill from /schedule/[classId]
 //   • RangeSection + ValueChip from /admin/pos for the filter sliders
-//   • ActionModal tone matrix from /class-types/[id] —
+//   • ActionModal tone matrix from /products/classes/[id] —
 //       success modal: archive, recover, reactivate (green Archive icon)
 //       destructive  : deactivate, delete           (red,  primary→destructive)
 //   • Row-action "swap Deactivate ↔ Delete" — Delete only when no holders
@@ -190,7 +190,7 @@ function PriceColumnHeaderTaxLine({ rows }: { rows: ProductRow[] }) {
 
 type RowActionKind = "deactivate" | "reactivate" | "archive" | "recover" | "delete";
 
-// ─── Action modal (mirrors /class-types/[id] tone matrix) ────────────────────
+// ─── Action modal (mirrors /products/classes/[id] tone matrix) ────────────────────
 
 type ModalAction = RowActionKind;
 

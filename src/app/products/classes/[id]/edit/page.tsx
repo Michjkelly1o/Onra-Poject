@@ -1,6 +1,6 @@
 "use client";
 
-// Edit class template — same layout as /class-types/new but pre-filled with
+// Edit class template — same layout as /products/classes/new but pre-filled with
 // existing template data. On save: updateClassTemplate + toast + back to detail.
 
 import { Suspense, useState, useRef, useEffect } from "react";
@@ -425,7 +425,7 @@ function EditClassTemplatePageInner() {
             applicableMemberships:   selectedMemberships,
         });
         showToast("Class template updated successfully", "Your changes have been saved.", "success", "check");
-        router.push(`/class-types/${id}`);
+        router.push(`/products/classes/${id}`);
     }
 
     if (!template) {
@@ -449,7 +449,7 @@ function EditClassTemplatePageInner() {
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push(`/class-types/${id}`)}
+                <button type="button" onClick={() => router.push(`/products/classes/${id}`)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>

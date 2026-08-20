@@ -4,7 +4,7 @@
 // mode. The same component powers edit mode via mode="edit" with prefilled
 // initial state. Lives at the top-level /products namespace so the 2-step flow
 // takes over the whole viewport (outside the admin sidebar chrome), matching
-// /products/new, /products/gift-cards/new and /class-types/new.
+// /products/new, /products/gift-cards/new and /products/classes/new.
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";

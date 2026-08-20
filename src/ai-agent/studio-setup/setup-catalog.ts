@@ -82,7 +82,7 @@ export const SETUP_STEPS: SetupStep[] = [
         label: "Class templates",
         description:
             "The recurring class definitions (name, duration, capacity). Every scheduled class is an instance of one of these.",
-        href: "/admin/class-types",
+        href: "/admin/products/classes",
         countFromSnapshot: (s) => s.classTemplates.length,
         isConfigured: (s) => has(s.classTemplates.length),
     },

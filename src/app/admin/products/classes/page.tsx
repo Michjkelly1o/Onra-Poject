@@ -100,8 +100,8 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
     const showToast            = useAppStore(s => s.showToast);
     const [confirmAction, setConfirmAction] = useState<CardAction | null>(null);
     const hasData    = classSchedules.some(s => s.templateId === template.id);
-    const detailHref = `/class-types/${template.id}?returnTo=${encodeURIComponent("/admin/class-types")}`;
-    const editHref   = `/class-types/${template.id}/edit?returnTo=${encodeURIComponent("/admin/class-types")}`;
+    const detailHref = `/products/classes/${template.id}?returnTo=${encodeURIComponent("/admin/products/classes")}`;
+    const editHref   = `/products/classes/${template.id}/edit?returnTo=${encodeURIComponent("/admin/products/classes")}`;
     // Items conditional on status. Rules mirror the detail-page LeftPanel
     // per module convention: Archived → Recover only; Inactive → Archive +
     // Reactivate; Active → Edit + Archive + (Delete if unused else
@@ -405,7 +405,7 @@ export default function ClassTypesPage() {
     // ClassCategoriesView panel. Tab choice persists per-browser.
     const [tab, setTab] = usePersistedListState<"templates" | "categories">("classTypes:tab", "templates");
     const catCtrl = useClassCategoriesController();
-    const goNewTemplate = () => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`);
+    const goNewTemplate = () => router.push(`/products/classes/new?returnTo=${encodeURIComponent("/admin/products/classes")}`);
 
     const hasActiveFilters = applied.statuses.length > 0 || applied.categories.length > 0;
     const isDataEmpty = classTemplates.length === 0;

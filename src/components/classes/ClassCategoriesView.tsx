@@ -7,7 +7,7 @@
 // Client 2026-08-07 — Class templates + Class categories merged into one
 // "Class" menu under Products, tabbed like Memberships & Packages. This file
 // splits the categories module into a controller hook + toolbar + panel +
-// pagination so the merged /admin/class-types page can render the toolbar
+// pagination so the merged /admin/products/classes page can render the toolbar
 // ABOVE the shared view-card and the table INSIDE it, while the legacy
 // standalone /admin/categories route renders the self-contained
 // `ClassCategoriesView`.

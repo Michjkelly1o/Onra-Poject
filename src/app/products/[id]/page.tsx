@@ -4,7 +4,7 @@
 // Onra Studio — Membership / Credit-package detail page (/products/[id])
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Full-screen detail page matching the /class-types/[id] shell exactly so
+// Full-screen detail page matching the /products/classes/[id] shell exactly so
 // every detail page in the dashboard shares the same chrome:
 //   • 72px top header (X close + page title)
 //   • h-[832px] two-column frame inside px-6 py-6 outer padding

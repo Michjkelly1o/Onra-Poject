@@ -4,7 +4,7 @@
 // Onra Studio — Create new product (Membership / Package)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Full-page modal flow at /products/new. Same shell as /class-types/new and
+// Full-page modal flow at /products/new. Same shell as /products/classes/new and
 // /schedule/new — lives OUTSIDE the admin sidebar layout (top-level route) so
 // the multi-step form takes over the whole viewport per the Figma comp.
 //

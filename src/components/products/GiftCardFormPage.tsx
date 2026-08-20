@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Full-page modal flow at /products/gift-cards/new — same shell as
-// /products/new (membership/package) and /class-types/new: lives OUTSIDE the
+// /products/new (membership/package) and /products/classes/new: lives OUTSIDE the
 // admin sidebar layout so the multi-step form takes over the whole viewport.
 //
 // Three-step flow (PRD 06 — gift cards brief):

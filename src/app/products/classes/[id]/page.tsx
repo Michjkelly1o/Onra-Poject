@@ -966,7 +966,7 @@ function ClassTemplateDetailPageInner() {
     const pathname = usePathname();
     const { id } = useParams<{ id: string }>();
     const searchParams = useSearchParams();
-    const returnTo = searchParams.get("returnTo") ?? "/admin/class-types";
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/classes";
     const { classTemplates, classSchedules, updateClassTemplate, deleteClassTemplate, showToast } = useAppStore();
 
     const template = classTemplates.find(t => t.id === id);
@@ -994,7 +994,7 @@ function ClassTemplateDetailPageInner() {
 
     function handleAction(action: "edit" | ModalAction) {
         if (action === "edit") {
-            router.push(`/class-types/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
+            router.push(`/products/classes/${id}/edit?returnTo=${encodeURIComponent(pathname)}`);
             return;
         }
         setConfirmAction(action);

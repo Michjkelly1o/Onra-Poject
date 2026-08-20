@@ -45,7 +45,7 @@ export interface BreadcrumbSegment {
 const MODULE_LABELS: Record<string, string> = {
     "/admin/dashboard":                "Dashboard",
     "/admin/schedule":                 "Schedule",
-    "/admin/class-types":              "Classes",
+    "/admin/products/classes":              "Classes",
     "/admin/services":                 "Appointment services",
     "/admin/categories":               "Categories",
     "/admin/customers":                "Customers",
@@ -125,7 +125,7 @@ interface ModuleRoot {
 const MODULE_ROOT: ModuleRoot[] = [
     { prefix: "/customers",           listPath: "/admin/customers",         label: "Customers",             detailNoun: "Customer details" },
     { prefix: "/schedule",            listPath: "/admin/schedule",          label: "Schedule",              detailNoun: "Class details" },
-    { prefix: "/class-types",         listPath: "/admin/class-types",       label: "Classes",               detailNoun: "Template details" },
+    { prefix: "/products/classes",         listPath: "/admin/products/classes",       label: "Classes",               detailNoun: "Template details" },
     { prefix: "/services",            listPath: "/admin/services",          label: "Appointment services",
       // Client 2026-07-21 — swap the static "Service details" for a
       // type-aware noun that mirrors the module name the customer sees
@@ -199,7 +199,7 @@ const DYNAMIC_LABELS: Record<string, (id: string, s: AppState) => string> = {
         const cs = s.classSchedules.find(x => x.id === id);
         return cs ? cs.name : "Class";
     },
-    "/class-types": (id, s) => {
+    "/products/classes": (id, s) => {
         const t = s.classTemplates.find(x => x.id === id);
         return t?.name ?? "Class template";
     },

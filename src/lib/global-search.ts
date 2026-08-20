@@ -80,7 +80,7 @@ const PAGES: PageEntry[] = [
     { title: "Customers",              href: "/admin/customers",                  icon: User01 },
     // Classes group — Sidebar parent is CalendarCheck01; reuse for both children
     { title: "Schedule",               href: "/admin/schedule",                   icon: CalendarCheck01 },
-    { title: "Class Templates",        href: "/admin/class-types",                icon: CalendarCheck01 },
+    { title: "Class Templates",        href: "/admin/products/classes",                icon: CalendarCheck01 },
     { title: "Services",               href: "/admin/services",                   icon: CalendarCheck01 },
     // Services & products group — Sidebar parent is ShoppingBag01; Gift Cards
     // + Promo keep their own glyphs since those are universally recognised.
@@ -231,7 +231,7 @@ export function useSearchIndex(
                 if (t.status !== "active") continue;
                 const s = score(t.name, q);
                 if (s === 0) continue;
-                const href = `/class-types/${t.id}`;
+                const href = `/products/classes/${t.id}`;
                 if (isRouteDisabled(href)) continue;
                 results.push({
                     id: `tpl-${t.id}`,
@@ -348,7 +348,7 @@ export const CATEGORY_ORDER: readonly SearchCategory[] = [
 const SUGGESTED_PAGE_HREFS = [
     "/admin/dashboard",
     "/admin/schedule",
-    "/admin/class-types",
+    "/admin/products/classes",
     "/admin/customers",
     "/admin/pos",
     "/admin/products",
@@ -443,7 +443,7 @@ export function useDefaultSuggestions(
                 .filter(t => t.status === "active")
                 .slice(0, 3);
             for (const t of tpls) {
-                const href = `/class-types/${t.id}`;
+                const href = `/products/classes/${t.id}`;
                 if (isRouteDisabled(href)) continue;
                 results.push({
                     id: `tpl-${t.id}`,

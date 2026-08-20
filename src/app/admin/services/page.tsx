@@ -745,7 +745,7 @@ function ServicesPageInner() {
     // The new/edit/detail pages all live at TOP-LEVEL routes (`/services/*`)
     // — NOT under `/admin/services/*` — so they render full-screen without
     // the admin sidebar + header chrome. Same convention as class templates
-    // (`/class-types/new`) and customers (`/customers/[id]/edit`).
+    // (`/products/classes/new`) and customers (`/customers/[id]/edit`).
     //
     // returnTo carries the active `?type=` scope so closing a service from the
     // "Private sessions" / "Recovery" view lands back on the SAME

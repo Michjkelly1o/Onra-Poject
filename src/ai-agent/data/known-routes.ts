@@ -40,8 +40,8 @@ const STATIC_ROUTES: readonly string[] = [
     "/products/retail",
     "/products/retail/new",
     // Class management
-    "/class-types",
-    "/class-types/new",
+    "/products/classes",
+    "/products/classes/new",
     // Staff
     "/staff",
     "/staff/members",
@@ -110,8 +110,8 @@ const DYNAMIC_ROUTES: readonly string[] = [
     "/products/gift-cards/:id/edit",
     "/marketing/promotions/:id",
     "/marketing/promotions/:id/edit",
-    "/class-types/:id",
-    "/class-types/:id/edit",
+    "/products/classes/:id",
+    "/products/classes/:id/edit",
     "/services/:id",
     "/services/:id/edit",
     "/leads/:id",

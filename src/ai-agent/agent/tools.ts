@@ -201,7 +201,7 @@ const CREATE_SHORTCUTS = [
     {
         title: "New class template",
         subtitle: "Recurring class definition — name, category, duration, capacity.",
-        href: "/class-types/new",
+        href: "/products/classes/new",
     },
     {
         title: "New scheduled class",

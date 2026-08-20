@@ -16,6 +16,9 @@ const nextConfig = {
             // Phase 3 · Promotions: /admin/products/promo-codes → /admin/marketing/promotions
             { source: "/admin/products/promo-codes",  destination: "/admin/marketing/promotions", permanent: true },
             { source: "/products/promo-codes/:path*", destination: "/marketing/promotions/:path*", permanent: true },
+            // Phase 4 · Classes: /admin/class-types → /admin/products/classes
+            { source: "/admin/class-types",  destination: "/admin/products/classes", permanent: true },
+            { source: "/class-types/:path*", destination: "/products/classes/:path*", permanent: true },
 
             // Financial legacy → new consolidated / renamed reports
             { source: "/reports/memberships",         destination: "/reports/memberships-packages", permanent: true },

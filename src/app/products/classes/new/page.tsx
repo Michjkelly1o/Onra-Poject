@@ -498,7 +498,7 @@ function ApplicableMembershipsStep({
 function NewClassTemplatePageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const returnTo = searchParams.get("returnTo") ?? "/admin/class-types";
+    const returnTo = searchParams.get("returnTo") ?? "/admin/products/classes";
     const [step, setStep] = useState<1 | 2>(1);
 
     const [step1, setStep1] = useState<Step1Data>({
