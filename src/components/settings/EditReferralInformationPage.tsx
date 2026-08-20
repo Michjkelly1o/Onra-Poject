@@ -50,7 +50,7 @@ const VARIABLE_CHIPS: Array<{ token: string; label: string }> = [
     { token: "{{cap}}",      label: "{{cap}}"      },
 ];
 
-export default function EditReferralInformationPage({ returnTo = "/admin/settings/referral" }: EditReferralInformationPageProps) {
+export default function EditReferralInformationPage({ returnTo = "/admin/marketing/referrals" }: EditReferralInformationPageProps) {
     const router = useRouter();
     const settings                  = useAppStore(s => s.referralSettings);
     const updateReferralInformation = useAppStore(s => s.updateReferralInformation);

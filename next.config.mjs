@@ -10,6 +10,9 @@ const nextConfig = {
             // Phase 1 · Payroll: /admin/compensation → /admin/staff/payroll
             { source: "/admin/compensation",   destination: "/admin/staff/payroll", permanent: true },
             { source: "/compensation/:path*",  destination: "/staff/payroll/:path*", permanent: true },
+            // Phase 2 · Referrals: /admin/settings/referral → /admin/marketing/referrals
+            { source: "/admin/settings/referral",   destination: "/admin/marketing/referrals", permanent: true },
+            { source: "/settings/referral/:path*",  destination: "/marketing/referrals/:path*", permanent: true },
 
             // Financial legacy → new consolidated / renamed reports
             { source: "/reports/memberships",         destination: "/reports/memberships-packages", permanent: true },

@@ -203,8 +203,8 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // Overview + Setup tabs, reward config, and edit-information editor are
     // hidden until the client signs off. Sidebar/settings link stays visible
     // per the file convention; clicking it 404s. Re-enable by re-commenting.
-    //"/admin/settings/referral",      // landing (Overview + Setup tabs)
-    //"/settings/referral",            // edit-information full-page editor
+    //"/admin/marketing/referrals",      // landing (Overview + Setup tabs)
+    //"/marketing/referrals",            // edit-information full-page editor
 
     // ── Agreements module ── (ENABLED — pushing today)
     //"/admin/settings/agreements",    // list view

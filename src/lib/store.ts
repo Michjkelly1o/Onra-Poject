@@ -2048,7 +2048,7 @@ export type ReferralRewardType = "free_credits" | "wallet_credit" | "discount";
 export type ReferralTrigger = ReferralTriggerSeed;
 
 /** Camel-cased mirror of `ReferralSettingsSeed`. Drives:
- *    • /admin/settings/referral landing (3 cards)
+ *    • /admin/marketing/referrals landing (3 cards)
  *    • Reward rules & limits side-panel modal (Figma 7661:54592)
  *    • Eligibility & fraud controls side-panel modal (Figma 7661:85303)
  *    • Customize referral information page (Figma 4627:153001)

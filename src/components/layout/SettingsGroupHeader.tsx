@@ -11,7 +11,7 @@
 // the same "Business & locations · Branding" tab bar, current page
 // underlined, click → route push.
 //
-// If the current path doesn't belong to a group (e.g. `/settings/referral`
+// If the current path doesn't belong to a group (e.g. `/marketing/referrals`
 // or `/settings/account`), this renders nothing — those pages are
 // intentionally outside the tabbed structure.
 

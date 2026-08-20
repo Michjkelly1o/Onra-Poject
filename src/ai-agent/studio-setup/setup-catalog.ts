@@ -144,7 +144,7 @@ export const SETUP_STEPS: SetupStep[] = [
         label: "Referral program",
         description:
             "Reward existing customers for bringing new ones — either class credits or account credit. Turn off if you don't run referrals.",
-        href: "/admin/settings/referral",
+        href: "/admin/marketing/referrals",
         countFromSnapshot: () => null,
         // v83 audit-5 (2026-07-28) — real signal: referral program is
         // actively RUNNING. Seed pre-fills `programActive: true` so the

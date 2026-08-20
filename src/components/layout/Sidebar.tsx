@@ -83,7 +83,7 @@ const NAV_ITEMS: NavItemDef[] = [
             // Announcements — its own single menu, split out of Campaigns.
             // (Events removed — bookable events live in Schedule, not Marketing.)
             { label: "Announcements", href: "/admin/marketing/announcements" },
-            { label: "Referrals",     href: "/admin/settings/referral"       },
+            { label: "Referrals",     href: "/admin/marketing/referrals"       },
             { label: "Marketing Spend", href: "/admin/marketing/spend"       },
         ],
     },

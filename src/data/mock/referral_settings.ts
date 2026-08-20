@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Global configuration for the referral program. Drives:
-//   • /admin/settings/referral landing (master toggle + Reward rules card
+//   • /admin/marketing/referrals landing (master toggle + Reward rules card
 //     + Eligibility & fraud controls card + Customize information card)
 //   • Reward rules & limits side-panel modal
 //   • Eligibility & fraud controls side-panel modal

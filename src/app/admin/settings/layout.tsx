@@ -7,7 +7,7 @@
 // Injects the group-aware tab bar (`SettingsGroupHeader`) at the top of every
 // settings page that belongs to a group (Business / Operations / Customer —
 // see `src/config/settings-groups.ts`). Pages outside the groups
-// (`/settings/referral`, `/settings/account`, deep detail pages like
+// (`/marketing/referrals`, `/settings/account`, deep detail pages like
 // `/settings/branches/[id]`) render as-is — the header component returns
 // null for those paths.
 //

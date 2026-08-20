@@ -107,7 +107,7 @@ const PAGES: PageEntry[] = [
     { title: "Branding",               href: "/admin/settings/branding",          icon: Brush02 },
     { title: "Booking Rules",          href: "/admin/settings/booking-rules",     icon: Settings01 },
     { title: "Customer notifications", href: "/admin/settings/notifications",     icon: Bell01 },
-    { title: "Referrals",       href: "/admin/settings/referral",          icon: Share07 },
+    { title: "Referrals",       href: "/admin/marketing/referrals",          icon: Share07 },
     { title: "Agreements",             href: "/admin/settings/agreements",        icon: File05 },
     { title: "Integrations",           href: "/admin/settings/integrations",      icon: Zap },
     { title: "Tax",                    href: "/admin/settings/tax",               icon: Receipt },

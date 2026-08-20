@@ -55,7 +55,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/settings/notifications": "Customer notifications",
     "/admin/settings/tax": "Tax",
     "/admin/settings/agreements": "Agreements",
-    "/admin/settings/referral": "Referrals",
+    "/admin/marketing/referrals": "Referrals",
     "/admin/settings/account": "Account settings",
     // Instructor experience — sidebar config in `instructor-navigation.ts`
     "/instructor/dashboard": "Dashboard",

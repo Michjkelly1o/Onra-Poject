@@ -6,7 +6,7 @@ import EditReferralInformationPage from "@/components/settings/EditReferralInfor
 
 function Inner() {
     const sp = useSearchParams();
-    const returnTo = sp.get("returnTo") ?? "/admin/settings/referral";
+    const returnTo = sp.get("returnTo") ?? "/admin/marketing/referrals";
     return <EditReferralInformationPage returnTo={returnTo} />;
 }
 

@@ -3,10 +3,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Shared by:
-//   • /admin/settings/referral landing (summary fields + Description preview)
+//   • /admin/marketing/referrals landing (summary fields + Description preview)
 //   • Reward rules & limits side-panel modal
 //   • Eligibility & fraud controls side-panel modal
-//   • /settings/referral/edit-information customize page (live preview rail)
+//   • /marketing/referrals/edit-information customize page (live preview rail)
 //   • Customer-detail Referrals tab (Benefit column)
 //
 // Lives outside the page.tsx file because Next.js App Router disallows

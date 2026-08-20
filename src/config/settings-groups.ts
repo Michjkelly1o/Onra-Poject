@@ -18,7 +18,7 @@
 // + same `FreezePolicyPanel` — only the entry point moved.
 //
 // Two pages stay OUT of the groups (per client):
-//   • Referral program (`/admin/settings/referral`) — lives in the Marketing
+//   • Referral program (`/admin/marketing/referrals`) — lives in the Marketing
 //     sidebar group, no tab bar needed
 //   • Account settings (`/admin/settings/account`) — accessed from the user
 //     menu chip, no tab bar needed
@@ -106,7 +106,7 @@ export const SETTINGS_GROUPS: SettingsGroupDef[] = [
 export const SETTINGS_DEFAULT_HREF: string = SETTINGS_GROUPS[0].tabs[0].href;
 
 /** Look up which group owns a given pathname. Returns null for routes
- *  outside the tabbed groups (e.g. `/admin/settings/referral`,
+ *  outside the tabbed groups (e.g. `/admin/marketing/referrals`,
  *  `/admin/settings/account`, `/admin/settings/branches/[id]`). */
 export function findSettingsGroupFor(pathname: string): SettingsGroupDef | null {
     for (const g of SETTINGS_GROUPS) {

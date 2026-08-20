@@ -17,7 +17,7 @@
 //
 //   • Card 3 — Customize referral information
 //     Title + Description preview. "Edit" routes to the full-page editor
-//     at /settings/referral/edit-information (variables + RichText +
+//     at /marketing/referrals/edit-information (variables + RichText +
 //     live preview rail per Figma 4627:153001).
 
 import { useEffect, useState } from "react";
@@ -253,7 +253,7 @@ export default function ReferralSettingsPage() {
                     </div>
                     <Button variant="secondary-gray" size="md"
                         leftIcon={<Edit02 className="w-4 h-4" />}
-                        onClick={() => router.push("/settings/referral/edit-information")}>
+                        onClick={() => router.push("/marketing/referrals/edit-information")}>
                         Edit
                     </Button>
                 </div>
