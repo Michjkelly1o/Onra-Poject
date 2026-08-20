@@ -21,6 +21,7 @@ Because of this, almost everything that would touch an external system in produc
 **Start here:**
 - [`getting-started.md`](getting-started.md) — day-one mechanics: run it (`npm run dev`), the single env var (`ANTHROPIC_API_KEY` — everything else runs on mock/localStorage), navigating the four personas by URL (there is no login), the two-tab demo, and how to reset the demo state.
 - [`architecture-and-centralization.md`](architecture-and-centralization.md) — the store as the single source of truth (persist/versioning/hydration), the centralized mock-data / derivation / UI-pattern / config-registry conventions, the RBAC & routing model, and the conventions/gotchas a new developer must know. Read this right after the README, before the module docs.
+- [`typography.md`](typography.md) — the two-font system (Urbanist headlines/subheadlines + DM Sans body/data), how it's loaded + applied, the airtight customer exclusion, and the load-bearing maintenance rule: **numbers are never Urbanist**. Read before any bulk styling pass or when adding titles.
 
 **Foundational (build first):**
 - [`backend-and-auth.md`](backend-and-auth.md) — no backend/auth today; the Zustand store → Supabase Postgres + a data/API layer; URL-driven persona flips → Supabase Auth + RLS + middleware; base64 data-URL images → object storage; mock files → migrations; client IDs/timestamps → server. **The largest effort; everything else depends on it.**
