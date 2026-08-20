@@ -32,20 +32,26 @@ interface AcquisitionRow extends Record<string, unknown> {
 }
 
 export default function AcquisitionEfficiencyReportPage() {
-    const leads          = useAppStore(s => s.leads);
-    const marketingSpend = useAppStore(s => s.marketingSpend);
-    const transactions   = useAppStore(s => s.customerTransactions);
-    const customers      = useAppStore(s => s.customers);
-    const staff          = useAppStore(s => s.staff);
-    const classBookings  = useAppStore(s => s.classBookings);
-    const branches       = useAppStore(s => s.branches);
+    const leads                 = useAppStore(s => s.leads);
+    // Spend now derives from where the money is committed — campaign budgets
+    // (split by channel message-volume) + the referral program budget — NOT the
+    // retired standalone Marketing Spend ledger (client 2026-08).
+    const marketingItems        = useAppStore(s => s.marketingItems);
+    const marketingCampaignStats = useAppStore(s => s.marketingCampaignStats);
+    const referralSettings      = useAppStore(s => s.referralSettings);
+    const transactions          = useAppStore(s => s.customerTransactions);
+    const customers             = useAppStore(s => s.customers);
+    const staff                 = useAppStore(s => s.staff);
+    const classBookings         = useAppStore(s => s.classBookings);
+    const branches              = useAppStore(s => s.branches);
 
     const report = getReportById("acquisition-efficiency");
     const { onScopeChange, inScope } = useReportScope();
 
     const rows = useMemo<AcquisitionRow[]>(() => {
         const state = {
-            leads, marketingSpend, customerTransactions: transactions,
+            leads, marketingItems, marketingCampaignStats, referralSettings,
+            customerTransactions: transactions,
             customers, staff, classBookings, branches,
         } as unknown as import("@/lib/store").AppState;
         const leadRows  = selectLeads(state);
@@ -94,18 +100,24 @@ export default function AcquisitionEfficiencyReportPage() {
             ? Array.from(ltvByCustomer.values()).reduce((a, b) => a + b, 0) / ltvByCustomer.size
             : 0;
 
-        // Join spend into buckets
+        // Join spend into buckets (scope-filtered by branch + period anchor).
         const spendByKey = new Map<string, number>();
         for (const s of spendRows) {
+            if (!inScope(s.dateAnchorISO, s.branchId)) continue;
             const key = `${s.branchId}|${s.channel}`;
-            spendByKey.set(key, (spendByKey.get(key) ?? 0) + s.spendAed);
+            spendByKey.set(key, (spendByKey.get(key) ?? 0) + s.marketingSpend);
         }
 
-        // Emit rows for every bucket, plus a row for any spend that has
-        // no matching leads (surfaces channels that spent but produced 0).
-        const allKeys = new Set([
-            ...Array.from(buckets.keys()),
+        // Client 2026-08: the report shows ONLY the channels marketing spends on
+        // — the campaign send-channels (Email / WhatsApp / SMS) + Referral — NOT
+        // the lead-lifecycle acquisition sources (Instagram, Google, Walk-in, …).
+        // So emit every spend key, plus lead buckets whose channel is a spend
+        // channel (lets WhatsApp / Referral contribute their leads); drop the
+        // lead-only acquisition sources.
+        const spendChannels = new Set(Array.from(spendByKey.keys()).map(k => k.split("|")[1]));
+        const allKeys = new Set<string>([
             ...Array.from(spendByKey.keys()),
+            ...Array.from(buckets.keys()).filter(k => spendChannels.has(k.split("|")[1])),
         ]);
 
         // Location cell reads "Forma South · Dubai" so multi-timezone
@@ -142,7 +154,7 @@ export default function AcquisitionEfficiencyReportPage() {
                 dateAnchorISO: bucket?.dateAnchorISO ?? "",
             } satisfies AcquisitionRow;
         });
-    }, [leads, marketingSpend, transactions, customers, staff, classBookings, branches, inScope]);
+    }, [leads, marketingItems, marketingCampaignStats, referralSettings, transactions, customers, staff, classBookings, branches, inScope]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),

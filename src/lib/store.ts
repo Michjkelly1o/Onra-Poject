@@ -13859,7 +13859,11 @@ export const useAppStore = create<AppState>()(persist(
         // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
         //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
         //   demos re-seed with the 1-credit package instead of the old 3-credit one.
-        version: 123,
+        // v124 — campaigns gain a `budget_aed` field (marketing spend moves onto
+        //   the campaign) + an SMS send-stat on the Summer HIIT campaign. Bump so
+        //   persisted demos re-seed with the campaign budgets that feed the
+        //   Acquisition Efficiency report.
+        version: 124,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

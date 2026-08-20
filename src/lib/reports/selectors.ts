@@ -169,8 +169,11 @@ export interface CampaignStatRow {
 export interface MarketingSpendRow {
     id: string;
     month: string;
+    /** First-of-month ISO — the report's period-bucket anchor (periodField). */
+    dateAnchorISO: string;
     channel: string;
-    spendAed: number;
+    /** Field name matches the report column key so the shell reads it directly. */
+    marketingSpend: number;
     branchId: string;
     location: string;
 }
@@ -1034,20 +1037,79 @@ export function selectCampaigns(state: AppState): CampaignStatRow[] {
     }));
 }
 
-/** selectMarketingSpend — one row per (channel × month × branch) with
- *  spend + derived CPL / CAC / ROAS / LTV / CAC:LTV. Feeds Acquisition
- *  Efficiency. */
+/** selectMarketingSpend — per-channel marketing spend feeding Acquisition
+ *  Efficiency. Spend is NO LONGER a standalone ledger — it's derived from where
+ *  the money is actually committed (client 2026-08, "budget on the campaign"):
+ *
+ *    • Campaigns   — each campaign's `budget_aed` split across the channels it
+ *                    actually sent on, weighted by message volume (sends). A
+ *                    channel that was turned off sent 0 messages → 0 budget.
+ *    • Referral    — the standing `referralSettings.monthlyProgramBudgetAed`
+ *                    contributes a "Referral" channel row per active month.
+ *
+ *  Channels are the campaign send-channels (Email / WhatsApp / SMS) + Referral —
+ *  NOT the lead-lifecycle acquisition sources. Columns are unchanged; only the
+ *  Marketing spend source moves here. */
 export function selectMarketingSpend(state: AppState): import("./selectors").MarketingSpendRow[] {
     const loc = makeLocationLookup(state);
-    const spend = (state as unknown as { marketingSpend: import("@/lib/store").MarketingSpend[] }).marketingSpend ?? [];
-    return spend.map(s => ({
-        id: s.id,
-        month: s.month,
-        channel: s.channel,
-        spendAed: s.spend_aed,
-        branchId: s.branch_id,
-        location: loc(s.branch_id),
-    }));
+    const s = state as unknown as {
+        marketingItems: import("@/lib/store").MarketingItem[];
+        marketingCampaignStats: import("@/lib/store").MarketingCampaignStat[];
+        referralSettings: { monthlyProgramBudgetAed: number };
+    };
+    // Send-channel → report display label. Legacy "push" is intentionally absent
+    // (dropped from the customer-notifications matrix) so it never gets spend.
+    const CH_LABEL: Record<string, string> = { email: "Email", whatsapp: "WhatsApp", sms: "SMS" };
+    const rows: import("./selectors").MarketingSpendRow[] = [];
+
+    // ── Campaign spend — budget split by per-channel message volume ──────────
+    const statsByCampaign = new Map<string, import("@/lib/store").MarketingCampaignStat[]>();
+    for (const st of (s.marketingCampaignStats ?? [])) {
+        const arr = statsByCampaign.get(st.campaign_id);
+        if (arr) arr.push(st); else statsByCampaign.set(st.campaign_id, [st]);
+    }
+    for (const item of (s.marketingItems ?? [])) {
+        if (item.type !== "campaign") continue;
+        const budget = item.budget_aed ?? 0;
+        if (budget <= 0) continue;
+        const cs = statsByCampaign.get(item.id) ?? [];
+        const totalSends = cs.reduce((n, st) => n + (st.sends ?? 0), 0);
+        if (totalSends <= 0) continue; // draft / not sent yet → no per-channel volume
+        for (const st of cs) {
+            const label = CH_LABEL[st.channel];
+            if (!label) continue;                 // skip legacy 'push'
+            const sends = st.sends ?? 0;
+            if (sends <= 0) continue;             // channel turned off → 0 spend
+            const month = (st.sent_at ?? "").slice(0, 7); // YYYY-MM
+            rows.push({
+                id: `spend_${st.id}`,
+                month,
+                dateAnchorISO: month ? `${month}-01` : "",
+                channel: label,
+                marketingSpend: Math.round(budget * (sends / totalSends)),
+                branchId: st.branch_id,
+                location: loc(st.branch_id),
+            });
+        }
+    }
+
+    // ── Referral spend — standing monthly program budget, per active month ───
+    const referralBudget = s.referralSettings?.monthlyProgramBudgetAed ?? 0;
+    if (referralBudget > 0) {
+        for (const month of Array.from(new Set(rows.map(r => r.month).filter(Boolean)))) {
+            rows.push({
+                id: `spend_referral_${month}`,
+                month,
+                dateAnchorISO: `${month}-01`,
+                channel: "Referral",
+                marketingSpend: referralBudget,
+                branchId: "",
+                location: "All locations",
+            });
+        }
+    }
+
+    return rows;
 }
 
 /** selectStaffAttendanceLog — one row per (staff × class) with clock-in

@@ -1306,6 +1306,11 @@ export interface MarketingItem {
     click_count: number;
     /** Seeded analytics — bookings / purchases completed via the CTA. */
     conversion_count: number;
+    /** Campaigns only — total marketing spend (AED) allocated to this campaign.
+     *  Set on the campaign form; the Acquisition Efficiency report splits it
+     *  across the campaign's send channels by message volume (a channel that
+     *  sent 0 messages gets 0 spend). Undefined = no tracked spend. */
+    budget_aed?: number;
     /** ISO 8601 — when the item was created. */
     created_at: string;
 

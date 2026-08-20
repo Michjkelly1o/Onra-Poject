@@ -75,9 +75,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/marketing",              // list view
     //"/marketing",                    // create / detail / edit
 
-    // ── Marketing Spend module ── (ENABLED — being reworked to match the
-    // shared list + side-panel patterns)
-    //"/admin/marketing/spend",        // marketing spend tracker
+    // ── Marketing Spend module ── (HIDDEN per client 2026-08 — spend is now
+    // captured as a Budget field on campaign creation + the referral program
+    // budget, feeding the Acquisition Efficiency report directly. Route 404'd;
+    // sidebar entry removed.)
+    "/admin/marketing/spend",        // marketing spend tracker
 
     // ── Announcements ── (ENABLED — its own single menu, split out of
     // Campaigns/Marketing. List at /admin/marketing/announcements; create/

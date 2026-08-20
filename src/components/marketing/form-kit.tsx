@@ -71,6 +71,10 @@ export interface MarketingFormData {
     topic: "new_class_launch" | "special_offers" | "";
     /** Send now, or schedule for later (uses startDate/startTime as the send time). */
     scheduleMode: "now" | "later" | "";
+    /** Marketing spend (AED) for this campaign, as a numeric string ("" = none).
+     *  Feeds the Acquisition Efficiency report, split across the campaign's send
+     *  channels by message volume. */
+    budget: string;
 }
 
 /** Current local time as "HH:MM" — used to bar past start-time slots today. */

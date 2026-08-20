@@ -18,4 +18,5 @@ export const marketing_campaign_stats: MarketingCampaignStat[] = [
     // Summer HIIT Challenge — email + WhatsApp
     { id: "cstat_008", campaign_id: "mkt_summer_hiit",        campaign_name: "Summer HIIT Challenge",         channel: "email",    sent_at: "2026-06-01T09:00:00Z", sends: 1310, opens_reads:  655, clicks_taps: 105, attributed_bookings:  28, attributed_revenue_aed: 11760, attribution_window: "14 days", branch_id: "branch_forma_east"  },
     { id: "cstat_009", campaign_id: "mkt_summer_hiit",        campaign_name: "Summer HIIT Challenge",         channel: "whatsapp", sent_at: "2026-06-01T09:00:00Z", sends: 1050, opens_reads:  893, clicks_taps: 148, attributed_bookings:  35, attributed_revenue_aed: 14700, attribution_window: "14 days", branch_id: "branch_forma_east"  },
+    { id: "cstat_010", campaign_id: "mkt_summer_hiit",        campaign_name: "Summer HIIT Challenge",         channel: "sms",      sent_at: "2026-06-01T09:00:00Z", sends:  640, opens_reads:  610, clicks_taps:  58, attributed_bookings:  14, attributed_revenue_aed:  5880, attribution_window: "14 days", branch_id: "branch_forma_east"  },
 ];

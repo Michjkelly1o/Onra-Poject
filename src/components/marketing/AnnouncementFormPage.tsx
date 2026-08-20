@@ -131,6 +131,8 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
         audienceSegments: [],
         audienceCustomerIds: [],
         scheduleMode: "",
+        // Announcements carry no marketing spend (info-only broadcast).
+        budget: "",
     });
     const patch = (p: Partial<MarketingFormData>) => setForm(prev => ({ ...prev, ...p }));
 

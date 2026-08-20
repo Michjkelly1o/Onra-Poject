@@ -141,6 +141,7 @@ export function marketingItemToInitial(item: MarketingItem): Partial<MarketingFo
         audienceSegments: item.audience_segments ?? [],
         audienceCustomerIds: item.audience_customer_ids ?? [],
         scheduleMode: scheduled ? "later" : "now",
+        budget: item.budget_aed != null ? String(item.budget_aed) : "",
     };
 }
 
@@ -198,6 +199,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         audienceSegments: initial?.audienceSegments ?? [],
         audienceCustomerIds: initial?.audienceCustomerIds ?? [],
         scheduleMode: initial?.scheduleMode ?? "now",
+        budget: initial?.budget ?? "",
     });
     const patch = (p: Partial<MarketingFormData>) => setForm(prev => ({ ...prev, ...p }));
 
@@ -314,6 +316,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
             delivery_status: deliveryStatus,
             scheduled_at: scheduling ? scheduledIso : undefined,
             sent_at: sending ? nowIso : undefined,
+            budget_aed: form.budget.trim() ? Number(form.budget) : undefined,
         };
 
         if (isEdit && marketingId) {
@@ -372,6 +375,20 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
             <FormField label="Message">
                 <Textarea value={form.description} onChange={v => patch({ description: v })}
                     placeholder="Write the message customers receive..." />
+            </FormField>
+
+            <FormField label="Budget (AED)" hint="Marketing spend for this campaign. Feeds the Acquisition Efficiency report — split across the campaign's channels by message volume.">
+                <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] h-10">
+                    <span className="flex items-center px-[14px] text-[16px] text-[var(--colors-text-quaternary)] bg-[var(--colors-bg-secondary)] border-r-1 border-[var(--colors-border-primary)]">AED</span>
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.budget}
+                        onChange={e => patch({ budget: e.target.value.replace(/[^\d]/g, "").replace(/^0+(?=\d)/, "") })}
+                        placeholder="0"
+                        className="flex-1 min-w-0 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-white"
+                    />
+                </div>
             </FormField>
 
             {/* Link or action */}

@@ -84,7 +84,10 @@ const NAV_ITEMS: NavItemDef[] = [
             // (Events removed — bookable events live in Schedule, not Marketing.)
             { label: "Announcements", href: "/admin/marketing/announcements" },
             { label: "Referrals",     href: "/admin/marketing/referrals"       },
-            { label: "Marketing Spend", href: "/admin/marketing/spend"       },
+            // Marketing Spend hidden per client (2026-08): spend is now captured
+            // as a Budget field on campaign creation + the referral program
+            // budget, and feeds the Acquisition Efficiency report directly. The
+            // route is also 404'd via DISABLED_ROUTE_PREFIXES.
         ],
     },
     {
