@@ -265,7 +265,7 @@ export function buildCatalog(state: AppState): Catalog {
             label: "marketing spend",
             rows: readSpend(state),
             fields: {
-                channel:   { row: "channel",  type: "enum",   label: "channel", values: ["Instagram", "Google", "WhatsApp", "Website"] },
+                channel:   { row: "channel",  type: "enum",   label: "channel", values: ["Email", "WhatsApp", "SMS", "Referral"] },
                 month:     { row: "month",    type: "string", label: "month" },
                 spend_aed: { row: "spend_aed", type: "number", label: "spend (AED)" },
                 branch:    branchField,

@@ -20,6 +20,7 @@
 
 import type { AppState, WalletTransaction } from "@/lib/store";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { selectMarketingSpend } from "@/lib/reports/selectors";
 
 /** Inlined wallet-balance derivation. Kept LOCAL to the server-side agent
  *  readers so we don't have to import from `@/lib/store` (which is marked
@@ -277,9 +278,17 @@ export function readCampaigns(state: AppState): Row[] {
     return state.marketingCampaignStats as unknown as Row[];
 }
 
-/** marketing_spend — Reports v33, stored snake_case. */
+/** marketing_spend — DERIVED from campaign budgets (split across channels by
+ *  message volume) + the referral program budget, matching the Acquisition
+ *  Efficiency report. The standalone spend ledger was retired (client 2026-08),
+ *  so the AI reports the same spend / channel figures every screen shows. */
 export function readSpend(state: AppState): Row[] {
-    return state.marketingSpend as unknown as Row[];
+    return selectMarketingSpend(state).map(r => ({
+        channel:   r.channel,
+        month:     r.month,
+        spend_aed: r.marketingSpend,
+        branch_id: r.branchId,
+    })) as unknown as Row[];
 }
 
 // ─── Phase 8 datasets (private/recovery, wallet, services, payroll, promos) ─
