@@ -42,6 +42,7 @@ import { promoCodesExportData } from "@/lib/export/specs/marketing";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { useHasMounted } from "@/lib/use-has-mounted";
 
 // Card-embedded kebab menu actions — mirrors the detail-page action set so
 // the list can drive Archive / Deactivate / Delete / Recover / Reactivate
@@ -437,6 +438,11 @@ function FilterPanel({ open, applied, onClose, onApply }: {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function PromoListPage() {
+    // Promo rows + usage counts come from the localStorage-backed store, so the
+    // seed-based server render disagrees with the rehydrated client on a fresh
+    // load (e.g. the /admin/products/promo-codes → here redirect) — a hydration
+    // mismatch. Gate until mounted.
+    const mounted = useHasMounted();
     const router = useRouter();
     const promoCodes = useAppStore(s => s.promoCodes);
     const branches = useAppStore(s => s.branches);
@@ -487,6 +493,8 @@ export default function PromoListPage() {
     // Archived promos leave the grid → the shared Archived section (card grid,
     // no pagination, hugging layout for this bare-flow page).
     const { active: activePromos, archived: archivedPromos } = useArchiveView(visible);
+
+    if (!mounted) return <div className="flex flex-col gap-6" />;
 
     return (
         <div className="flex flex-col gap-6">

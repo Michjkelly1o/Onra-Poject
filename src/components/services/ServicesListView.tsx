@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
+import { useHasMounted } from "@/lib/use-has-mounted";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -515,6 +516,11 @@ type PendingConfirm =
 // /admin/products/private and /admin/products/recovery routes, which pass
 // `fixedType` so the list is scoped without a `?type=` deep-link.
 export function ServicesPageInner({ fixedType }: { fixedType?: "private" | "recovery" }) {
+    // Service rows come from the localStorage-backed store, so the seed server
+    // render disagrees with the rehydrated client on a fresh load (e.g. the
+    // /admin/services?type=… → /admin/products/private|recovery redirect) — a
+    // hydration mismatch. Gate until mounted.
+    const mounted = useHasMounted();
     const router = useRouter();
     // Type scope — "private" | "recovery" | null (all). When the page is
     // mounted at its own route (/admin/products/private|recovery) the type
@@ -762,6 +768,8 @@ export function ServicesPageInner({ fixedType }: { fixedType?: "private" | "reco
     }
 
     const hasActiveFilter = filtersEnabled && (applied.statuses.length > 0 || applied.categories.length > 0);
+
+    if (!mounted) return <div className="flex-1 min-h-0" />;
 
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">

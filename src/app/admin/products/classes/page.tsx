@@ -9,6 +9,7 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { usePersistedListState } from "@/lib/list-ui-cache";
+import { useHasMounted } from "@/lib/use-has-mounted";
 import { Button } from "@/components/ui/button";
 import { useAppStore, resolveTemplateCoverImage } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
@@ -393,6 +394,11 @@ function EmptyStateIllustration() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClassTypesPage() {
+    // Template cards derive from the localStorage-backed store, so the seed
+    // server render disagrees with the rehydrated client on a fresh load (e.g.
+    // the /admin/class-types → here redirect) — a hydration mismatch. Gate
+    // until mounted.
+    const mounted = useHasMounted();
     const router = useRouter();
     const { classTemplates } = useAppStore();
     const [search, setSearch]           = usePersistedListState("classTypes:search", "");
@@ -421,6 +427,8 @@ export default function ClassTypesPage() {
     // Archived templates leave the grid → the shared Archived section (card grid,
     // no pagination). Both buckets are already search/category/status scoped.
     const { active: activeTemplates, archived: archivedTemplates } = useArchiveView(visible);
+
+    if (!mounted) return <div className="flex-1 min-h-0" />;
 
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">

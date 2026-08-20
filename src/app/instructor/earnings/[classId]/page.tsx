@@ -68,6 +68,7 @@ import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { useHasMounted } from "@/lib/use-has-mounted";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -168,6 +169,7 @@ function diffMinutes(startHHMM: string, endHHMM: string): number {
 
 export default function InstructorClassDetailPage() {
     const router = useRouter();
+    const mounted = useHasMounted();
     const params = useParams();
     const classId = String(params.classId ?? "");
     // X-close target — driven by `?returnTo=` so closing this page
@@ -316,6 +318,14 @@ export default function InstructorClassDetailPage() {
 
     // Reset page when filters / search / tab change.
     useEffect(() => { setPage(1); }, [search, reviewFilter, tab, pageSize]);
+
+    // The class + roster + ratings come from the localStorage-backed store, so
+    // whether the class is "found" (and its data) differs between the seed
+    // server render and the rehydrated client on a fresh load (e.g. the
+    // /earnings/[id] → /instructor/earnings/[id] redirect) — a hydration
+    // mismatch. Gate until mounted, AFTER all hooks and before the data-
+    // dependent branch below.
+    if (!mounted) return <div className="h-screen bg-white" />;
 
     // ── Loading guard ──
     if (!cls) {

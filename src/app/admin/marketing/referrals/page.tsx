@@ -38,6 +38,7 @@ import {
     substituteReferralVariables,
 } from "@/lib/referral-helpers";
 import { useAppStore } from "@/lib/store";
+import { useHasMounted } from "@/lib/use-has-mounted";
 
 // ─── Toggle (master switch) ─────────────────────────────────────────────────
 
@@ -65,6 +66,10 @@ type RulesTab = "rewards" | "eligibility";
 type PageTab = "overview" | "setup";
 
 export default function ReferralSettingsPage() {
+    // Store-derived KPIs differ between the seed-based server render and the
+    // rehydrated client on a fresh load (e.g. via the /admin/settings/referral
+    // → here redirect) — a hydration mismatch. Gate until mounted.
+    const mounted = useHasMounted();
     const router = useRouter();
     const settings              = useAppStore(s => s.referralSettings);
     const setProgramActive      = useAppStore(s => s.setReferralProgramActive);
@@ -101,6 +106,8 @@ export default function ReferralSettingsPage() {
         );
         setPendingToggle(null);
     }
+
+    if (!mounted) return <div className="flex flex-col gap-6" />;
 
     return (
         <div className="flex flex-col gap-6">

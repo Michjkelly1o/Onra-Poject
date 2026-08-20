@@ -93,6 +93,7 @@ import { Toast } from "@/components/ui/Toast";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { useHasMounted } from "@/lib/use-has-mounted";
 
 // ─── Helpers — verbatim admin ───────────────────────────────────────────────
 
@@ -375,6 +376,7 @@ export default function InstructorClassDetailPage() {
     const params = useParams();
     const classId = String(params.classId ?? "");
     const router = useRouter();
+    const mounted = useHasMounted();
     // X-close target — driven by `?returnTo=` so closing the detail
     // page lands the user back where they came from. The instructor
     // schedule popup passes `returnTo=/instructor/schedule`; without
@@ -515,6 +517,13 @@ export default function InstructorClassDetailPage() {
             router.replace(`/instructor/earnings/${schedule.id}?${qs}`);
         }
     }, [schedule, isOwnClass, router, returnTo]);
+
+    // The roster is read from the localStorage-backed store, so whether the
+    // class is "found" (and its data) differs between the seed server render
+    // and the rehydrated client on a fresh load (e.g. the /class/[id] →
+    // /instructor/class/[id] redirect) — a hydration mismatch. Gate until
+    // mounted, AFTER all hooks and before the data-dependent branch below.
+    if (!mounted) return <div className="h-screen bg-white" />;
 
     // ── Class status flags ───────────────────────────────────────────────
     if (!schedule || !isOwnClass) {
