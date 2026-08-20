@@ -259,24 +259,20 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // Standalone role-scoped surface (separate sidebar, separate header
     // titles, audience-filtered notification feed). The dashboard,
     // schedule, earnings, and the two full-screen takeover detail pages
-    // (`/class/[id]` + `/earnings/[id]`) are all live for the client
-    // demo. Only Notifications and Account/Profile are 404'd below —
-    // the rest of the instructor menu stays usable.
+    // (`/instructor/class/[id]` + `/instructor/earnings/[id]`) are all live
+    // for the client demo. Only Notifications and Account/Profile are 404'd
+    // below — the rest of the instructor menu stays usable.
     //
-    // NB: the takeover detail pages live OUTSIDE the `/instructor/*`
-    // folder so they can render edge-to-edge without the layout chrome.
-    // A single `/instructor` flag wouldn't cover them — they'd have to
-    // be listed separately if we ever needed to hide the entire side
-    // again. Left commented here for documentation:
+    // NB: the takeover detail pages now live UNDER `/instructor/*` but render
+    // edge-to-edge (no sidebar/header) via the `isTakeover` branch in
+    // instructor/layout.tsx. A single `/instructor` flag would 404 them too.
     //"/instructor",                   // entire instructor experience (dashboard + schedule + earnings + notifications + account)
-    //"/class",                        // instructor class detail (Ongoing/Upcoming) — full-screen detail page
-    //"/earnings",                     // instructor class detail (Completed/Cancelled) — full-screen detail page — DISABLED for today's demo
+    //"/instructor/class",             // class detail takeover (Ongoing/Upcoming) — full-screen
 
     // ── Instructor → Earnings module ── (DISABLED — not for client demo)
-    // Closes off the main earnings list page at /instructor/earnings.
-    // Pairs with the `/earnings` entry above which closes off the
-    // takeover detail page at /earnings/[classId] (different folder ⇒
-    // different URL prefix ⇒ both need their own entry to fully hide).
+    // Closes off the earnings list page at /instructor/earnings. NB: the
+    // takeover detail now lives at /instructor/earnings/[classId] (under this
+    // same prefix), so this one flag would hide the list AND the detail.
     //"/instructor/earnings",          // instructor earnings list + filters
 
     // ── Instructor → Notifications module ── (DISABLED — not for client demo)

@@ -19,6 +19,9 @@ const nextConfig = {
             // Phase 4 · Classes: /admin/class-types → /admin/products/classes
             { source: "/admin/class-types",  destination: "/admin/products/classes", permanent: true },
             { source: "/class-types/:path*", destination: "/products/classes/:path*", permanent: true },
+            // Phase 5 · Instructor takeover details → under /instructor/*
+            { source: "/class/:path*",    destination: "/instructor/class/:path*",    permanent: true },
+            { source: "/earnings/:path*", destination: "/instructor/earnings/:path*", permanent: true },
 
             // Financial legacy → new consolidated / renamed reports
             { source: "/reports/memberships",         destination: "/reports/memberships-packages", permanent: true },

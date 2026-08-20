@@ -512,7 +512,7 @@ export default function InstructorClassDetailPage() {
             // detail's X-close lands the user back on the schedule list
             // (where they came from) instead of the earnings list.
             const qs = new URLSearchParams({ returnTo }).toString();
-            router.replace(`/earnings/${schedule.id}?${qs}`);
+            router.replace(`/instructor/earnings/${schedule.id}?${qs}`);
         }
     }, [schedule, isOwnClass, router, returnTo]);
 

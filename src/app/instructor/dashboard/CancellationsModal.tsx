@@ -143,8 +143,8 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
         const base = isAppointmentId(row.classScheduleId)
             ? `/appointments/${row.classScheduleId}`
             : (row.classStatus === "Completed" || row.classStatus === "Cancelled")
-                ? `/earnings/${row.classScheduleId}`
-                : `/class/${row.classScheduleId}`;
+                ? `/instructor/earnings/${row.classScheduleId}`
+                : `/instructor/class/${row.classScheduleId}`;
         const qs = new URLSearchParams({ returnTo: "/instructor/dashboard" }).toString();
         setOpenMenu(null);
         onClose();

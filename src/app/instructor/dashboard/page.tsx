@@ -550,8 +550,8 @@ export default function InstructorDashboardPage() {
                                                                 const base = isAppointmentId(c.id)
                                                                     ? `/appointments/${c.id}`
                                                                     : (c.status === "Completed" || c.status === "Cancelled")
-                                                                        ? `/earnings/${c.id}`
-                                                                        : `/class/${c.id}`;
+                                                                        ? `/instructor/earnings/${c.id}`
+                                                                        : `/instructor/class/${c.id}`;
                                                                 router.push(`${base}?${qs}`);
                                                             }}
                                                             cls={{

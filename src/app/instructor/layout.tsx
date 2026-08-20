@@ -16,6 +16,7 @@
 //      no login screen required. Per CLAUDE.md the demo flow is URL-driven.
 
 import { Suspense, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { Toast } from "@/components/ui/Toast";
@@ -37,6 +38,13 @@ export default function InstructorLayout({
     // updated values live here — not on the frozen `instructor_profile`
     // seed. Hydrating from this row is what makes admin → instructor sync.
     const staffRow = useAppStore(s => s.staff.find(x => x.id === instructor_profile.staff_profile_id));
+    const pathname = usePathname();
+    // The class / earnings detail pages are full-screen "takeover" routes — they
+    // render edge-to-edge WITHOUT the sidebar + header chrome (they moved under
+    // /instructor/* for URL consistency but keep their standalone look).
+    const isTakeover =
+        pathname.startsWith("/instructor/class/") ||
+        pathname.startsWith("/instructor/earnings/");
 
     // URL-driven role switch — landing on any `/instructor/*` route composes
     // the active persona from the LIVE staff row (identity fields) + the
@@ -70,6 +78,17 @@ export default function InstructorLayout({
         if (already) return;
         setCurrentUser(target);
     }, [setCurrentUser, staffRow, currentUser.role, currentUser.first_name, currentUser.last_name, currentUser.email, currentUser.phone, currentUser.avatar_url]);
+
+    // Full-screen takeover routes render their own edge-to-edge shell — no
+    // sidebar/header chrome (matches how they looked at the old top-level URLs).
+    if (isTakeover) {
+        return (
+            <>
+                {children}
+                <Toast />
+            </>
+        );
+    }
 
     return (
         <>

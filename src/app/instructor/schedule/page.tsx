@@ -1320,8 +1320,8 @@ export default function InstructorSchedulePage() {
             return;
         }
         const base = (s.status === "Completed" || s.status === "Cancelled")
-            ? `/earnings/${s.id}`
-            : `/class/${s.id}`;
+            ? `/instructor/earnings/${s.id}`
+            : `/instructor/class/${s.id}`;
         const qs = new URLSearchParams({ returnTo: "/instructor/schedule" }).toString();
         router.push(`${base}?${qs}`);
     }

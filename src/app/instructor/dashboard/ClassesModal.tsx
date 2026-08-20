@@ -95,8 +95,8 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
         const base = isAppointmentId(c.id)
             ? `/appointments/${c.id}`
             : (c.status === "Completed" || c.status === "Cancelled")
-                ? `/earnings/${c.id}`
-                : `/class/${c.id}`;
+                ? `/instructor/earnings/${c.id}`
+                : `/instructor/class/${c.id}`;
         const qs = new URLSearchParams({ returnTo: "/instructor/dashboard" }).toString();
         onClose();
         router.push(`${base}?${qs}`);
