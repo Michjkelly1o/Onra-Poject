@@ -6,8 +6,8 @@
 > - **DM Sans** → Body & Caption
 >
 > This is the app's *own* typography (hardcoded), **not** the branding module's
-> live font picker. Scope: **admin + attendee + instructor**. Customer (mobile)
-> = open decision (see Phase 0).
+> live font picker. Scope: **admin + attendee + instructor**. **Customer (mobile)
+> stays DM Sans only — excluded (LOCKED).**
 
 ---
 
@@ -50,20 +50,49 @@ gets marginally *bigger*, never *harder* or *riskier*.
 
 ---
 
-## Phase 0 — Decisions (before building)
+## Phase 0 — Decisions (LOCKED 2026-08-20)
 
-1. **Customer scope?** Client said admin/attendee/instructor. Confirm whether
-   the customer (mobile) views are included or stay on DM Sans for now.
-2. **Heading taxonomy — what maps to what.** Define once, apply everywhere:
-   | Role | Font | Typical elements |
-   |---|---|---|
-   | **Headline** | Urbanist | page titles, detail-page H1, big section headings, KPI hero numbers(?), modal titles |
-   | **Subheadline** | Urbanist | card/panel titles, section headers, the small uppercase "eyebrow" labels |
-   | **Body** | DM Sans | paragraphs, table cells, form values, list rows |
-   | **Caption** | DM Sans | field labels, helper/hint text, timestamps, badges, table column headers |
-   *(The KPI numbers / metric values are a judgement call — decide if they read as
-   "headline" (Urbanist) or "data" (DM Sans). Recommend DM Sans for tabular data.)*
-3. **Weights needed** from Urbanist (match DM Sans usage: 400/500/600/700).
+### 1. Customer scope — EXCLUDED
+The customer (mobile) app **stays entirely DM Sans** for now. Urbanist applies to
+**admin + attendee + instructor only**. (Scope the global CSS rule + the sweep so
+`/customer/*` is never touched.)
+
+### 2. The mapping — LOCKED
+
+**THE RULE (so nothing is missed):** **Urbanist styles *titling text only*** — the
+words that *name/introduce* a page, section, card, panel, or modal, plus the
+uppercase "eyebrow" labels. **Everything else is DM Sans** — body text,
+captions/labels/hints, **all data & numbers**, and all UI-control text.
+
+| Element | Font |
+|---|---|
+| Page header title, detail-page H1 | **Urbanist** |
+| Card / panel / view-card titles, side-panel titles | **Urbanist** |
+| Section headers + uppercase "eyebrow" subheadings | **Urbanist** |
+| Modal / dialog / confirm titles | **Urbanist** |
+| Empty-state title (the "No X" headline) | **Urbanist** |
+| Body / paragraphs / descriptions / message text | DM Sans |
+| **All numbers — KPI values, table figures, prices/AED, counts, %, dates/times** | DM Sans |
+| Table cell values **and** column headers | DM Sans |
+| Form labels, input values, placeholders, helper/hint text | DM Sans |
+| Buttons, tabs, menu items, dropdown options, toolbar labels | DM Sans |
+| Badges / status pills / tags, timestamps, breadcrumbs, empty-state subtitle | DM Sans |
+
+- **KPI / metric numbers → DM Sans** (they're *data*, not titles). This is the
+  deliberate call — do not set big numbers in Urbanist.
+- **Only titling *words* are Urbanist**; every value/number/label/control is DM Sans.
+- **Sidebar is EXCLUDED** — it's a locked custom component; do not touch it.
+
+### 3. Weights — LOCKED (both fonts load 400 / 500 / 600 / 700)
+
+- **Urbanist: 400, 500, 600, 700** (Regular / Medium / SemiBold / Bold). Loading
+  all four means a heading keeps its **exact** weight when it swaps font (a
+  `font-semibold` title → semibold *Urbanist*, never a fallback). No weight can go
+  missing. (Urbanist ships 100–900; we skip 800/900 — the app never uses them for
+  headings.)
+- **DM Sans: 400, 500, 600, 700** — unchanged (already loaded for body/caption/data).
+- **Symmetric on purpose:** every existing weight maps 1:1 when a heading switches
+  to Urbanist.
 
 ---
 
@@ -100,7 +129,9 @@ gets marginally *bigger*, never *harder* or *riskier*.
    ```css
    h1, h2, h3 { font-family: var(--font-heading), 'DM Sans', system-ui, sans-serif; }
    ```
-   (Scope this to the app shell; keep customer out if Phase 0 excludes it.)
+   **Scope it to exclude `/customer/*`** (customer stays DM Sans, per Phase 0) —
+   e.g. gate on a root class/data-attribute the customer layout doesn't set, or
+   scope the rule under the admin/instructor/attendee shells.
 2. This instantly covers the ~213 semantic `<h1>/<h2>/<h3>` across admin/
    attendee/instructor.
 
@@ -147,8 +178,9 @@ Because Urbanist ≠ DM Sans metrically:
 
 ## Phase 5 — Verify across roles + responsive
 
-- Walk **admin / attendee / instructor** (and customer if in scope) confirming
-  headings = Urbanist, body/caption = DM Sans, nothing broke.
+- Walk **admin / attendee / instructor** confirming headings = Urbanist,
+  body/caption/data/numbers = DM Sans, nothing broke.
+- **Confirm `/customer/*` is untouched** — still 100% DM Sans (per Phase 0).
 - Responsive check at the app's breakpoints (instructor mobile 375px, attendee).
 - Confirm the branding "Customize" preview is **unaffected** (still its own picker).
 
