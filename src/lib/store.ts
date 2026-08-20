@@ -5623,17 +5623,22 @@ export interface AppState {
 // ids (stg_lost / stg_new / stg_contacted) so renames don't disturb the
 // wiring. Deletion is only gated by the in-use check on the customers
 // slice so we don't orphan `sourceId` / `followUpStatus` references.
+// Labels match the source strings the leads are tagged with (leads.ts) and the
+// Marketing Spend channels — so the Acquisition Efficiency report joins spend ↔
+// leads by channel name cleanly (CPL / CAC / ROAS resolve per channel).
 const INITIAL_LEAD_SOURCES: LeadSource[] = [
-    { id: "src_walkin",       label: "Walk-in"           },
-    { id: "src_referral",     label: "Referral"          },
-    { id: "src_instagram",    label: "Instagram / Social"},
-    { id: "src_website",      label: "Website / Online"  },
-    { id: "src_webform",      label: "Web form"          },
-    { id: "src_meta_lead",    label: "Meta lead form"    },
-    { id: "src_classpass",    label: "ClassPass"         },
-    { id: "src_gympass",      label: "Gympass"           },
-    { id: "src_expired",      label: "Expired customer"  },
-    { id: "src_other",        label: "Other"             },
+    { id: "src_walkin",       label: "Walk-in"          },
+    { id: "src_referral",     label: "Referral"         },
+    { id: "src_instagram",    label: "Instagram"        },
+    { id: "src_google",       label: "Google"           },
+    { id: "src_website",      label: "Website"          },
+    { id: "src_whatsapp",     label: "WhatsApp"         },
+    { id: "src_webform",      label: "Web form"         },
+    { id: "src_meta_lead",    label: "Meta lead form"   },
+    { id: "src_classpass",    label: "ClassPass"        },
+    { id: "src_gympass",      label: "Gympass"          },
+    { id: "src_expired",      label: "Expired customer" },
+    { id: "src_other",        label: "Other"            },
 ];
 const INITIAL_FOLLOW_UP_STAGES: FollowUpStage[] = [
     { id: "stg_new",          label: "New"           },
@@ -13854,7 +13859,7 @@ export const useAppStore = create<AppState>()(persist(
         // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
         //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
         //   demos re-seed with the 1-credit package instead of the old 3-credit one.
-        version: 122,
+        version: 123,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
