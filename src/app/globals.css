@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+/* Body/caption font (DM Sans) + heading font (Urbanist — Typography plan Phase 1,
+   loaded the same @import way DM Sans already is). Urbanist weights 400/500/600/700
+   mirror DM Sans so a heading keeps its exact weight when it switches font in
+   Phase 2. Nothing uses Urbanist yet — the `font-heading` utility exists but no
+   element applies it until Phase 2. */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Urbanist:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;

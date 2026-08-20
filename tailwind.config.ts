@@ -96,7 +96,18 @@ const config: Config = {
 				}
 			},
 			fontFamily: {
+				// Body / caption / data — unchanged (the app default).
 				sans: [
+					'"DM Sans"',
+					'system-ui',
+					'sans-serif'
+				],
+				// Headlines / subheadlines (Typography plan). Urbanist with DM Sans
+				// as the fallback so headings degrade gracefully if Urbanist fails
+				// to load. Applied via `font-heading` starting in Phase 2 — no
+				// element uses it yet, so nothing changes visually in Phase 1.
+				heading: [
+					'"Urbanist"',
 					'"DM Sans"',
 					'system-ui',
 					'sans-serif'
