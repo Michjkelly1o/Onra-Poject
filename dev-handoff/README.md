@@ -18,7 +18,8 @@ Because of this, almost everything that would touch an external system in produc
 
 ## The docs
 
-**Start here (how the app is built):**
+**Start here:**
+- [`getting-started.md`](getting-started.md) — day-one mechanics: run it (`npm run dev`), the single env var (`ANTHROPIC_API_KEY` — everything else runs on mock/localStorage), navigating the four personas by URL (there is no login), the two-tab demo, and how to reset the demo state.
 - [`architecture-and-centralization.md`](architecture-and-centralization.md) — the store as the single source of truth (persist/versioning/hydration), the centralized mock-data / derivation / UI-pattern / config-registry conventions, the RBAC & routing model, and the conventions/gotchas a new developer must know. Read this right after the README, before the module docs.
 
 **Foundational (build first):**
@@ -35,6 +36,10 @@ Because of this, almost everything that would touch an external system in produc
 - [`ai-agent-rbac.md`](ai-agent-rbac.md) — the AI agent's permission-matrix spec (existing; its status header is stale — the gate is now implemented).
 - [`rbac-and-permissions.md`](rbac-and-permissions.md) — the permissions matrix is decorative; real gating is hardcoded on the demo role; **refunds/money-moving actions have no role enforcement**; the 5 studio roles can't be distinguished yet.
 - [`roles-and-personas.md`](roles-and-personas.md) — the role **reference**: the PRD's 5 studio roles vs the prototype's 4 personas (they don't line up), the `demoRoleToStaffType` mapping, the URL-driven persona flip, and what's enforced (a few hardcoded `admin` checks) vs. intended-but-not (refund/credit limits, branch scope).
+
+**Other personas (mobile):**
+- [`instructor-and-attendee.md`](instructor-and-attendee.md) — the mobile-primary Instructor app (own classes/schedule/earnings, the class + earnings takeover pages, live attendance write-back) and the stripped-down Attendee attendance console; both are role-scoped views of the same store. Gaps: the instructor class-detail isn't fully responsive at 375px, "Clients taught" counts booked not attended, and (like everything) no auth / no real notifications.
+- [`customer-app.md`](customer-app.md) — the customer (member) mobile-only app (book/cancel, checkout for plans/packages/gift cards, plan/wallet/referrals) running off the same store. Real booking + purchase flows; **auth and checkout are simulated** and notifications don't send. Notes the `src/*/customer/` naming split (persona value stays `"member"`).
 
 **Module status:**
 - [`products.md`](products.md) — the Products & pricing catalog (Memberships/Packages tabbed list, Gift cards, Retail) is real + store-wired with the Deactivate→Archive→Delete rules; classes/private/recovery live under this nav group but are documented in `schedule.md` / `services-configuration.md`, and promo codes moved to Marketing. Gaps: images→object storage, parked retail per-branch pricing, server-side delete safety.
