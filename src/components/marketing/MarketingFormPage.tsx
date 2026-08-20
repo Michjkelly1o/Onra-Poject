@@ -377,7 +377,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                     placeholder="Write the message customers receive..." />
             </FormField>
 
-            <FormField label="Budget" hint="Marketing spend for this campaign — feeds the Acquisition Efficiency report.">
+            <FormField label="Budget" hint="Marketing spend for this campaign.">
                 <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] h-10">
                     <span className="flex items-center px-[14px] text-[16px] text-[var(--colors-text-quaternary)] bg-[var(--colors-bg-secondary)] border-r-1 border-[var(--colors-border-primary)]">AED</span>
                     <input

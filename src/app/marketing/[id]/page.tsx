@@ -408,7 +408,7 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                         icon={<CoinsStacked01 className="w-4 h-4" />}
                         label="Budget"
                         value={vm.budgetAed > 0 ? `AED ${vm.budgetAed.toLocaleString("en-US")}` : "Not set"}
-                        tooltip="Marketing spend for this campaign — feeds the Acquisition Efficiency report."
+                        tooltip="Marketing spend for this campaign."
                     />
                     {vm.actionType === "external_link" && (
                         <InlineStat icon={<Link01 className="w-4 h-4" />} label="External link" value={vm.externalUrl || "—"} />
