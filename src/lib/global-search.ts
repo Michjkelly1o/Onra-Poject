@@ -96,7 +96,7 @@ const PAGES: PageEntry[] = [
     { title: "Roles & permissions",    href: "/admin/staff/roles",                icon: Users01 },
     { title: "Staff & shifts",         href: "/admin/staff",                      icon: Users01 },
     { title: "Pay rates",              href: "/admin/staff/pay-rate",             icon: CoinsHand },
-    { title: "Payroll",                href: "/admin/compensation",               icon: CreditCard02 },
+    { title: "Payroll",                href: "/admin/staff/payroll",               icon: CreditCard02 },
     // Notifications top-level
     { title: "Notifications",          href: "/admin/notifications",              icon: Bell01 },
     // Settings landing + sub-pages — Settings parent is Building01; each

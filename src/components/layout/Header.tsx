@@ -34,7 +34,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/staff": "Staff & shifts",
     "/admin/staff/roles": "Roles & permissions",
     "/admin/staff/pay-rate": "Pay rates",
-    "/admin/compensation": "Payroll",
+    "/admin/staff/payroll": "Payroll",
     // The live Insights page (formerly KPI) lives at /admin/insights (renamed
     // 2026-08-11); the old mock Insights page was deleted.
     "/admin/insights": "Insights",

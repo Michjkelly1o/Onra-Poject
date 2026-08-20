@@ -1,6 +1,6 @@
 "use client";
 
-// Root-level full-page route (no admin layout) — pairs with /compensation/run.
+// Root-level full-page route (no admin layout) — pairs with /staff/payroll/run.
 
 import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -9,7 +9,7 @@ import PayrollInstructorDetailPage from "@/components/staff/PayrollInstructorDet
 function InstructorInner() {
     const params = useParams<{ instructorId: string }>();
     const searchParams = useSearchParams();
-    const returnTo = searchParams.get("returnTo") ?? "/admin/compensation";
+    const returnTo = searchParams.get("returnTo") ?? "/admin/staff/payroll";
     return <PayrollInstructorDetailPage instructorId={params.instructorId} returnTo={returnTo} />;
 }
 

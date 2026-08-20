@@ -4535,7 +4535,7 @@ export interface AppState {
      *  filters this by `payRateId`. The staff module (PRD 10 §3) will own the
      *  fuller list; this slice is the minimum surface for cross-module sync. */
     instructors: Instructor[];
-    /** Live payroll entries — drives /admin/compensation list, the Run
+    /** Live payroll entries — drives /admin/staff/payroll list, the Run
      *  Payroll review step, and the instructor-earnings detail page. */
     payrollEntries: PayrollEntry[];
     /** Live roles — drives /admin/staff Roles tab + every staff member's

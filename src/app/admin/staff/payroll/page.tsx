@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Compensation management (/admin/compensation)
+// Onra Studio — Compensation management (/admin/staff/payroll)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // PRD 10 §7 — payroll module landing page. Figma 2837-17872.
@@ -21,8 +21,8 @@
 //
 // Phase 1 scope:
 //   • Listing + filtering + search + export CSV  ✓
-//   • "Run payroll" → /compensation/run            (placeholder until phase 2)
-//   • Row "View details" → /compensation/[id]      (placeholder until phase 3)
+//   • "Run payroll" → /staff/payroll/run            (placeholder until phase 2)
+//   • Row "View details" → /staff/payroll/[id]      (placeholder until phase 3)
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -382,10 +382,10 @@ export default function CompensationPage() {
     );
 
     function handleRunPayroll() {
-        router.push("/compensation/run?returnTo=/admin/compensation");
+        router.push("/staff/payroll/run?returnTo=/admin/staff/payroll");
     }
     function handleViewDetails(row: CompRow) {
-        router.push(`/compensation/${row.instructor.id}?returnTo=/admin/compensation`);
+        router.push(`/staff/payroll/${row.instructor.id}?returnTo=/admin/staff/payroll`);
     }
 
     // Truly empty = there are no active instructors at all (or none in the
@@ -536,7 +536,7 @@ export default function CompensationPage() {
                                                             // pre-triggered, so the row menu offers the same
                                                             // actions as the detail side panel.
                                                             { label: "Change pay rate", icon: Edit02, onClick: () => setChangeRateRow(r) },
-                                                            { label: "Export payout report", icon: Download01, onClick: () => router.push(`/compensation/${r.instructor.id}?returnTo=/admin/compensation&export=1`) },
+                                                            { label: "Export payout report", icon: Download01, onClick: () => router.push(`/staff/payroll/${r.instructor.id}?returnTo=/admin/staff/payroll&export=1`) },
                                                         ]}
                                                     />
                                                 </td>

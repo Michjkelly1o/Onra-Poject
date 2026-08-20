@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Payroll details page (/compensation/run)
+// Onra Studio — Payroll details page (/staff/payroll/run)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // PRD 10 §7.3 — payroll calculation wizard. Figma:
@@ -10,7 +10,7 @@
 //   • 4085-35082  — Payroll submitted success modal
 //
 // Layout: same chrome as the pay rate detail page (root-level full screen,
-// h-72 header). The action row in the toolbar mirrors /admin/compensation
+// h-72 header). The action row in the toolbar mirrors /admin/staff/payroll
 // (branch + date period + Export + filter + primary Process button).
 //
 // Period defaults to the **active month** (1st → last day) formatted as
@@ -478,7 +478,7 @@ const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b b
 
 export interface PayrollRunPageProps { returnTo?: string }
 
-export default function PayrollRunPage({ returnTo = "/admin/compensation" }: PayrollRunPageProps) {
+export default function PayrollRunPage({ returnTo = "/admin/staff/payroll" }: PayrollRunPageProps) {
     const router = useRouter();
     const payrollEntries        = useAppStore(s => s.payrollEntries);
     const instructors           = useAppStore(s => s.instructors);

@@ -54,7 +54,7 @@ const STATIC_ROUTES: readonly string[] = [
     "/staff/shifts/new",
     "/staff/blocked-time",
     "/staff/blocked-time/new",
-    "/staff/compensation",
+    "/staff/payroll",
     // Marketing
     "/marketing",
     "/marketing/new",

@@ -119,9 +119,9 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/staff/pay-rate",         // list view
     //"/staff/pay-rate",               // create / detail / edit
 
-    // ── Payroll module ── (ENABLED — pushing today)
-    //"/admin/compensation",           // list view
-    //"/compensation",                 // run payroll / instructor earnings detail
+    // ── Payroll module ── (ENABLED)
+    //"/admin/staff/payroll",          // list view
+    //"/staff/payroll",                // run payroll / instructor earnings detail
 
     // ── Reports module ── (DISABLED — for client demo)
     //

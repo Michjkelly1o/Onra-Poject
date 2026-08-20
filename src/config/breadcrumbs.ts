@@ -61,7 +61,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/staff":                    "Staff & permissions",
     "/admin/staff/roles":              "Roles & permissions",
     "/admin/staff/pay-rate":           "Pay rates",
-    "/admin/compensation":             "Payroll",
+    "/admin/staff/payroll":             "Payroll",
     "/admin/insights":                 "Insights",
     "/admin/reports":                  "Reports",
     "/admin/notifications":            "Notifications",
@@ -171,7 +171,7 @@ const MODULE_ROOT: ModuleRoot[] = [
     { prefix: "/staff/pay-rate",      listPath: "/admin/staff/pay-rate",    label: "Pay rates",            detailNoun: "Pay rate details" },
     { prefix: "/staff/shifts",        listPath: "/admin/staff",             label: "Staff & permissions",  detailNoun: "Shift details" },
     { prefix: "/staff/blocked-time",  listPath: "/admin/staff",             label: "Staff & permissions",  detailNoun: "Time off" },
-    { prefix: "/compensation",        listPath: "/admin/compensation",      label: "Payroll",              detailNoun: "Payroll details" },
+    { prefix: "/staff/payroll",        listPath: "/admin/staff/payroll",      label: "Payroll",              detailNoun: "Payroll details" },
     { prefix: "/reports",             listPath: "/admin/reports",           label: "Reports" },
     { prefix: "/pos",                 listPath: "/admin/pos",               label: "Point of sale" },
     // Instructor-only routes that live outside `/instructor/*`
@@ -277,7 +277,7 @@ const DYNAMIC_LABELS: Record<string, (id: string, s: AppState) => string> = {
         if (bt.reason) return `${bt.reason[0].toUpperCase()}${bt.reason.slice(1)}`;
         return "Time off";
     },
-    "/compensation": (id, s) => {
+    "/staff/payroll": (id, s) => {
         const st = s.staff.find(x => x.id === id);
         return st ? `${st.firstName ?? ""} ${st.lastName ?? ""}`.trim() || "Payroll" : "Payroll";
     },

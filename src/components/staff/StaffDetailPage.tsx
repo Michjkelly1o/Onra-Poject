@@ -269,7 +269,7 @@ function InternalLinkCard({ staff, payRateId }: { staff: Staff; payRateId?: stri
                     `staff.id` matches the `instructors` slice id 1:1, so the
                     [instructorId] route resolves directly. */}
                 <LinkRow icon={<CreditCard02 className="w-5 h-5" />} label="Earnings"
-                    onClick={() => go(`/compensation/${staff.id}?returnTo=/staff/members/${staff.id}`)} />
+                    onClick={() => go(`/staff/payroll/${staff.id}?returnTo=/staff/members/${staff.id}`)} />
                 {/* Pay rate → pay-rate module detail page for the instructor's
                     assigned rate (e.g. "Standard"). Hidden when no rate set. */}
                 {payRateId && (

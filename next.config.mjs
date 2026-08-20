@@ -6,6 +6,11 @@ const nextConfig = {
     // full audit in new-prd/reports-implementation-plan.md.
     async redirects() {
         return [
+            // ── URL consistency refactor — old module URLs → nav-matching URLs ──
+            // Phase 1 · Payroll: /admin/compensation → /admin/staff/payroll
+            { source: "/admin/compensation",   destination: "/admin/staff/payroll", permanent: true },
+            { source: "/compensation/:path*",  destination: "/staff/payroll/:path*", permanent: true },
+
             // Financial legacy → new consolidated / renamed reports
             { source: "/reports/memberships",         destination: "/reports/memberships-packages", permanent: true },
             { source: "/reports/packages",            destination: "/reports/memberships-packages", permanent: true },

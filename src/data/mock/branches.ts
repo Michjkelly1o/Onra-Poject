@@ -18,7 +18,7 @@
 //   • /admin/products (Applicable branches)
 //   • /admin/staff (branch assignment)
 //   • /admin/pos (branch picker)
-//   • /admin/compensation + /admin/staff/pay-rate (rate scope)
+//   • /admin/staff/payroll + /admin/staff/pay-rate (rate scope)
 //   • /admin/settings/agreements (Applies to)
 //   • /products/promo-codes (Branches multi-select)
 //

@@ -117,7 +117,7 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Staff",               href: "/admin/staff?subtab=staff" },
             { label: "Shift",               href: "/admin/staff?subtab=shift-management&view=list" },
             { label: "Pay rates",           href: "/admin/staff/pay-rate" },
-            { label: "Payroll",             href: "/admin/compensation"   },
+            { label: "Payroll",             href: "/admin/staff/payroll"   },
         ],
     },
     // AI Agent + Settings do NOT live in the scrollable nav — both are

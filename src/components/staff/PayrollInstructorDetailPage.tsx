@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Instructor earnings detail (/compensation/[instructorId])
+// Onra Studio — Instructor earnings detail (/staff/payroll/[instructorId])
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // PRD 10 §7.4 — individual instructor earnings. Figma:
@@ -702,7 +702,7 @@ export interface PayrollInstructorDetailPageProps {
 }
 
 export default function PayrollInstructorDetailPage({
-    instructorId, returnTo = "/admin/compensation",
+    instructorId, returnTo = "/admin/staff/payroll",
 }: PayrollInstructorDetailPageProps) {
     const router = useRouter();
     const instructors            = useAppStore(s => s.instructors);
@@ -1034,7 +1034,7 @@ export default function PayrollInstructorDetailPage({
     }
 
     function handleViewBooking(row: BookingRow) {
-        const rt = `?returnTo=/compensation/${instructorId}`;
+        const rt = `?returnTo=/staff/payroll/${instructorId}`;
         router.push(row.kind === "class" ? `/schedule/${row.id}${rt}` : `/appointments/${row.id}${rt}`);
     }
 

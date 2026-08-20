@@ -3,9 +3,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // 10 entries — one per current-period instructor. Single source of truth for:
-//   • Compensation list page                    (/admin/compensation)
-//   • Run payroll page                          (/compensation/run)
-//   • Instructor earnings detail page           (/compensation/[id])
+//   • Compensation list page                    (/admin/staff/payroll)
+//   • Run payroll page                          (/staff/payroll/run)
+//   • Instructor earnings detail page           (/staff/payroll/[id])
 //   • Future payroll history & analytics
 //
 // Period = **the current calendar month at module-load time**. We do this

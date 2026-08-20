@@ -9,7 +9,7 @@ import PayrollRunPage from "@/components/staff/PayrollRunPage";
 
 function RunInner() {
     const searchParams = useSearchParams();
-    const returnTo = searchParams.get("returnTo") ?? "/admin/compensation";
+    const returnTo = searchParams.get("returnTo") ?? "/admin/staff/payroll";
     return <PayrollRunPage returnTo={returnTo} />;
 }
 
