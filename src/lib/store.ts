@@ -3195,8 +3195,18 @@ function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
     const usedRatio = (hashString(p.id) % 91) / 100; // 0-0.90
     const derivedUsed = totalCredits > 0 ? Math.floor(totalCredits * usedRatio) : 0;
     const creditsUsed = p.credits_used ?? derivedUsed;
+    // Resolve the plan price: most package plan rows are authored WITHOUT an
+    // explicit price_aed, which left Plan Price / Plan-Changes delta / Win-back
+    // "Sales recovered" / Intro "Converted plan price" reading AED 0. Inherit
+    // the price from the product catalog when the row omits it — an explicit
+    // price_aed always wins.
+    const catalogPrice =
+        p.kind === "package"    ? SEED_PACKAGES.find(x => x.id === p.product_id)?.price_aed
+      : p.kind === "membership" ? SEED_MEMBERSHIPS.find(x => x.id === p.product_id)?.price_aed
+      : undefined;
+    const resolvedPrice = p.price_aed ?? catalogPrice ?? 0;
     const autoRenew = p.auto_renew ?? (p.kind === "membership" && p.status === "active");
-    const nextBilling = p.next_billing_amount_aed ?? (autoRenew && p.status === "active" ? (p.price_aed ?? 0) : 0);
+    const nextBilling = p.next_billing_amount_aed ?? (autoRenew && p.status === "active" ? resolvedPrice : 0);
     const allowance = p.allowance ?? (
         p.kind === "membership" && /unlimited/i.test(p.credits_label) ? "Unlimited"
         : totalCredits > 0 ? `${totalCredits} credits`
@@ -3214,7 +3224,7 @@ function customerPlanFromSeed(p: SeedCustomerPlan): CustomerPlan {
         status: p.status,
         purchasedAtISO: p.purchased_at,
         expiryISO: p.expiry_iso,
-        priceAed: p.price_aed,
+        priceAed: resolvedPrice,
         freezeStartISO: p.freeze_start_iso,
         freezeEndISO: p.freeze_end_iso,
         freezeSource: p.freeze_source,
@@ -13863,7 +13873,7 @@ export const useAppStore = create<AppState>()(persist(
         //   the campaign) + an SMS send-stat on the Summer HIIT campaign. Bump so
         //   persisted demos re-seed with the campaign budgets that feed the
         //   Acquisition Efficiency report.
-        version: 125,
+        version: 126,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
