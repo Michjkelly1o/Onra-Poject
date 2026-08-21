@@ -5,8 +5,11 @@
 // Columns + labels are Excel-verbatim from new-prd/Onra_Reporting.xlsx
 // (Sheet 2 rows 405-446 · Campaign Performance).
 //
-// Depends on marketing campaigns + tracked engagement events. Renders
-// empty until the campaign engagement source is wired.
+// Live off the `marketingCampaignStats` rollup (selectCampaigns) — one row per
+// (campaign × channel) send. Attributed bookings = bookings within the
+// attribution window after an open/click; Attributed sales = Σ their sale
+// value (both denormalized on the engagement rollup, as a tracking pixel would
+// populate them).
 
 import type { ReportDefinition } from "@/lib/reports/types";
 
@@ -20,7 +23,9 @@ const K = {
     clicksTaps:          "clicksTaps",
     clickRatePct:        "clickRatePct",
     attributedBookings:  "attributedBookings",
-    attributedRevenue:   "attributedRevenue",
+    // Must match the CampaignStatRow field name (attributedRevenueAed) or the
+    // "Attributed sales" column reads undefined and renders "—" for every row.
+    attributedRevenue:   "attributedRevenueAed",
     attributionWindow:   "attributionWindow",
     branchId:            "branchId",
     location:            "location",
