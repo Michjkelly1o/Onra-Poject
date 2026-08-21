@@ -4,23 +4,25 @@
 // Onra Studio — Transactions (/admin/transactions)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The all-customers payment ledger. Same view as the customer-detail Payment
-// History tab (src/components/customers/CustomerPaymentsTab.tsx) — it reuses the
-// EXACT same atoms (TxnIcon / TxnStatusBadge / RefundModal / PaymentFilterPanel /
-// formatters / refund gating), so the table + refund flow stay in lock-step with
-// the customer profile. The only differences here: it lists EVERY customer's
-// transactions (not one), and adds a Customer column.
+// The all-customers payment ledger. Same table + refund flow as the
+// customer-detail Payment History tab (src/components/customers/CustomerPaymentsTab.tsx)
+// — it reuses the EXACT same atoms (TxnIcon / TxnStatusBadge / RefundModal /
+// PaymentFilterPanel / formatters / refund gating), so they stay in lock-step
+// with the customer profile. Differences here: it lists EVERY customer's
+// transactions (not one), adds a Customer column + a Location filter, and sits
+// flush on the admin chrome (no view card) like the Private sessions list.
 //
 // Refunds flow through the store's `refundTransaction`, so this table, the
 // customer profile, and the Refunds report all re-render together.
 
-import { useMemo, useState } from "react";
-import { CoinsSwap02 } from "@untitledui/icons";
+import { useEffect, useMemo, useState } from "react";
+import { CoinsSwap02, MarkerPin01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { SelectInput } from "@/components/ui/select-input";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
@@ -36,16 +38,27 @@ import {
 export default function TransactionsPage() {
     const customerTransactions = useAppStore(s => s.customerTransactions);
     const customers            = useAppStore(s => s.customers);
+    const branches             = useAppStore(s => s.branches);
     const issuedGiftCards      = useAppStore(s => s.issuedGiftCards);
     const refundTransaction    = useAppStore(s => s.refundTransaction);
     const showToast            = useAppStore(s => s.showToast);
 
     const [search, setSearch]       = useState("");
+    const [branchId, setBranchId]   = useState("");
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied]     = useState<PaymentFilter>(EMPTY_PAYMENT_FILTER);
     const [page, setPage]           = useState(1);
     const [pageSize, setPageSize]   = useState(10);
     const [refundTxn, setRefundTxn] = useState<CustomerTransaction | null>(null);
+
+    // Reset to page 1 whenever the result set changes.
+    useEffect(() => { setPage(1); }, [search, branchId, applied]);
+
+    // Location options (active branches only) — matches the Private sessions list.
+    const branchOptions = useMemo(
+        () => branches.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
+        [branches],
+    );
 
     // Customer display-name lookup (falls back to email, then em-dash).
     const nameById = useMemo(
@@ -60,10 +73,11 @@ export default function TransactionsPage() {
         [customerTransactions],
     );
 
-    // Search (transaction name OR customer name) + applied filter.
+    // Location + search (transaction OR customer name) + applied filter.
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return txns.filter(t => {
+            if (branchId && t.branchId !== branchId) return false;
             if (q && !t.name.toLowerCase().includes(q) && !customerName(t.customerId).toLowerCase().includes(q)) return false;
             const date = t.createdAtISO.slice(0, 10);
             if (applied.dateStart && date < applied.dateStart) return false;
@@ -73,7 +87,7 @@ export default function TransactionsPage() {
             return true;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [txns, search, applied, nameById]);
+    }, [txns, search, branchId, applied, nameById]);
 
     const { sorted, sortKey, sortDir, toggle } = useSort<CustomerTransaction>(filtered, {
         customer: (a, b) => customerName(a.customerId).localeCompare(customerName(b.customerId)),
@@ -103,34 +117,36 @@ export default function TransactionsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-5">
-            {/* Title */}
-            <div className="flex flex-col gap-1">
-                <h1 className="font-heading font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Transactions</h1>
-                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Every payment across all customers, with refunds.</p>
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
+            {/* ── Toolbar (one row): Total · Location · Search · Export · Filter ── */}
+            <div className="flex items-center gap-3">
+                <ToolbarTotal count={filtered.length} entitySingular="transaction" />
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...branchOptions]}
+                    value={branchId}
+                    onChange={setBranchId}
+                    width="w-[220px]"
+                />
+                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search transaction or customer..." />
+                <ToolbarExport
+                    disabled={filtered.length === 0}
+                    exportData={() => {
+                        if (filtered.length === 0) return null;
+                        return customerTransactionsExportData(filtered, id => customerName(id));
+                    }}
+                    onExported={(fmt) => {
+                        showToast("Transactions exported", `${filtered.length} transaction${filtered.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
+                />
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
             </div>
 
-            {/* View card */}
-            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] min-h-[760px] flex flex-col overflow-hidden">
-                {/* Toolbar */}
-                <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-4">
-                    <ToolbarTotal count={filtered.length} entitySingular="transaction" />
-                    <ToolbarSearch value={search} onChange={setSearch} placeholder="Search transaction or customer..." />
-                    <ToolbarExport
-                        disabled={filtered.length === 0}
-                        exportData={() => {
-                            if (filtered.length === 0) return null;
-                            return customerTransactionsExportData(filtered, id => customerName(id));
-                        }}
-                        onExported={(fmt) => {
-                            showToast("Transactions exported", `${filtered.length} transaction${filtered.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
-                        }}
-                    />
-                    <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
-                </div>
-
-                {/* Table */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+            {/* ── Table — sits flush on the admin chrome (no view card); the table
+                   scrolls inside this region, pagination pinned below. ── */}
+            <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
                     {paged.length === 0 ? (
                         <EmptyBlock
                             title={txns.length === 0 ? "No transactions yet" : "No transactions found"}
@@ -139,85 +155,80 @@ export default function TransactionsPage() {
                                 : "Try adjusting your search or filter."}
                         />
                     ) : (
-                        <div className="px-6">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="name"     currentSort={sortKey} dir={sortDir} onSort={toggle}>Transaction name</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[200px]")}>
-                                            <SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggle}>Customer</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[160px]")}>
-                                            <SortableHeader sortKey="planType" currentSort={sortKey} dir={sortDir} onSort={toggle}>Products</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[120px]", "!text-right")}>
-                                            <SortableHeader sortKey="amount"   currentSort={sortKey} dir={sortDir} onSort={toggle} align="right">Amount</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="status"   currentSort={sortKey} dir={sortDir} onSort={toggle}>Status</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[200px]")}>
-                                            <SortableHeader sortKey="date"     currentSort={sortKey} dir={sortDir} onSort={toggle}>Date &amp; Time</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[52px]")} />
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="name"     currentSort={sortKey} dir={sortDir} onSort={toggle}>Transaction name</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[200px]")}>
+                                        <SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggle}>Customer</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[160px]")}>
+                                        <SortableHeader sortKey="planType" currentSort={sortKey} dir={sortDir} onSort={toggle}>Products</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[120px]", "!text-right")}>
+                                        <SortableHeader sortKey="amount"   currentSort={sortKey} dir={sortDir} onSort={toggle} align="right">Amount</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[140px]")}>
+                                        <SortableHeader sortKey="status"   currentSort={sortKey} dir={sortDir} onSort={toggle}>Status</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[200px]")}>
+                                        <SortableHeader sortKey="date"     currentSort={sortKey} dir={sortDir} onSort={toggle}>Date &amp; Time</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[52px]")} />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paged.map(t => (
+                                    <tr key={t.id} className="transition-colors hover:bg-[var(--colors-bg-secondary)]">
+                                        <td className={TD}>
+                                            <div className="flex items-center gap-3">
+                                                <TxnIcon kind={t.kind} />
+                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{customerName(t.customerId)}</td>
+                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
+                                        {/* Refunded rows prefix `+` (money returned to the customer);
+                                            Math.abs guards v30-ledger rows seeded negative — mirrors
+                                            the customer Payment History tab exactly. */}
+                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>
+                                            {t.status === "refunded"
+                                                ? `+ ${fmtAed(Math.abs(t.amountAed))}`
+                                                : fmtAed(t.amountAed)}
+                                        </td>
+                                        <td className={TD}>
+                                            {t.status === "complete" && t.refundRequestedAtISO ? (
+                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
+                                                    Refund requested
+                                                </span>
+                                            ) : (
+                                                <TxnStatusBadge status={t.status} />
+                                            )}
+                                        </td>
+                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
+                                        <td className={TD}>
+                                            {t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards) && (
+                                                <RowActions
+                                                    items={[{
+                                                        label: "Refund payment",
+                                                        icon: CoinsSwap02,
+                                                        onClick: () => setRefundTxn(t),
+                                                    }]}
+                                                />
+                                            )}
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {paged.map(t => (
-                                        <tr key={t.id} className="transition-colors hover:bg-[var(--colors-bg-secondary)]">
-                                            <td className={TD}>
-                                                <div className="flex items-center gap-3">
-                                                    <TxnIcon kind={t.kind} />
-                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
-                                                </div>
-                                            </td>
-                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{customerName(t.customerId)}</td>
-                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
-                                            {/* Refunded rows prefix `+` (money returned to the customer),
-                                                Math.abs guards v30-ledger rows seeded negative — mirrors
-                                                the customer Payment History tab exactly. */}
-                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>
-                                                {t.status === "refunded"
-                                                    ? `+ ${fmtAed(Math.abs(t.amountAed))}`
-                                                    : fmtAed(t.amountAed)}
-                                            </td>
-                                            <td className={TD}>
-                                                {t.status === "complete" && t.refundRequestedAtISO ? (
-                                                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
-                                                        Refund requested
-                                                    </span>
-                                                ) : (
-                                                    <TxnStatusBadge status={t.status} />
-                                                )}
-                                            </td>
-                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
-                                            <td className={TD}>
-                                                {t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards) && (
-                                                    <RowActions
-                                                        items={[{
-                                                            label: "Refund payment",
-                                                            icon: CoinsSwap02,
-                                                            onClick: () => setRefundTxn(t),
-                                                        }]}
-                                                    />
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                ))}
+                            </tbody>
+                        </table>
                     )}
                 </div>
 
-                {/* Pagination */}
                 {sorted.length > 0 && (
-                    <div className="px-6 shrink-0">
-                        <Pagination page={clampedPage} total={sorted.length} pageSize={pageSize}
-                            onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
-                    </div>
+                    <Pagination page={clampedPage} total={sorted.length} pageSize={pageSize}
+                        onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
                 )}
             </div>
 
