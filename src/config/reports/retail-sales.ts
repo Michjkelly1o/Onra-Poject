@@ -63,7 +63,7 @@ export const RETAIL_SALES_REPORT: ReportDefinition = {
         { key: K.attachedTo,        label: "Attached to",       kind: "status",   minWidth: 130 },
         { key: K.salesChannel,      label: "Sales channel",     kind: "status",   minWidth: 140 },
         { key: K.staffName,         label: "Staff Name",        kind: "text",     minWidth: 180 },
-        { key: K.staffId,           label: "Staff ID",          kind: "id",       minWidth: 160 },
+        { key: K.staffId,           label: "Staff ID",          kind: "id",       minWidth: 160, hiddenByDefault: true },
     ],
 
     // Plan doc default: by product; secondary breakdowns available.
