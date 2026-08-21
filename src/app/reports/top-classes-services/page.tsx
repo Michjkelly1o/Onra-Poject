@@ -34,6 +34,9 @@ export default function TopClassesServicesReportPage() {
     const classBookings  = useAppStore(s => s.classBookings);
     const classSchedules = useAppStore(s => s.classSchedules);
     const branches       = useAppStore(s => s.branches);
+    // Private + Recovery sessions — selectClassSessions folds them in.
+    const appointments        = useAppStore(s => s.appointments);
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
 
     const report = getReportById("top-classes-services");
     const { onScopeChange, inScope } = useReportScope();
@@ -41,8 +44,8 @@ export default function TopClassesServicesReportPage() {
     const raw = useMemo<ClassSessionRow[]>(() => {
         if (!report) return [];
         const fn = resolveSelector(report) as unknown as (state: unknown) => ClassSessionRow[];
-        return fn({ classBookings, classSchedules, branches });
-    }, [report, classBookings, classSchedules, branches]);
+        return fn({ classBookings, classSchedules, branches, appointments, appointmentBookings });
+    }, [report, classBookings, classSchedules, branches, appointments, appointmentBookings]);
 
     const rows = useMemo<TopClassesDisplayRow[]>(() => {
         // Aggregate per (branch × className).
@@ -64,7 +67,7 @@ export default function TopClassesServicesReportPage() {
             if (!inScope(s.dateISO, s.branchId)) continue;
             const key = `${s.branchId}|${s.className}`;
             const bucket = buckets.get(key) ?? {
-                serviceType: s.classType || "Class",
+                serviceType: s.sessionType || "Class",
                 className: s.className,
                 sessionsRun: 0, totalBookings: 0, totalAttended: 0, totalCapacity: 0,
                 noShows: 0, uniqueCustomers: 0,

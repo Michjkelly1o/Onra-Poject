@@ -274,6 +274,8 @@ export interface ClassSessionRow {
     dateISO: string;
     className: string;
     classType: string;
+    /** Session-type dimension label — "Class" / "Private session" / "Recovery". */
+    sessionType: string;
     instructor: string;
     capacity: number;
     booked: number;
@@ -823,6 +825,14 @@ export function selectBookings(state: AppState): BookingRow[] {
 export function selectClassSessions(state: AppState): ClassSessionRow[] {
     const loc = makeLocationLookup(state);
     const schedules = (state as unknown as { classSchedules: import("@/lib/store").ClassSchedule[] }).classSchedules ?? [];
+    const SESSION_TYPE_LABEL: Record<string, string> = { class: "Class", private: "Private session", recovery: "Recovery" };
+    // Private + Recovery sessions are `appointments` (not classSchedules); their
+    // bookings are `appointmentBookings`. Folded in below so the report ranks
+    // classes AND services together with the right Type.
+    const apptState = state as unknown as {
+        appointments: import("@/lib/store").Appointment[];
+        appointmentBookings: import("@/lib/store").AppointmentBooking[];
+    };
 
     // Group bookings by classScheduleId once.
     const bookingsBySchedule = new Map<string, import("@/lib/store").ClassBooking[]>();
@@ -832,7 +842,7 @@ export function selectClassSessions(state: AppState): ClassSessionRow[] {
         bookingsBySchedule.set(b.classScheduleId, arr);
     }
 
-    return schedules.map(s => {
+    const classRows = schedules.map(s => {
         const bookings = bookingsBySchedule.get(s.id) ?? [];
         let attended = 0, noShows = 0, lateCancels = 0, waitlisted = 0, waitlistConverted = 0;
         const uniqueAttendees = new Set<string>();
@@ -866,6 +876,7 @@ export function selectClassSessions(state: AppState): ClassSessionRow[] {
             dateISO: s.dateISO,
             className: s.name,
             classType: s.category,
+            sessionType: SESSION_TYPE_LABEL[s.type ?? "class"] ?? "Class",
             instructor: s.instructorName,
             capacity,
             booked,
@@ -882,6 +893,49 @@ export function selectClassSessions(state: AppState): ClassSessionRow[] {
             location: loc(s.branchId),
         };
     });
+
+    // ── Private + Recovery sessions (appointments → appointmentBookings) ─────
+    const apptBookingsByAppt = new Map<string, import("@/lib/store").AppointmentBooking[]>();
+    for (const b of (apptState.appointmentBookings ?? [])) {
+        const arr = apptBookingsByAppt.get(b.appointmentId) ?? [];
+        arr.push(b);
+        apptBookingsByAppt.set(b.appointmentId, arr);
+    }
+    const appointmentRows: ClassSessionRow[] = (apptState.appointments ?? []).map(a => {
+        const bookings = apptBookingsByAppt.get(a.id) ?? [];
+        let booked = 0, attended = 0, noShows = 0;
+        const uniqueAttendees = new Set<string>();
+        for (const b of bookings) {
+            if (b.status === "Cancelled") continue;
+            booked += 1;
+            if (b.status === "Attended") { attended += 1; uniqueAttendees.add(b.customerId); }
+            else if (b.status === "NoShow") noShows += 1;
+        }
+        const capacity = a.capacity || 0;
+        return {
+            id: a.id,
+            dateISO: a.dateISO,
+            className: a.serviceName,
+            classType: a.serviceCategory,
+            sessionType: SESSION_TYPE_LABEL[a.type ?? "private"] ?? "Private session",
+            instructor: a.instructorName ?? "—",
+            capacity,
+            booked,
+            attended,
+            noShows,
+            lateCancellations: 0,
+            waitlisted: 0,
+            waitlistConverted: 0,
+            fillRatePct: capacity > 0 ? (booked / capacity) * 100 : 0,
+            attendanceRatePct: booked > 0 ? (attended / booked) * 100 : 0,
+            noShowRatePct: booked > 0 ? (noShows / booked) * 100 : 0,
+            uniqueCustomers: uniqueAttendees.size,
+            branchId: a.branchId,
+            location: loc(a.branchId),
+        };
+    });
+
+    return [...classRows, ...appointmentRows];
 }
 
 /** 6. selectReferrals — one row per customerReferrals record joined
