@@ -84,7 +84,7 @@ export default function PaymentsReportPage() {
         return raw.map(p => ({
             paymentDateISO: p.paymentDateISO.slice(0, 10),
             paymentId:      paymentIdFor(p.id),
-            txnId:          txnIdFor(p.id),
+            txnId:          txnIdFor(p.orderId ?? p.id),
             customerName:   p.customerName,
             customerId:     p.customerId,
             customerEmail:  p.customerEmail,

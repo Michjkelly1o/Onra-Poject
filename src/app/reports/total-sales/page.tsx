@@ -167,7 +167,7 @@ export default function TotalSalesReportPageV2() {
 
             return {
                 orderDateISO: r.createdAtISO.slice(0, 10),
-                txnId: orderNumberOf(r.id),
+                txnId: orderNumberOf(r.orderId ?? r.id),
                 transactionType: TXN_TYPE_LABEL[r.transactionType],
                 originalTxnId: r.originalTransactionId ? orderNumberOf(r.originalTransactionId) : "",
                 customerId: r.customerId,

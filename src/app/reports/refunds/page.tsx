@@ -92,7 +92,7 @@ export default function RefundsReportPage() {
 
             return {
                 refundDateISO:        refundDay,
-                txnId:                orderNumberOf(r.id),
+                txnId:                orderNumberOf(r.orderId ?? r.id),
                 originalTxnId:        r.originalTransactionId ? orderNumberOf(r.originalTransactionId) : "",
                 customerName:         c ? `${c.firstName} ${c.lastName}`.trim() : "—",
                 customerId:           r.customerId,

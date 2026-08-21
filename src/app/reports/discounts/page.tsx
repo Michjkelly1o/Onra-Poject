@@ -83,7 +83,7 @@ export default function DiscountsReportPage() {
 
             return {
                 orderDateISO:         r.createdAtISO.slice(0, 10),
-                txnId:                orderNumberOf(r.id),
+                txnId:                orderNumberOf(r.orderId ?? r.id),
                 customerName:         r.customerName,
                 customerId:           r.customerId,
                 customerEmail:        r.customerEmail,

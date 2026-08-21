@@ -21,12 +21,12 @@
 // store's `refundTransaction` so the table + metrics re-render together and
 // a success toast confirms it.
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, ChevronLeft, XClose, AlignLeft,
     CoinsSwap02, CreditCard01, CreditCard02, Package, Gift01, BankNote01,
-    SlashCircle01, Calendar, Receipt,
+    SlashCircle01, Calendar, Receipt, ChevronDown, ChevronRight,
 } from "@untitledui/icons";
 import { TransactionReceiptModal } from "@/components/customers/TransactionReceiptModal";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ import {
     useAppStore, PAYMENT_METHODS,
     type CustomerTransaction, type IssuedGiftCard, type GiftCardDesign, type PaymentMethod,
 } from "@/lib/store";
+import { groupIntoOrders, type OrderGroup } from "@/lib/payments/orders";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -550,6 +551,13 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 
 // ─── Payments tab ─────────────────────────────────────────────────────────────
 
+// Order row-model = the shared order group + the two display labels derived from
+// a store atom (`planTypeLabel`) / line count.
+interface OrderRow extends OrderGroup {
+    name: string;        // single → product name; multi → "N products"
+    kindLabel: string;   // single → plan type; multi → "Multiple"
+}
+
 export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     const customerTransactions = useAppStore(s => s.customerTransactions);
     const customers = useAppStore(s => s.customers);
@@ -577,7 +585,9 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [refundTxn, setRefundTxn] = useState<CustomerTransaction | null>(null);
-    const [receiptTxn, setReceiptTxn] = useState<CustomerTransaction | null>(null);
+    // The receipt shows a whole order (all its line items).
+    const [receiptOrder, setReceiptOrder] = useState<CustomerTransaction[] | null>(null);
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
     // This tab is scoped to one customer — resolve their display name once for
     // the receipt modal.
     const thisCustomer = customers.find(c => c.id === customerId);
@@ -676,31 +686,60 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
         });
     }, [txns, search, applied]);
 
-    // ── Payment-history sort — Transaction name / Plan type (kind) /
-    //    Amount (numeric) / Status / Date & time. ──
-    const { sorted: sortedTxns, sortKey: txnSortKey, sortDir: txnSortDir, toggle: toggleTxnSort } = useSort<CustomerTransaction>(filtered, {
+    // A multi-product checkout writes one ledger row per product (reports need
+    // them) that share an `orderId`. Collapse them into ONE order row here — a
+    // single-item order is a plain row, a multi-item order an accordion. The
+    // per-product rows still live in `filtered` for export + the reports.
+    const orders = useMemo<OrderRow[]>(
+        () => groupIntoOrders(filtered).map(o => ({
+            ...o,
+            name: o.isMulti ? `${o.txns.length} products` : o.txns[0].name,
+            kindLabel: o.isMulti ? "Multiple" : planTypeLabel(o.txns[0]),
+        })),
+        [filtered],
+    );
+
+    // ── Payment-history sort — Transaction name / Products / Amount (numeric) /
+    //    Status / Date & time — all at the ORDER level. ──
+    const { sorted: sortedOrders, sortKey: txnSortKey, sortDir: txnSortDir, toggle: toggleTxnSort } = useSort<OrderRow>(orders, {
         name:     (a, b) => a.name.localeCompare(b.name),
-        planType: (a, b) => a.kind.localeCompare(b.kind),
-        amount:   (a, b) => a.amountAed - b.amountAed,
+        planType: (a, b) => a.kindLabel.localeCompare(b.kindLabel),
+        amount:   (a, b) => a.amount - b.amount,
         status:   (a, b) => a.status.localeCompare(b.status),
-        date:     (a, b) => a.createdAtISO.localeCompare(b.createdAtISO),
+        date:     (a, b) => a.dateISO.localeCompare(b.dateISO),
     });
 
-    const totalPages = Math.max(1, Math.ceil(sortedTxns.length / pageSize));
+    const totalPages = Math.max(1, Math.ceil(sortedOrders.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
-    const paged = sortedTxns.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+    const paged = sortedOrders.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
-    // When a `?tx=` is present, jump to the page containing that row and
-    // pulse-highlight it for 2.5s. Runs once when the inner tab + tx id
-    // are both available — guards against the highlight blinking on every
-    // unrelated re-render.
+    function toggleExpand(key: string) {
+        setExpanded(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    }
+
+    // Refund gating for one line item — completed, flagged refundable, and the
+    // gift-card guard passes.
+    function refundableLine(t: CustomerTransaction): boolean {
+        return t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards);
+    }
+
+    // When a `?tx=` is present, jump to the page containing the ORDER that holds
+    // that line item, pulse-highlight the order row for 2.5s, and expand it when
+    // it's a multi-product order so the targeted line is visible. Runs once when
+    // the inner tab + tx id are both available.
     useEffect(() => {
-        if (!highlightTx || inner !== "history" || filtered.length === 0) return;
-        const idx = filtered.findIndex(t => t.id === highlightTx);
+        if (!highlightTx || inner !== "history" || sortedOrders.length === 0) return;
+        const idx = sortedOrders.findIndex(o => o.txns.some(t => t.id === highlightTx));
         if (idx < 0) return;
+        const target = sortedOrders[idx];
         const targetPage = Math.floor(idx / pageSize) + 1;
         if (targetPage !== page) setPage(targetPage);
-        setPulseTxId(highlightTx);
+        if (target.isMulti) setExpanded(prev => new Set(prev).add(target.key));
+        setPulseTxId(target.key);
         const timer = setTimeout(() => setPulseTxId(null), 2500);
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -798,7 +837,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                 <>
                     {/* Toolbar */}
                     <div className="shrink-0 flex items-center gap-3 px-6 pb-4">
-                        <ToolbarTotal count={filtered.length} entitySingular="transaction" />
+                        <ToolbarTotal count={orders.length} entitySingular="transaction" />
                         <ToolbarSearch
                             value={search}
                             onChange={setSearch}
@@ -852,71 +891,114 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {paged.map(t => (
-                                            <tr key={t.id} className={cn(
-                                                "transition-colors",
-                                                pulseTxId === t.id
-                                                    ? "bg-[var(--colors-secondary-50)] animate-pulse"
-                                                    : "hover:bg-[var(--colors-bg-secondary)]",
-                                            )}>
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-3">
-                                                        <TxnIcon kind={t.kind} />
-                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
-                                                {/* Refunded rows prefix `+` so the amount reads as
-                                                    money returned to the customer — matches the
-                                                    Wallet tab's `+ / −` convention (customer POV:
-                                                    `+` money in, `−` money out). Sales stay plain
-                                                    — a sale is the natural outbound direction;
-                                                    only refunds need the reversal cue.
-                                                    `Math.abs` guards refunded rows whose
-                                                    `amountAed` was seeded negative (Reports v30
-                                                    ledger convention): without the abs, `+` on
-                                                    top of a stored `-1800` reads as
-                                                    `+ AED −1,800`. */}
-                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>
-                                                    {t.status === "refunded"
-                                                        ? `+ ${fmtAed(Math.abs(t.amountAed))}`
-                                                        : fmtAed(t.amountAed)}
-                                                </td>
-                                                <td className={TD}>
-                                                    {/* A still-`complete` payment with a pending refund
-                                                        request (raised from the dashboard) reads as
-                                                        "Refund requested" here so the customer module
-                                                        reflects the dashboard queue. Once approved it
-                                                        flips to "Refunded"; denial clears the marker
-                                                        back to "Complete". */}
-                                                    {t.status === "complete" && t.refundRequestedAtISO ? (
-                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
-                                                            Refund requested
-                                                        </span>
-                                                    ) : (
-                                                        <TxnStatusBadge status={t.status} />
+                                        {paged.map(o => {
+                                            const isOpen = expanded.has(o.key);
+                                            const single = o.txns[0];
+                                            return (
+                                                <Fragment key={o.key}>
+                                                    {/* Order row — single-item orders are a plain row,
+                                                        multi-item orders an accordion header (click to
+                                                        expand the per-product lines). */}
+                                                    <tr className={cn(
+                                                        "transition-colors",
+                                                        pulseTxId === o.key
+                                                            ? "bg-[var(--colors-secondary-50)] animate-pulse"
+                                                            : "hover:bg-[var(--colors-bg-secondary)]",
+                                                        o.isMulti && "cursor-pointer",
                                                     )}
-                                                </td>
-                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
-                                                <td className={TD}>
-                                                    {/* "Receipt" shows on every row (view/download the
-                                                        receipt). Refund is added only when the payment is
-                                                        completed AND refundable — `isRefundable === false`
-                                                        is set on every `cancellation_penalty` row per
-                                                        client spec, so those never expose the Refund
-                                                        action; legacy rows without the flag stay
-                                                        refundable. */}
-                                                    <RowActions
-                                                        items={[
-                                                            { label: "Receipt", icon: Receipt, onClick: () => setReceiptTxn(t) },
-                                                            ...(t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards)
-                                                                ? [{ label: "Refund payment", icon: CoinsSwap02, onClick: () => setRefundTxn(t) }]
-                                                                : []),
-                                                        ]}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                        onClick={o.isMulti ? () => toggleExpand(o.key) : undefined}>
+                                                        <td className={TD}>
+                                                            <div className="flex items-center gap-3">
+                                                                {o.isMulti ? (
+                                                                    <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)]">
+                                                                        {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                                    </span>
+                                                                ) : (
+                                                                    <TxnIcon kind={single.kind} />
+                                                                )}
+                                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{o.name}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{o.kindLabel}</td>
+                                                        {/* Refunded orders prefix `+` so the amount reads as
+                                                            money returned to the customer — matches the
+                                                            Wallet tab's `+ / −` convention (customer POV:
+                                                            `+` money in, `−` money out). The order total is
+                                                            already Σ|amountAed|, so no `Math.abs` needed. */}
+                                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>
+                                                            {o.status === "refunded" ? `+ ${fmtAed(o.amount)}` : fmtAed(o.amount)}
+                                                        </td>
+                                                        <td className={TD}>
+                                                            {/* A still-`complete` single payment with a pending
+                                                                refund request (raised from the dashboard) reads
+                                                                as "Refund requested" so the customer module
+                                                                reflects the dashboard queue. Multi-item orders
+                                                                show the aggregate order status. */}
+                                                            {!o.isMulti && single.status === "complete" && single.refundRequestedAtISO ? (
+                                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
+                                                                    Refund requested
+                                                                </span>
+                                                            ) : (
+                                                                <TxnStatusBadge status={o.status} />
+                                                            )}
+                                                        </td>
+                                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(o.dateISO)}</td>
+                                                        <td className={TD} onClick={(e) => e.stopPropagation()}>
+                                                            {/* "Receipt" shows the whole order. A single-item
+                                                                order also exposes Refund inline (when refundable);
+                                                                a multi-item order refunds per product inside the
+                                                                accordion. */}
+                                                            <RowActions
+                                                                items={[
+                                                                    { label: "Receipt", icon: Receipt, onClick: () => setReceiptOrder(o.txns) },
+                                                                    ...(!o.isMulti && refundableLine(single)
+                                                                        ? [{ label: "Refund payment", icon: CoinsSwap02, onClick: () => setRefundTxn(single) }]
+                                                                        : []),
+                                                                ]}
+                                                            />
+                                                        </td>
+                                                    </tr>
+
+                                                    {o.isMulti && isOpen && (
+                                                        <tr className="bg-[var(--colors-bg-secondary)]/40">
+                                                            <td className={cn(TD, "!py-0")} colSpan={6}>
+                                                                <div className="flex flex-col gap-2 pl-11 pr-2 py-3">
+                                                                    {o.txns.map(t => (
+                                                                        <div key={t.id} className="flex items-center gap-3">
+                                                                            <TxnIcon kind={t.kind} />
+                                                                            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
+                                                                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">{planTypeLabel(t)}</span>
+                                                                            </div>
+                                                                            <span className="text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums w-[120px] text-right">
+                                                                                {t.status === "refunded" ? `+ ${fmtAed(Math.abs(t.amountAed))}` : fmtAed(t.amountAed)}
+                                                                            </span>
+                                                                            <div className="w-[150px] flex items-center">
+                                                                                {t.status === "complete" && t.refundRequestedAtISO ? (
+                                                                                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
+                                                                                        Refund requested
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <TxnStatusBadge status={t.status} />
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="w-[120px] flex justify-end">
+                                                                                {refundableLine(t) && (
+                                                                                    <Button variant="secondary-gray" size="sm" leftIcon={<CoinsSwap02 className="w-4 h-4" />}
+                                                                                        onClick={() => setRefundTxn(t)}>
+                                                                                        Refund
+                                                                                    </Button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </Fragment>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -924,7 +1006,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                     </div>
 
                     <div className="px-6 shrink-0">
-                        <Pagination page={clampedPage} total={sortedTxns.length} pageSize={pageSize}
+                        <Pagination page={clampedPage} total={sortedOrders.length} pageSize={pageSize}
                             onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />
                     </div>
                 </>
@@ -938,9 +1020,9 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                     onConfirm={reason => handleRefund(refundTxn, reason)} />
             )}
 
-            {receiptTxn && (
-                <TransactionReceiptModal txn={receiptTxn} customerName={thisCustomerName}
-                    onClose={() => setReceiptTxn(null)} />
+            {receiptOrder && (
+                <TransactionReceiptModal txns={receiptOrder} customerName={thisCustomerName}
+                    onClose={() => setReceiptOrder(null)} />
             )}
         </div>
     );

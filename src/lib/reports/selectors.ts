@@ -68,6 +68,9 @@ export interface LedgerRow extends ResolvedLedgerRow {
  *  the honest ledger. */
 export interface PaymentRow {
     id: string;
+    /** Shared order id when this payment was part of a multi-product checkout —
+     *  so the report's "Transaction #" matches across the order's line items. */
+    orderId?: string;
     paymentDateISO: string;
     location: string;
     customerId: string;
@@ -510,6 +513,7 @@ export function selectPayments(state: AppState): PaymentRow[] {
 
         const c = cust(t.customerId);
         const base = {
+            orderId: t.orderId,
             location: loc(t.branchId),
             customerId: t.customerId,
             customerName: c ? `${c.firstName} ${c.lastName}`.trim() : "—",
@@ -1512,7 +1516,7 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
         rows.push({
             id: t.id,
             dateISO: saleDay,
-            transactionNumber: t.id,
+            transactionNumber: t.orderId ?? t.id,
             transactionType: "sale",
             customerId: t.customerId,
             customerName,
@@ -1545,7 +1549,7 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
             rows.push({
                 id: `${t.id}:refund`,
                 dateISO: refundDay,
-                transactionNumber: t.id,
+                transactionNumber: t.orderId ?? t.id,
                 transactionType: "refund",
                 customerId: t.customerId,
                 customerName,

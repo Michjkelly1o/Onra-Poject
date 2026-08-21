@@ -4,19 +4,19 @@
 // Onra Studio — Transactions (/admin/transactions)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The all-customers payment ledger. Same table + refund flow as the
-// customer-detail Payment History tab (src/components/customers/CustomerPaymentsTab.tsx)
-// — it reuses the EXACT same atoms (TxnIcon / TxnStatusBadge / RefundModal /
-// PaymentFilterPanel / formatters / refund gating), so they stay in lock-step
-// with the customer profile. Differences here: it lists EVERY customer's
-// transactions (not one), adds a Customer column + a Location filter, and sits
-// flush on the admin chrome (no view card) like the Private sessions list.
+// The all-customers payment ledger. Reuses the customer Payment History atoms
+// (TxnIcon / TxnStatusBadge / RefundModal / formatters / refund gating) so the
+// table + refund flow stay in lock-step with the customer profile.
 //
-// Refunds flow through the store's `refundTransaction`, so this table, the
-// customer profile, and the Refunds report all re-render together.
+// A checkout that sold multiple products writes one CustomerTransaction per
+// product (reports need per-product rows), but those line items share an
+// `orderId`. Here they collapse into ONE accordion row per order: the header
+// shows the order (number, customer, total, status), and expanding it lists each
+// product with its own Refund action. Single-item orders render as a plain row.
+// The Receipt action shows the whole order (all its products).
 
-import { useEffect, useMemo, useState } from "react";
-import { CoinsSwap02, MarkerPin01, Receipt } from "@untitledui/icons";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { CoinsSwap02, MarkerPin01, Receipt, ChevronDown, ChevronRight } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { TransactionReceiptModal } from "@/components/customers/TransactionReceiptModal";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
@@ -27,20 +27,22 @@ import { SelectInput } from "@/components/ui/select-input";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
+import { Button } from "@/components/ui/button";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { customerTransactionsExportData } from "@/lib/export/specs/customer-records";
 import { useAppStore, type CustomerTransaction } from "@/lib/store";
+import { groupIntoOrders, type OrderGroup } from "@/lib/payments/orders";
 import {
     TxnIcon, TxnStatusBadge, planTypeLabel, isTxnRefundable,
     fmtAed, fmtDateTime, RefundModal, PaymentFilterPanel, EmptyBlock,
     EMPTY_PAYMENT_FILTER, type PaymentFilter,
 } from "@/components/customers/CustomerPaymentsTab";
 
-// Display transaction number — synthesized from the row id, same convention as
-// the Payments / Refunds / VAT reports (#R-…), since the ledger has no separate
-// human-facing number field.
-function txnNumberOf(id: string): string {
-    return `#R-${id.replace(/^txn_/, "").toUpperCase().replace(/_/g, "-")}`;
+// Order row-model = the shared order group + the two display labels the table
+// derives from a store atom (`planTypeLabel`) / line count.
+interface OrderRow extends OrderGroup {
+    name: string;        // single → product name; multi → "N products"
+    kindLabel: string;   // single → plan type; multi → "Multiple"
 }
 
 export default function TransactionsPage() {
@@ -57,35 +59,27 @@ export default function TransactionsPage() {
     const [applied, setApplied]     = useState<PaymentFilter>(EMPTY_PAYMENT_FILTER);
     const [page, setPage]           = useState(1);
     const [pageSize, setPageSize]   = useState(10);
+    const [expanded, setExpanded]   = useState<Set<string>>(new Set());
     const [refundTxn, setRefundTxn] = useState<CustomerTransaction | null>(null);
-    const [receiptTxn, setReceiptTxn] = useState<CustomerTransaction | null>(null);
+    const [receiptOrder, setReceiptOrder] = useState<CustomerTransaction[] | null>(null);
 
-    // Reset to page 1 whenever the result set changes.
     useEffect(() => { setPage(1); }, [search, branchId, applied]);
 
-    // Location options (active branches only) — matches the Private sessions list.
     const branchOptions = useMemo(
         () => branches.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
         [branches],
     );
 
-    // Customer display-name lookup (falls back to email, then em-dash).
     const nameById = useMemo(
         () => new Map(customers.map(c => [c.id, `${c.firstName} ${c.lastName}`.trim() || c.email])),
         [customers],
     );
     const customerName = (id: string) => nameById.get(id) ?? "—";
 
-    // Every customer's transactions, newest first.
-    const txns = useMemo(
-        () => [...customerTransactions].sort((a, b) => b.createdAtISO.localeCompare(a.createdAtISO)),
-        [customerTransactions],
-    );
-
-    // Location + search (transaction OR customer name) + applied filter.
+    // Location + search + applied filter → the flat, filtered line items.
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return txns.filter(t => {
+        return customerTransactions.filter(t => {
             if (branchId && t.branchId !== branchId) return false;
             if (q && !t.name.toLowerCase().includes(q) && !customerName(t.customerId).toLowerCase().includes(q)) return false;
             const date = t.createdAtISO.slice(0, 10);
@@ -96,16 +90,27 @@ export default function TransactionsPage() {
             return true;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [txns, search, branchId, applied, nameById]);
+    }, [customerTransactions, search, branchId, applied, nameById]);
 
-    const { sorted, sortKey, sortDir, toggle } = useSort<CustomerTransaction>(filtered, {
-        customer: (a, b) => customerName(a.customerId).localeCompare(customerName(b.customerId)),
-        txnNumber:(a, b) => a.id.localeCompare(b.id),
+    // Group the filtered line items into orders (shared with the customer
+    // Payment history), then layer on the two table-only display labels.
+    const orders = useMemo<OrderRow[]>(
+        () => groupIntoOrders(filtered).map(o => ({
+            ...o,
+            name: o.isMulti ? `${o.txns.length} products` : o.txns[0].name,
+            kindLabel: o.isMulti ? "Multiple" : planTypeLabel(o.txns[0]),
+        })),
+        [filtered],
+    );
+
+    const { sorted, sortKey, sortDir, toggle } = useSort<OrderRow>(orders, {
         name:     (a, b) => a.name.localeCompare(b.name),
-        planType: (a, b) => a.kind.localeCompare(b.kind),
-        amount:   (a, b) => a.amountAed - b.amountAed,
+        txnNumber:(a, b) => a.number.localeCompare(b.number),
+        customer: (a, b) => customerName(a.customerId).localeCompare(customerName(b.customerId)),
+        planType: (a, b) => a.kindLabel.localeCompare(b.kindLabel),
+        amount:   (a, b) => a.amount - b.amount,
         status:   (a, b) => a.status.localeCompare(b.status),
-        date:     (a, b) => a.createdAtISO.localeCompare(b.createdAtISO),
+        date:     (a, b) => a.dateISO.localeCompare(b.dateISO),
     });
 
     const totalPages  = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -115,6 +120,14 @@ export default function TransactionsPage() {
     const hasActiveFilter =
         applied.statuses.length > 0 || applied.kinds.length > 0 ||
         applied.dateStart !== "" || applied.dateEnd !== "";
+
+    function toggleExpand(key: string) {
+        setExpanded(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    }
 
     function handleRefund(txn: CustomerTransaction, reason: string) {
         refundTransaction(txn.id, reason);
@@ -126,11 +139,30 @@ export default function TransactionsPage() {
         );
     }
 
+    function refundableLine(t: CustomerTransaction): boolean {
+        return t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards);
+    }
+
+    // Kebab actions for an order row: Receipt (always), + Refund on a single-item
+    // order when that line is refundable (multi-item orders refund per product
+    // inside the accordion).
+    function orderActions(o: OrderRow) {
+        const items: { label: string; icon: typeof Receipt; onClick: () => void }[] = [
+            { label: "Receipt", icon: Receipt, onClick: () => setReceiptOrder(o.txns) },
+        ];
+        if (!o.isMulti && refundableLine(o.txns[0])) {
+            items.push({ label: "Refund payment", icon: CoinsSwap02, onClick: () => setRefundTxn(o.txns[0]) });
+        }
+        return items;
+    }
+
+    const COL_COUNT = 8;
+
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">
-            {/* ── Toolbar (one row): Total · Location · Search · Export · Filter ── */}
+            {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={filtered.length} entitySingular="transaction" />
+                <ToolbarTotal count={orders.length} entitySingular="transaction" />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                     placeholder="Select location"
@@ -153,14 +185,13 @@ export default function TransactionsPage() {
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
             </div>
 
-            {/* ── Table — sits flush on the admin chrome (no view card); the table
-                   scrolls inside this region, pagination pinned below. ── */}
+            {/* ── Table (flush on the admin chrome; scrolls in its own region) ── */}
             <div className="flex-1 min-h-0 flex flex-col">
                 <div className="flex-auto min-h-0 overflow-auto scrollbar-hide relative">
                     {paged.length === 0 ? (
                         <EmptyBlock
-                            title={txns.length === 0 ? "No transactions yet" : "No transactions found"}
-                            subtitle={txns.length === 0
+                            title={orders.length === 0 ? "No transactions yet" : "No transactions found"}
+                            subtitle={orders.length === 0
                                 ? "No payments have been recorded yet."
                                 : "Try adjusting your search or filter."}
                         />
@@ -193,47 +224,71 @@ export default function TransactionsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {paged.map(t => (
-                                    <tr key={t.id} className="transition-colors hover:bg-[var(--colors-bg-secondary)]">
-                                        <td className={TD}>
-                                            <div className="flex items-center gap-3">
-                                                <TxnIcon kind={t.kind} />
-                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{t.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums")}>{txnNumberOf(t.id)}</td>
-                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{customerName(t.customerId)}</td>
-                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
-                                        {/* Refunded rows prefix `+` (money returned to the customer);
-                                            Math.abs guards v30-ledger rows seeded negative — mirrors
-                                            the customer Payment History tab exactly. */}
-                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>
-                                            {t.status === "refunded"
-                                                ? `+ ${fmtAed(Math.abs(t.amountAed))}`
-                                                : fmtAed(t.amountAed)}
-                                        </td>
-                                        <td className={TD}>
-                                            {t.status === "complete" && t.refundRequestedAtISO ? (
-                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
-                                                    Refund requested
-                                                </span>
-                                            ) : (
-                                                <TxnStatusBadge status={t.status} />
+                                {paged.map(o => {
+                                    const isOpen = expanded.has(o.key);
+                                    return (
+                                        <Fragment key={o.key}>
+                                            <tr className={cn("transition-colors", o.isMulti ? "cursor-pointer hover:bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}
+                                                onClick={o.isMulti ? () => toggleExpand(o.key) : undefined}>
+                                                <td className={TD}>
+                                                    <div className="flex items-center gap-3">
+                                                        {o.isMulti ? (
+                                                            <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)]">
+                                                                {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                            </span>
+                                                        ) : (
+                                                            <TxnIcon kind={o.txns[0].kind} />
+                                                        )}
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{o.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums")}>{o.number}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{customerName(o.customerId)}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{o.kindLabel}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap", "text-right")}>
+                                                    {o.status === "refunded" ? `+ ${fmtAed(o.amount)}` : fmtAed(o.amount)}
+                                                </td>
+                                                <td className={TD}><TxnStatusBadge status={o.status} /></td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(o.dateISO)}</td>
+                                                <td className={TD} onClick={(e) => e.stopPropagation()}>
+                                                    <RowActions items={orderActions(o)} />
+                                                </td>
+                                            </tr>
+
+                                            {o.isMulti && isOpen && (
+                                                <tr className="bg-[var(--colors-bg-secondary)]/40">
+                                                    <td className={cn(TD, "!py-0")} colSpan={COL_COUNT}>
+                                                        <div className="flex flex-col gap-2 pl-11 pr-4 py-3">
+                                                            {o.txns.map(t => (
+                                                                <div key={t.id} className="flex items-center gap-3">
+                                                                    <TxnIcon kind={t.kind} />
+                                                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
+                                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)]">{planTypeLabel(t)}</span>
+                                                                    </div>
+                                                                    <span className="text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums w-[120px] text-right">
+                                                                        {t.status === "refunded" ? `+ ${fmtAed(Math.abs(t.amountAed))}` : fmtAed(t.amountAed)}
+                                                                    </span>
+                                                                    <div className="w-[140px] flex items-center">
+                                                                        <TxnStatusBadge status={t.status} />
+                                                                    </div>
+                                                                    <div className="w-[140px] flex justify-end">
+                                                                        {refundableLine(t) && (
+                                                                            <Button variant="secondary-gray" size="sm" leftIcon={<CoinsSwap02 className="w-4 h-4" />}
+                                                                                onClick={() => setRefundTxn(t)}>
+                                                                                Refund
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                </tr>
                                             )}
-                                        </td>
-                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
-                                        <td className={TD}>
-                                            <RowActions
-                                                items={[
-                                                    { label: "Receipt", icon: Receipt, onClick: () => setReceiptTxn(t) },
-                                                    ...(t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards)
-                                                        ? [{ label: "Refund payment", icon: CoinsSwap02, onClick: () => setRefundTxn(t) }]
-                                                        : []),
-                                                ]}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
+                                        </Fragment>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}
@@ -253,10 +308,10 @@ export default function TransactionsPage() {
                     onConfirm={reason => handleRefund(refundTxn, reason)} />
             )}
 
-            {receiptTxn && (
-                <TransactionReceiptModal txn={receiptTxn}
-                    customerName={customerName(receiptTxn.customerId)}
-                    onClose={() => setReceiptTxn(null)} />
+            {receiptOrder && (
+                <TransactionReceiptModal txns={receiptOrder}
+                    customerName={customerName(receiptOrder[0].customerId)}
+                    onClose={() => setReceiptOrder(null)} />
             )}
         </div>
     );

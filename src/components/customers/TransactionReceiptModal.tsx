@@ -4,13 +4,14 @@
 // Onra Studio — Transaction receipt modal
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The read-only receipt for a completed `CustomerTransaction`, rendered in the
-// same layout as the POS checkout step-2 receipt (`ReceiptStep` in
-// CheckoutScreen). Opened from the "Receipt" row action in the Transactions
-// module (/admin/transactions) and the customer-detail Payment History tab, and
-// downloadable as a PNG via the shared `downloadReceiptNode` (same capture path
-// as the customer checkout receipt). Self-contained (no import from
-// CustomerPaymentsTab) to avoid a circular dependency.
+// Read-only receipt for a completed order — one OR MORE `CustomerTransaction`
+// line items that share an `orderId` (a multi-product POS checkout). Rendered in
+// the same layout as the POS checkout step-2 receipt (`ReceiptStep` in
+// CheckoutScreen), including the corner-circle background ornament. Opened from
+// the "Receipt" row action in the Transactions module and the customer-detail
+// Payment History tab, and downloadable as a PNG via the shared
+// `downloadReceiptNode`. Self-contained (no import from CustomerPaymentsTab) to
+// avoid a circular dependency.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -32,8 +33,10 @@ function methodLabel(t: CustomerTransaction): string {
     return PAY_METHOD_LABEL[t.paymentMethod] ?? "Card";
 }
 
-function receiptNumberOf(id: string): string {
-    return `#R-${id.replace(/^txn_/, "").toUpperCase().replace(/_/g, "-")}`;
+/** #R-… number for the ORDER (all line items share it) — same convention as the
+ *  Payments / Refunds / VAT reports. */
+function orderNumberOf(id: string): string {
+    return `#R-${id.replace(/^(txn|ord)_/, "").toUpperCase().replace(/_/g, "-")}`;
 }
 
 function fmtReceiptDate(iso: string): string {
@@ -48,7 +51,28 @@ function fmtReceiptDate(iso: string): string {
 
 const AED = (n: number) => `AED ${Math.abs(Math.round(n)).toLocaleString()}`;
 
-// Product tile icon by transaction kind — mirrors the POS receipt product icon.
+const lineSubtotal = (t: CustomerTransaction) => {
+    const total = Math.abs(t.amountAed);
+    const tax = Math.abs(t.taxAed ?? 0);
+    return t.subtotalAed != null ? Math.abs(t.subtotalAed) : Math.max(0, total - tax);
+};
+
+// Corner-circle ornament — same as the POS step-2 receipt (ReceiptHeaderDecoration).
+function ReceiptOrnament() {
+    return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-[inherit]">
+            <div className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[180px] opacity-[0.05]">
+                <div className="absolute inset-0 rounded-full border-[8px] border-[var(--colors-secondary-500)]" />
+                <div className="absolute inset-[60px] rounded-full border-[8px] border-[var(--colors-secondary-500)]" />
+            </div>
+            <div className="absolute right-0 top-0 translate-x-1/2 -translate-y-1/2 w-[180px] h-[180px] opacity-[0.05]">
+                <div className="absolute inset-0 rounded-full border-[8px] border-[var(--colors-secondary-500)]" />
+                <div className="absolute inset-[60px] rounded-full border-[8px] border-[var(--colors-secondary-500)]" />
+            </div>
+        </div>
+    );
+}
+
 function KindTile({ kind }: { kind: CustomerTransaction["kind"] }) {
     const Icon =
         kind === "membership" ? CreditCard01 :
@@ -73,9 +97,10 @@ function Row({ label, value, valueClass }: { label: string; value: string; value
     );
 }
 
-export function TransactionReceiptModal({ txn, customerName, onClose }: {
-    txn: CustomerTransaction;
-    /** Resolved display name for the transaction's customer. */
+export function TransactionReceiptModal({ txns, customerName, onClose }: {
+    /** The order's line items — one row for a single-product sale, several for a
+     *  multi-product checkout (they share an orderId). */
+    txns: CustomerTransaction[];
     customerName: string;
     onClose: () => void;
 }) {
@@ -89,22 +114,32 @@ export function TransactionReceiptModal({ txn, customerName, onClose }: {
         return () => document.removeEventListener("keydown", h);
     }, [onClose]);
 
-    const money = useMemo(() => {
-        const total = Math.abs(txn.amountAed);
-        const tax = Math.abs(txn.taxAed ?? 0);
-        const subtotal = txn.subtotalAed != null ? Math.abs(txn.subtotalAed) : Math.max(0, total - tax);
-        return { total, tax, subtotal, taxRate: txn.taxRatePercentage ?? 0, taxIncluded: txn.taxInclusive ?? true };
-    }, [txn]);
+    const first = txns[0];
 
-    const statusLabel = txn.status === "refunded" ? "Refunded" : txn.status === "complete" ? "Approved" : txn.status.charAt(0).toUpperCase() + txn.status.slice(1);
-    const method = methodLabel(txn);
+    const money = useMemo(() => {
+        const subtotal = txns.reduce((s, t) => s + lineSubtotal(t), 0);
+        const tax = txns.reduce((s, t) => s + Math.abs(t.taxAed ?? 0), 0);
+        const total = txns.reduce((s, t) => s + Math.abs(t.amountAed), 0);
+        // Show a tax row only when at least one line carries VAT.
+        const taxRate = txns.find(t => (t.taxRatePercentage ?? 0) > 0)?.taxRatePercentage ?? 0;
+        const taxIncluded = first?.taxInclusive ?? true;
+        return { subtotal, tax, total, taxRate, taxIncluded };
+    }, [txns, first]);
+
+    if (!first) return null;
+
+    const orderId = first.orderId ?? first.id;
+    const allComplete = txns.every(t => t.status === "complete");
+    const anyRefunded = txns.some(t => t.status === "refunded");
+    const statusLabel = anyRefunded ? "Refunded" : allComplete ? "Approved" : "Mixed";
+    const method = methodLabel(first);
 
     async function handleDownload() {
         if (!cardRef.current) return;
         setDownloading(true);
         try {
-            await downloadReceiptNode(cardRef.current, txn.id);
-            showToast("Receipt downloaded", `Receipt for ${txn.name} saved as a PNG.`, "success", "check");
+            await downloadReceiptNode(cardRef.current, orderId);
+            showToast("Receipt downloaded", `Receipt ${orderNumberOf(orderId)} saved as a PNG.`, "success", "check");
         } catch {
             showToast("Download failed", "Could not generate the receipt image.", "error", "alert");
         } finally {
@@ -127,43 +162,47 @@ export function TransactionReceiptModal({ txn, customerName, onClose }: {
 
                 {/* Receipt card (this exact node is captured for the PNG download) */}
                 <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
-                    <div ref={cardRef} className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-6 pt-6 pb-6 flex flex-col gap-5">
-                        <div className="flex flex-col items-center gap-4">
+                    <div ref={cardRef} className="relative bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-6 pt-6 pb-6 flex flex-col gap-5 overflow-hidden">
+                        <ReceiptOrnament />
+
+                        <div className="relative flex flex-col items-center gap-4">
                             <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-[0_0_0_4px_rgba(123,160,140,0.3),0_0_0_12px_rgba(123,160,140,0.1)]">
                                 <CheckCircle className="w-7 h-7 text-[var(--colors-secondary-600)]" />
                             </div>
                             <p className="font-heading text-[18px] font-semibold text-[var(--colors-text-primary)] text-center">Transaction complete</p>
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                            <Row label="Receipt" value={receiptNumberOf(txn.id)} />
+                        <div className="relative flex flex-col gap-2">
+                            <Row label="Receipt" value={orderNumberOf(orderId)} />
                             <Row label="Customer" value={customerName} />
-                            <Row label="Date" value={fmtReceiptDate(txn.createdAtISO)} />
+                            <Row label="Date" value={fmtReceiptDate(first.createdAtISO)} />
                         </div>
-                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                        <div className="relative h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
-                        {/* Detail product */}
-                        <div className="flex flex-col gap-3">
+                        {/* Detail product — one row per line item in the order */}
+                        <div className="relative flex flex-col gap-3">
                             <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Detail product</p>
-                            <div className="flex items-center gap-3">
-                                <KindTile kind={txn.kind} />
-                                <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{txn.name}</p>
-                                    <p className="text-[14px] text-[var(--colors-secondary-600)]">{AED(money.subtotal)}</p>
+                            {txns.map(t => (
+                                <div key={t.id} className="flex items-center gap-3">
+                                    <KindTile kind={t.kind} />
+                                    <div className="flex-1 flex flex-col gap-1 min-w-0">
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</p>
+                                        <p className="text-[14px] text-[var(--colors-secondary-600)]">{AED(lineSubtotal(t))}</p>
+                                    </div>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{t.quantity ?? 1}x</p>
                                 </div>
-                                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{txn.quantity ?? 1}x</p>
-                            </div>
+                            ))}
                         </div>
-                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                        <div className="relative h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
-                        {/* Detail payment */}
-                        <div className="flex flex-col gap-2">
+                        {/* Detail payment — combined totals across the order */}
+                        <div className="relative flex flex-col gap-2">
                             <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Detail payment</p>
                             <div className="flex items-center justify-between">
                                 <p className="text-[14px] text-[var(--colors-text-quaternary)]">Subtotal</p>
                                 <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{AED(money.subtotal)}</p>
                             </div>
-                            {money.taxRate > 0 && (
+                            {money.tax > 0 && (
                                 <div className="flex items-center justify-between">
                                     <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                                         {money.taxIncluded
@@ -179,16 +218,16 @@ export function TransactionReceiptModal({ txn, customerName, onClose }: {
                                 <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{AED(money.total)}</p>
                             </div>
                         </div>
-                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                        <div className="relative h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                         {/* Payment method */}
-                        <div className="flex flex-col gap-2">
+                        <div className="relative flex flex-col gap-2">
                             <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Payment method</p>
                             <Row label="Method" value={method} />
                             <Row label="Charged to" value={method} />
-                            <Row label="Transaction ID" value={txn.id} />
+                            <Row label="Transaction ID" value={orderId} />
                             <Row label="Status" value={statusLabel}
-                                valueClass={txn.status === "refunded" ? "text-[#175cd3]" : "text-[#164e52]"} />
+                                valueClass={anyRefunded ? "text-[#175cd3]" : "text-[#164e52]"} />
                         </div>
                     </div>
                 </div>
