@@ -359,6 +359,10 @@ export function FreezePolicyPanel({ open, onClose }: {
     function handleSave() {
         updateFreezePolicy({
             ...form,
+            // Master toggle retired (client 2026-08-19) — freeze is always
+            // "on"; who_can_freeze governs customer visibility. Keep the stored
+            // flag true so any legacy reader treats the policy as active.
+            enabled: true,
             reasons: form.reasons.filter(r => r.label.trim().length > 0),
         });
         showToast("Freeze policy saved", "The freeze policy has been updated.", "success", "check");
@@ -392,45 +396,32 @@ export function FreezePolicyPanel({ open, onClose }: {
                     </button>
                 </div>
 
-                {/* Body */}
+                {/* Body — the master "members can freeze" toggle was retired
+                    (client 2026-08-19): "Who can freeze" is the single source of
+                    truth (admins_only hides the customer CTA). Config always shown. */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-6 py-5 flex flex-col gap-7">
-                    {/* Plan freeze (client 2026-08-14) — the cancel toggle moved to
-                        the dedicated Plan cancellation panel. This panel is freeze-only. */}
-                    <ToggleCard
-                        title="Members can freeze their own membership"
-                        subtitle="Allow customers to pause their membership from their account."
-                        on={form.enabled}
-                        onChange={v => patch({ enabled: v })}
-                    />
-
-                    {form.enabled && (
-                        <>
-                            {/* v2 (client 2026-07-20) — NEW section.
-                                Two RadioCards laying out the two Figma-
-                                spec billing behaviours ("Pauses" vs
-                                "Stays on schedule"). "Pauses" is the
-                                recommended default per plan doc Q1. */}
-                            <Section title="Billing during a freeze">
-                                <RadioCardGroup
-                                    ariaLabel="Billing during a freeze"
-                                    options={BILLING_BEHAVIOR_OPTIONS}
-                                    value={form.billing_behavior}
-                                    onChange={v => patch({ billing_behavior: v })}
-                                />
-                            </Section>
-
-                            {/* v2 (client 2026-07-20) — NEW section.
-                                Three RadioCards for who is allowed to
-                                initiate a freeze. Phase 2 wires the
-                                customer-side CTA gating against this
-                                field; Phase 5 wires the request-approval
-                                surface for the middle option. */}
+                            {/* Who can freeze leads the panel (client 2026-08-19)
+                                — it's the primary gate that decides whether the
+                                customer sees the CTA at all. Three RadioCards. */}
                             <Section title="Who can freeze">
                                 <RadioCardGroup
                                     ariaLabel="Who can freeze"
                                     options={WHO_CAN_FREEZE_OPTIONS}
                                     value={form.who_can_freeze}
                                     onChange={v => patch({ who_can_freeze: v })}
+                                />
+                            </Section>
+
+                            {/* v2 (client 2026-07-20) — Two RadioCards laying out
+                                the two Figma-spec billing behaviours ("Pauses" vs
+                                "Stays on schedule"). "Pauses" is the recommended
+                                default per plan doc Q1. */}
+                            <Section title="Billing during a freeze">
+                                <RadioCardGroup
+                                    ariaLabel="Billing during a freeze"
+                                    options={BILLING_BEHAVIOR_OPTIONS}
+                                    value={form.billing_behavior}
+                                    onChange={v => patch({ billing_behavior: v })}
                                 />
                             </Section>
 
@@ -624,8 +615,6 @@ export function FreezePolicyPanel({ open, onClose }: {
                                     />
                                 )}
                             </Section>
-                        </>
-                    )}
                 </div>
 
                 {/* Footer */}

@@ -248,9 +248,8 @@ export function decideFreezeCta(
     if (plan.status === "frozen") {
         return { mode: "hidden", reason: "already_frozen" };
     }
-    if (!policy.enabled) {
-        return { mode: "hidden", reason: "policy_disabled" };
-    }
+    // Master "members can freeze" toggle retired (client 2026-08-19) — the
+    // policy is always active; who_can_freeze is the single gate below.
     // Per Q3 — Admins-only mode hides the customer-side CTA entirely. No
     // "call your studio" toast, no dead affordance.
     if (policy.who_can_freeze === "admins_only") {

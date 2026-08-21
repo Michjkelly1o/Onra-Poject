@@ -42,12 +42,14 @@ function wallClockInstant(dateISO: string, startTime: string, zone: string): num
 }
 
 /** Normalize an Intl "h:mm AM/PM" string to the Onra convention (client 2026-08):
- *  drop ":00" on whole hours, use a dot for non-zero minutes.
- *  "10:00 AM" → "10 AM" · "10:30 AM" → "10.30 AM". */
+ *  drop ":00" on whole hours, use a dot for non-zero minutes, and NEVER a
+ *  leading-zero hour.
+ *  "03:00 PM" → "3 PM" · "05:30 PM" → "5.30 PM". */
 function onraTime(intlTime: string): string {
     return intlTime
         .replace(/:00(?=\s?[AP]M)/i, "")   // whole hour → drop the minutes
-        .replace(/:(\d{2})/, ".$1");        // non-zero minutes → dot separator
+        .replace(/:(\d{2})/, ".$1")         // non-zero minutes → dot separator
+        .replace(/^0(?=\d)/, "");           // single-digit hour → no leading zero
 }
 
 /** "Sun, 20 Feb 2025 · 10 AM" for an instant, rendered in `zone`. */

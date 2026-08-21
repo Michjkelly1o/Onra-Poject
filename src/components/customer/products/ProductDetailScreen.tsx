@@ -18,7 +18,7 @@ import { ChevronLeft, ChevronRight, Clock, CreditCard02, CurrencyDollarCircle, G
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext, ALL_BRANCHES } from "@/lib/customer/context";
 import { useCatalogProducts } from "@/lib/customer/products-catalog";
-import { addToCart, ensurePurchaseCart, purchaseCart, retailCartBranchId, usePurchasePlans, type PlanKind, type PlanRow } from "@/lib/customer/purchase";
+import { addToCart, ensurePurchaseCart, purchaseCart, removeFromCart, retailCartBranchId, usePurchasePlans, type PlanKind, type PlanRow } from "@/lib/customer/purchase";
 import { Rings } from "@/components/customer/products/ProductArt";
 import { Button } from "@/components/ui/button";
 
@@ -47,6 +47,7 @@ export function ProductDetailScreen({
     variant = "page",
     onCheckout,
     onGiftConfigure,
+    editLineId,
 }: {
     productId: string;
     /** Purchase-cart origin — keeps the cart tied to the right flow (the class id
@@ -66,6 +67,11 @@ export function ProductDetailScreen({
     /** When set, gift-card Add/Pay opens the Gift card info sheet (products);
      *  receives the intent so Pay-now can continue to checkout after configuring. */
     onGiftConfigure?: (intent: "add" | "pay") => void;
+    /** EDIT MODE — the cart lineId being edited (opened from the payment sheet's
+     *  edit icon on a variation retail line). When set, the screen pre-fills the
+     *  line's size + quantity, shows a back-only header (no X close), and swaps
+     *  the Add/Pay actions for a single "Update cart" button. */
+    editLineId?: string | null;
 }) {
     const isSheet = variant === "sheet";
     const router = useRouter();
@@ -90,12 +96,22 @@ export function ProductDetailScreen({
         [...plans, ...giftCards, ...retail].find((p) => p.id === productId) ?? purchasePlans.find((p) => p.id === productId);
     ensurePurchaseCart(originId);
 
+    // EDIT MODE — editing an existing variation retail line from the payment
+    // sheet. `editLine` is the cart line being edited; the screen pre-fills its
+    // size + quantity and swaps the footer for a single "Update cart" action.
+    const editMode = editLineId != null;
+    const editLine = editMode ? purchaseCart.items.find((i) => i.lineId === editLineId) : undefined;
+
     const [qty, setQty] = useState(1);
     // Chosen size variant for a sized retail product (null until picked).
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [, bump] = useReducer((x) => x + 1, 0);
-    // Reset the size pick whenever the product changes.
-    useEffect(() => { setSelectedSize(null); }, [product?.id]);
+    // Reset the size pick whenever the product changes — but in edit mode start
+    // from the line's current size so the picker + quantity are pre-filled.
+    useEffect(() => {
+        setSelectedSize(editMode ? editLine?.size ?? null : null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product?.id, editLineId]);
     useEffect(() => {
         if (product?.kind === "package") {
             const inCart = purchaseCart.items.filter((i) => i.id === product.id).reduce((n, i) => n + i.quantity, 0);
@@ -276,6 +292,30 @@ export function ProductDetailScreen({
         else router.push("/customer/products/checkout");
     }
 
+    // Update cart (edit mode) — apply the new size + quantity to the edited line
+    // and return to the payment sheet. Keeps the line's ORIGINAL pickup branch so
+    // the same-branch invoice rule is never disturbed by the header selection.
+    function onUpdateCart() {
+        const chosenSize = hasSizes ? (selectedSize ?? undefined) : undefined;
+        const branchId = editLine?.branchId ?? (isRetail ? selectedBranchId : undefined);
+        const sizeChanged = !!editLine && editLine.size !== chosenSize;
+        // Size changed → drop the original line so no stale variant is left behind.
+        if (sizeChanged && editLine) removeFromCart(editLine.lineId);
+        const target = purchaseCart.items.find(
+            (i) => i.id === product!.id && i.kind === product!.kind && i.size === chosenSize,
+        );
+        if (target) {
+            // Same line (size unchanged) → set to the new quantity. Switched onto
+            // an existing OTHER variation line → fold the quantities together.
+            target.quantity = sizeChanged ? target.quantity + qty : qty;
+        } else {
+            addToCart(product!, qty, chosenSize, branchId);
+        }
+        showToast("Cart updated", `${product!.name} was updated in your cart.`, "success", "check");
+        bump();
+        afterAdd(product!.kind);
+    }
+
     // ── Hero content + type badge ──
     const heroBig = isGift ? String(gift?.fixed_value_aed ?? product.price) : product.creditBadge?.big ?? "";
     const heroSmall = isGift ? "AED" : product.creditBadge?.small ?? "credits";
@@ -295,14 +335,27 @@ export function ProductDetailScreen({
     return (
         <div className={isSheet ? "relative flex h-full flex-col" : "relative flex min-h-full flex-col"}>
             {isSheet && (
-                <button
-                    type="button"
-                    onClick={onBack}
-                    aria-label="Close"
-                    className="absolute right-4 top-3 z-20 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
-                >
-                    <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
-                </button>
+                editMode ? (
+                    // Edit mode — back-only (LEFT), no X: the sheet returns to the
+                    // payment sheet and can't be dismissed outright.
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        aria-label="Back"
+                        className="absolute left-4 top-3 z-20 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
+                    >
+                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        aria-label="Close"
+                        className="absolute right-4 top-3 z-20 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
+                    >
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
+                    </button>
+                )
             )}
             <div className={isSheet ? "flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "contents"}>
             {/* Hero — memberships/packages/gift cards render the 200px brand-
@@ -428,12 +481,21 @@ export function ProductDetailScreen({
                                     <span className="font-medium text-[#b42318]">Out of stock {stockScopeLabel}</span>
                                 ) : hasSizes && !selectedSize ? (
                                     <span className="font-medium text-[var(--brand-text)]">Select a size to see availability</span>
-                                ) : (
+                                ) : isAllBranches ? (
                                     <>
                                         <span className="font-medium text-[var(--brand-text)]">
                                             {effectiveStock} in stock
                                         </span>
                                         {" "}{stockScopeLabel}
+                                    </>
+                                ) : (
+                                    // Retail is collected in person → surface WHERE, not the
+                                    // stock count, once a specific branch is selected.
+                                    <>
+                                        Collection —{" "}
+                                        <span className="font-medium text-[var(--brand-text)]">
+                                            {branches.find((b) => b.id === selectedBranchId)?.name ?? "this branch"}
+                                        </span>
                                     </>
                                 )}
                             </InfoRow>
@@ -577,12 +639,21 @@ export function ProductDetailScreen({
                                     </div>
                                 )}
                                 <div className="flex gap-3">
-                                    <Button variant="secondary" size="xl" className="flex-1 rounded-full" disabled={addDisabled} onClick={onAdd}>
-                                        {isRetail && needsSize ? "Select a size" : "Add to cart"}
-                                    </Button>
-                                    <Button variant="primary" size="xl" className="flex-1 rounded-full" disabled={addDisabled} onClick={onPayNow}>
-                                        Pay now
-                                    </Button>
+                                    {editMode ? (
+                                        // Edit mode — a single "Update cart" action.
+                                        <Button variant="primary" size="xl" className="w-full rounded-full" disabled={addDisabled} onClick={onUpdateCart}>
+                                            {isRetail && needsSize ? "Select a size" : "Update cart"}
+                                        </Button>
+                                    ) : (
+                                        <>
+                                            <Button variant="secondary" size="xl" className="flex-1 rounded-full" disabled={addDisabled} onClick={onAdd}>
+                                                {isRetail && needsSize ? "Select a size" : "Add to cart"}
+                                            </Button>
+                                            <Button variant="primary" size="xl" className="flex-1 rounded-full" disabled={addDisabled} onClick={onPayNow}>
+                                                Pay now
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             </>
                         );

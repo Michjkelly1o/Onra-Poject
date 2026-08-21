@@ -316,10 +316,7 @@ export function TodayRevenueModal({ open, onClose, branchIds, todayISO, typeFilt
             width={760}
             title="Revenue today"
             subtitle={
-                <>
-                    <span className="font-semibold text-[var(--colors-text-primary)]">{aed(totalAed)}</span> earned today ·
-                    recognised as credits are used ({totalRows} item{totalRows === 1 ? "" : "s"})
-                </>
+                <span className="font-semibold text-[var(--colors-text-primary)]">{aed(totalAed)}</span>
             }
             footer={
                 <Pagination

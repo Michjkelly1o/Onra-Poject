@@ -436,11 +436,13 @@ export function ChangePayRateModal({ instructor, isInstructor, initialConfig, al
                         </div>
                     </div>
 
-                    {/* Config sections — ALWAYS shown regardless of toggle state
-                        (client 2026-08-10). Non-instructors get only Default. */}
-                    <PayRateSection title="Default pay rate" value={cfg.default.payRateId ?? ""} options={options}
-                        onChange={v => setTrack("default", { payRateId: v })} />
-                    {isInstructor && (
+                    {/* Config sections — each shown only when its track is enabled
+                        (client 2026-08-20). Non-instructors get only Default. */}
+                    {cfg.default.enabled && (
+                        <PayRateSection title="Default pay rate" value={cfg.default.payRateId ?? ""} options={options}
+                            onChange={v => setTrack("default", { payRateId: v })} />
+                    )}
+                    {isInstructor && cfg.perClass.enabled && (
                         <PayPerClassSection
                             payRateId={cfg.perClass.payRateId ?? ""}
                             substitutePayRateId={cfg.perClass.substitutePayRateId ?? ""}
@@ -449,7 +451,7 @@ export function ChangePayRateModal({ instructor, isInstructor, initialConfig, al
                             onChange={patch => setTrack("perClass", patch)}
                         />
                     )}
-                    {isInstructor && (
+                    {isInstructor && cfg.perAppointment.enabled && (
                         <PayRateSection title="Pay per private" value={cfg.perAppointment.payRateId ?? ""} options={options}
                             onChange={v => setTrack("perAppointment", { payRateId: v })} />
                     )}

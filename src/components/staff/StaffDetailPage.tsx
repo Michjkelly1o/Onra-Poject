@@ -526,9 +526,6 @@ function IntroductionSection({ intro }: { intro: string }) {
     const [expanded, setExpanded] = useState(false);
     if (!intro) return null;
     const long = intro.length > 180;
-    // Figma 7449:161957 — the "Introduction" label sits INSIDE the bordered
-    // card (not above it like the surrounding sections), and the See more
-    // toggle is a sage-coloured link beneath the truncated body text.
     return (
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <p className="text-[14px] text-[var(--colors-text-quaternary)]">Introduction</p>
@@ -692,7 +689,7 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
                     <InfoField label="Email"       value={staff.email} />
                     <InfoField label="Phone"       value={staff.phone} />
                     <InfoField label="Work experience"
-                        value={staff.workingExperienceYears != null
+                        value={staff.workingExperienceYears != null && staff.workingExperienceYears > 0
                             ? `${staff.workingExperienceYears} year${staff.workingExperienceYears === 1 ? "" : "s"}`
                             : "—"} />
                     <InfoField label="Categories"
@@ -708,8 +705,9 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
                 </div>
             </div>
 
-            {/* Introduction — Figma 7449:161957. Long-form bio with See more
-                toggle. Hidden entirely when the instructor hasn't filled it. */}
+            {/* Introduction — long-form short intro with See more toggle.
+                Hidden entirely when the instructor hasn't filled it. (Work
+                experience stays removed, client 2026-08-19.) */}
             <IntroductionSection intro={staff.shortIntro ?? ""} />
 
             {/* Overall performance — 4 metric cards in horizontal row */}

@@ -72,6 +72,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/settings/branding":        "Branding",
     "/admin/settings/services":        "Services",
     "/admin/settings/booking-rules":   "Booking rules",
+    "/admin/settings/plan-rules":      "Plan rules",
     "/admin/settings/payments":        "Integrations",
     "/admin/settings/integrations":    "Integrations",
     "/admin/settings/notifications":   "Customer notifications",
@@ -164,6 +165,8 @@ const MODULE_ROOT: ModuleRoot[] = [
     { prefix: "/settings/agreements", listPath: "/admin/settings/agreements",  label: "Agreements", detailNoun: "Agreement details",
       parent: { label: "Settings", href: "/admin/settings" } },
     { prefix: "/settings/booking-rules", listPath: "/admin/settings/booking-rules", label: "Booking rules",
+      parent: { label: "Settings", href: "/admin/settings" } },
+    { prefix: "/settings/plan-rules", listPath: "/admin/settings/plan-rules", label: "Plan rules",
       parent: { label: "Settings", href: "/admin/settings" } },
     // Referral program lives under the Marketing sidebar group, not Settings
     // — no Settings parent crumb (matches Campaigns / Promotions siblings).

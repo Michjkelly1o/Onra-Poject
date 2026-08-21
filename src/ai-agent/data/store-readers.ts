@@ -689,7 +689,6 @@ export function readStaff(state: AppState): Row[] {
         first_login_completed: s.firstLoginCompleted ? "true" : "false",
         joined_date: s.joinedDate,
         specialties: (s.specialties ?? []).join(", "),
-        working_experience_years: s.workingExperienceYears,
         pay_rate_id: s.payRateId,
         shift_id: s.shiftId,
     }));

@@ -12,7 +12,7 @@
 
 import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, HelpCircle, Minus, Plus, Ticket01, Wallet02, XClose } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, Edit02, HelpCircle, Minus, Plus, Ticket01, Wallet02, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useMainScrolled } from "@/lib/customer/use-scrollable";
@@ -77,6 +77,10 @@ export interface CheckoutCartProps {
      *  INSTEAD of navigating to `processingHref`. Used by the in-sheet plan
      *  purchase so the flow can process + slide back without leaving the sheet. */
     onPaid?: (method: string) => void;
+    /** When set, variation retail lines (a chosen size) show an edit icon before
+     *  the quantity stepper; the host opens the product detail in edit mode to
+     *  change the size/quantity. Products checkout only. */
+    onEditLine?: (lineId: string) => void;
 }
 
 /** Circular ± stepper button (DS Buttons/Secondary, scaled). */
@@ -146,7 +150,7 @@ function MethodRow({ m, selected, disabled = false, onClick }: { m: PayMethod; s
     );
 }
 
-export function CheckoutCart({ originId, onBack, processingHref, summary, fixedSubtotal, taxRatePct, variant = "page", hideHeader = false, onSubviewChange, onPaid }: CheckoutCartProps) {
+export function CheckoutCart({ originId, onBack, processingHref, summary, fixedSubtotal, taxRatePct, variant = "page", hideHeader = false, onSubviewChange, onPaid, onEditLine }: CheckoutCartProps) {
     const isSheet = variant === "sheet";
     // In sheet mode the host CustomerSheet already supplies the 16px side padding
     // (exactly like Review & Book) — so the content must NOT add its own, or the
@@ -387,18 +391,33 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                                         <span className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">AED {it.price}</span>
                                     </div>
                                 </div>
-                                <div className="flex w-[72px] shrink-0 items-center justify-between">
-                                    <StepBtn onClick={() => decrement(it.lineId)} disabled={false} label="Decrease quantity">
-                                        <Minus className="size-3 text-[#344054]" aria-hidden />
-                                    </StepBtn>
-                                    <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{it.quantity}</span>
-                                    <StepBtn
-                                        onClick={() => setQty(it.lineId, it.quantity + 1)}
-                                        disabled={!canIncrement}
-                                        label="Increase quantity"
-                                    >
-                                        <Plus className={`size-3 ${canIncrement ? "text-[#344054]" : "text-[#d0d5dd]"}`} aria-hidden />
-                                    </StepBtn>
+                                <div className="flex shrink-0 items-center gap-3">
+                                    {/* Variation retail (a chosen size) → link button that
+                                        slides to the product detail to change size/qty. */}
+                                    {it.kind === "retail" && it.size && onEditLine && (
+                                        <Button
+                                            variant="link-color"
+                                            size="sm"
+                                            onClick={() => onEditLine(it.lineId)}
+                                            aria-label={`Edit ${it.name}`}
+                                            className="h-auto shrink-0 p-0"
+                                        >
+                                            <Edit02 className="size-4" aria-hidden />
+                                        </Button>
+                                    )}
+                                    <div className="flex w-[72px] shrink-0 items-center justify-between">
+                                        <StepBtn onClick={() => decrement(it.lineId)} disabled={false} label="Decrease quantity">
+                                            <Minus className="size-3 text-[#344054]" aria-hidden />
+                                        </StepBtn>
+                                        <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{it.quantity}</span>
+                                        <StepBtn
+                                            onClick={() => setQty(it.lineId, it.quantity + 1)}
+                                            disabled={!canIncrement}
+                                            label="Increase quantity"
+                                        >
+                                            <Plus className={`size-3 ${canIncrement ? "text-[#344054]" : "text-[#d0d5dd]"}`} aria-hidden />
+                                        </StepBtn>
+                                    </div>
                                 </div>
                             </div>
                         );

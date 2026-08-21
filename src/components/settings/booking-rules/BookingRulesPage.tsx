@@ -28,17 +28,12 @@ import { Toast } from "@/components/ui/Toast";
 import { MultiSelectCard, type MultiSelectOption } from "@/components/patterns/MultiSelectCard";
 import { useAppStore } from "@/lib/store";
 import type {
-    ClassesSettings, CancellationPolicy, CancellationOutcome, FreezePolicy,
+    ClassesSettings, CancellationPolicy, CancellationOutcome,
 } from "@/lib/store";
 import { BookingWindowPanel } from "./BookingWindowPanel";
 import { WaitlistPanel }      from "./WaitlistPanel";
 import { CancellationPolicyPanel } from "./CancellationPolicyPanel";
 import { GuestBookingPanel } from "./GuestBookingPanel";
-// Freeze policy moved here from its own tab (client Jul 2026 — one fewer
-// settings tab, the freeze rules live alongside cancellation now). Panel
-// component unchanged; only the entry point changes.
-import { FreezePolicyPanel }  from "../FreezePolicyPanel";
-import { PlanCancellationPanel } from "./PlanCancellationPanel";
 
 // ─── Display helpers ────────────────────────────────────────────────────────
 
@@ -73,31 +68,13 @@ const OUTCOME_LABEL: Record<CancellationOutcome, string> = {
     credit_forfeited: "Credit forfeited",
 };
 
-/** Freeze-policy duration unit — same table the retired FreezePolicyPage
- *  used, moved here now that the summary card lives on this page. */
-const FREEZE_UNIT_LABEL: Record<FreezePolicy["max_duration_unit"], (n: number) => string> = {
-    days:   n => (n === 1 ? "day" : "days"),
-    weeks:  n => (n === 1 ? "week" : "weeks"),
-    months: n => (n === 1 ? "month" : "months"),
-};
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 type CancellationTab = "rule" | "applied";
 
-const WHO_CAN_CANCEL_LABEL: Record<string, string> = {
-    members_and_admins: "Customers & admins",
-    members_request_admins_approve: "Customers request, admins approve",
-    admins_only: "Admins only",
-};
-
 export default function BookingRulesPage() {
     const classesSettings   = useAppStore(s => s.classesSettings);
     const cancellationPolicy = useAppStore(s => s.cancellationPolicy);
-    // Freeze policy summary reads the SAME store slice + panel as the retired
-    // /admin/settings/freeze-policy tab. Copies the FreezePolicyPage's summary
-    // rendering verbatim so behaviour + data are unchanged (Jul 2026 move).
-    const freezePolicy      = useAppStore(s => s.freezePolicy);
     const updateClassesSettings = useAppStore(s => s.updateClassesSettings);
     const showToast         = useAppStore(s => s.showToast);
 
@@ -105,50 +82,11 @@ export default function BookingRulesPage() {
     const [wlOpen, setWlOpen] = useState(false);
     const [cpOpen, setCpOpen] = useState(false);
     const [cpTab, setCpTab]   = useState<CancellationTab>("rule");
-    const [pcOpen, setPcOpen] = useState(false);
-    const [fpOpen, setFpOpen] = useState(false);
     const [gbOpen, setGbOpen] = useState(false);
 
     // Landing's "Last minutes booking" reads the INVERSE of the cutoff
     // toggle. Cutoff ON = members can book to the last minute = "Yes".
     const lastMinutesBookingYes = classesSettings.booking_cutoff_enabled;
-
-    // Freeze policy summary values — identical derivation to the retired
-    // FreezePolicyPage, so the numbers shown here match what that page used
-    // to render (no data / logic change).
-    const freezeDurationValue = freezePolicy.max_duration_enabled
-        ? `${freezePolicy.max_duration_value} ${FREEZE_UNIT_LABEL[freezePolicy.max_duration_unit](freezePolicy.max_duration_value)}`
-        : "No limit";
-    const freezeFreezesValue = freezePolicy.limit_freezes_enabled
-        ? String(freezePolicy.max_freezes)
-        : "Unlimited";
-    const freezeFeeValue = freezePolicy.fee_enabled
-        ? `AED ${freezePolicy.fee_amount_aed} · ${freezePolicy.fee_type === "one_time" ? "One-time" : "Recurring"}`
-        : "No";
-    const freezeReasonsValue = !freezePolicy.require_reason
-        ? "Any reason"
-        : (() => {
-            const n = freezePolicy.reasons.filter(r => r.enabled && r.label.trim()).length;
-            return `${n} reason${n === 1 ? "" : "s"}`;
-        })();
-    const freezeApplyToValue = freezePolicy.apply_to === "all"
-        ? "All memberships"
-        : `${freezePolicy.membership_ids.length} membership${freezePolicy.membership_ids.length === 1 ? "" : "s"}`;
-
-    // Plan-cancellation summary values (client 2026-08-14 — split out of the
-    // combined card). `members_can_cancel` lives on freezePolicy; who / fee /
-    // reasons / apply-to on cancellationPolicy.
-    const cancelWhoValue = WHO_CAN_CANCEL_LABEL[cancellationPolicy.plan_cancel_who ?? "members_and_admins"];
-    const cancelFeeValue = cancellationPolicy.plan_cancel_fee_enabled
-        ? `AED ${cancellationPolicy.plan_cancel_fee_aed}`
-        : "No";
-    const cancelReasonsValue = (() => {
-        const n = (cancellationPolicy.cancellation_reasons ?? []).filter(r => r.enabled && r.label.trim()).length;
-        return `${n} reason${n === 1 ? "" : "s"}`;
-    })();
-    const cancelApplyToValue = (cancellationPolicy.plan_cancel_apply_to ?? "all") === "all"
-        ? "All memberships"
-        : `${(cancellationPolicy.plan_cancel_membership_ids ?? []).length} membership${(cancellationPolicy.plan_cancel_membership_ids ?? []).length === 1 ? "" : "s"}`;
 
     function handleToggleWaitlist(next: boolean) {
         updateClassesSettings({ waitlist_enabled: next });
@@ -286,61 +224,14 @@ export default function BookingRulesPage() {
                 {cpTab === "applied" && <AppliedToSummary policy={cancellationPolicy} />}
             </SettingsCard>
 
-            {/* ── Card 4: Plan cancellation (client 2026-08-14) ────
-                Split out of the combined "Cancel & freeze plan policy".
-                `members_can_cancel` on freezePolicy; who / fee / reasons /
-                apply-to on cancellationPolicy. Reasons sync to the customer
-                cancel sheet. */}
-            <SettingsCard>
-                <CardHeader
-                    title="Plan cancellation"
-                    subtitle="Rules for how customers cancel their memberships from their account."
-                    editLabel="Customize"
-                    onEdit={() => setPcOpen(true)}
-                />
-                <div className="grid grid-cols-3 gap-x-6 gap-y-5">
-                    <SummaryField label="Members can cancel their own membership" value={freezePolicy.members_can_cancel ? "Yes" : "No"} />
-                    {freezePolicy.members_can_cancel && (
-                        <>
-                            <SummaryField label="Who can cancel"    value={cancelWhoValue} />
-                            <SummaryField label="Cancellation fee"  value={cancelFeeValue} />
-                            <SummaryField label="Allowed reasons"   value={cancelReasonsValue} />
-                            <SummaryField label="Apply to"          value={cancelApplyToValue} />
-                        </>
-                    )}
-                </div>
-            </SettingsCard>
-
-            {/* ── Card 5: Plan freeze ──────────────────────────────
-                The freeze half of the former combined card. Reads the
-                freezePolicy slice + opens FreezePolicyPanel. */}
-            <SettingsCard>
-                <CardHeader
-                    title="Plan freeze"
-                    subtitle="Rules for how customers pause their memberships from their account."
-                    editLabel="Customize"
-                    onEdit={() => setFpOpen(true)}
-                />
-                <div className="grid grid-cols-3 gap-x-6 gap-y-5">
-                    <SummaryField label="Members can freeze their own membership" value={freezePolicy.enabled ? "Yes" : "No"} />
-                    {freezePolicy.enabled && (
-                        <>
-                            <SummaryField label="Maximum freeze duration" value={freezeDurationValue} />
-                            <SummaryField label="Freezes per membership"  value={freezeFreezesValue} />
-                            <SummaryField label="Freeze fee"              value={freezeFeeValue} />
-                            <SummaryField label="Allowed reasons"         value={freezeReasonsValue} />
-                            <SummaryField label="Apply to"                value={freezeApplyToValue} />
-                        </>
-                    )}
-                </div>
-            </SettingsCard>
+            {/* Plan cancellation + Plan freeze moved to their own "Plan rules"
+                settings tab (client 2026-08-19). See
+                src/components/settings/plan-rules/PlanRulesPage.tsx. */}
 
             {/* Side panels */}
             <BookingWindowPanel       open={bwOpen} onClose={() => setBwOpen(false)} />
             <WaitlistPanel            open={wlOpen} onClose={() => setWlOpen(false)} />
             <CancellationPolicyPanel  open={cpOpen} onClose={() => setCpOpen(false)} />
-            <PlanCancellationPanel    open={pcOpen} onClose={() => setPcOpen(false)} />
-            <FreezePolicyPanel        open={fpOpen} onClose={() => setFpOpen(false)} />
             <GuestBookingPanel        open={gbOpen} onClose={() => setGbOpen(false)} />
 
             <Toast />

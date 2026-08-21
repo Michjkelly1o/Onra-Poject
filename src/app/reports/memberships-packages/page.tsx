@@ -42,6 +42,7 @@ const STATUS_LABEL: Record<CustomerPlanRow["status"], string> = {
     expired:           "Expired",
     frozen:            "Frozen",
     freeze_requested:  "Freeze requested",
+    cancel_requested:  "Cancellation requested",
     cancelled:         "Cancelled",
     removed:           "Removed",
 };

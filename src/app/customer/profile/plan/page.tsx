@@ -49,6 +49,9 @@ export default function MyPlanPage() {
     const requestFreezeByCustomer = useAppStore((s) => s.requestFreezeByCustomer);
     const unfreezeCustomerPlan = useAppStore((s) => s.unfreezeCustomerPlan);
     const cancelCustomerPlan = useAppStore((s) => s.cancelCustomerPlan);
+    const requestCancellationByCustomer = useAppStore((s) => s.requestCancellationByCustomer);
+    const withdrawFreezeRequest = useAppStore((s) => s.withdrawFreezeRequest);
+    const withdrawCancellationRequest = useAppStore((s) => s.withdrawCancellationRequest);
     const reactivateCustomerPlan = useAppStore((s) => s.reactivateCustomerPlan);
     const freezePolicy = useAppStore((s) => s.freezePolicy);
     const cancellationPolicy = useAppStore((s) => s.cancellationPolicy);
@@ -78,20 +81,24 @@ export default function MyPlanPage() {
     // (client Jul 2026 flipped away from per-branch). Always defined via the
     // singleton seed.
     const policy = freezePolicy;
-    // Admin gate (Booking rules -> Cancel & freeze plan policy). When OFF the
-    // Cancel CTA is hidden on every membership card.
-    const membersCanCancel = freezePolicy.members_can_cancel ?? false;
 
-    // Per-plan cancel gate — honors the Plan cancellation policy (client
-    // 2026-08-14): members-can-cancel toggle, who-can-cancel (admins_only hides
-    // the customer CTA), and apply-to scope (specific → only selected memberships).
-    const canCancelPlan = (p: CustomerPlan): boolean => {
-        if (!membersCanCancel || p.kind !== "membership") return false;
-        if ((cancellationPolicy.plan_cancel_who ?? "members_and_admins") === "admins_only") return false;
+    // Per-plan cancel CTA mode — honors the Plan cancellation policy's
+    // "Who can cancel" (client 2026-08-19 — the standalone members-can-cancel
+    // toggle was retired; who-can-cancel is the single gate):
+    //   • admins_only                    → "hidden" (no customer CTA)
+    //   • members_request_admins_approve → "request" (parks in cancel_requested)
+    //   • members_and_admins             → "direct" (applies immediately)
+    // Apply-to scope (specific → only selected memberships) still narrows it.
+    const cancelCtaFor = (p: CustomerPlan): "direct" | "request" | "hidden" => {
+        if (p.kind !== "membership") return "hidden";
+        // Already awaiting a decision — don't offer a second request.
+        if (p.status === "cancel_requested") return "hidden";
+        const who = cancellationPolicy.plan_cancel_who ?? "members_and_admins";
+        if (who === "admins_only") return "hidden";
         if ((cancellationPolicy.plan_cancel_apply_to ?? "all") === "specific") {
-            return !!(p.productId && (cancellationPolicy.plan_cancel_membership_ids ?? []).includes(p.productId));
+            if (!(p.productId && (cancellationPolicy.plan_cancel_membership_ids ?? []).includes(p.productId))) return "hidden";
         }
-        return true;
+        return who === "members_request_admins_approve" ? "request" : "direct";
     };
 
     // Plan-cancellation fee (client 2026-08-14) — shown on the confirm sheet when
@@ -137,11 +144,11 @@ export default function MyPlanPage() {
     // Show the FULL plan history — every membership + package the customer
     // has held (active / frozen / cancelled / expired), newest-active first.
     // Complimentary free-credit grants are surfaced elsewhere.
-    const statusOrder: Record<string, number> = { active: 0, freeze_requested: 0, frozen: 1, cancelled: 2, expired: 3 };
+    const statusOrder: Record<string, number> = { active: 0, freeze_requested: 0, cancel_requested: 0, frozen: 1, cancelled: 2, expired: 3 };
     const myPlans = useAppStore((s) => s.customerPlans).filter(
         (p) =>
             p.customerId === member?.id &&
-            (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancelled" || p.status === "expired"),
+            (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancel_requested" || p.status === "cancelled" || p.status === "expired"),
     );
     // Purchased plans only — the one-membership-OR-packages invariant below
     // applies to what the customer BOUGHT, never to complimentary grants.
@@ -198,10 +205,12 @@ export default function MyPlanPage() {
     const [cancelPlan, setCancelPlan] = useState<CustomerPlan | null>(null);
     // Second-step confirmation (end-date disclosure) after the reason pick.
     const [cancelConfirm, setCancelConfirm] = useState<{ plan: CustomerPlan; reason: string } | null>(null);
+    // "Cancel request" confirm — withdraw a pending freeze/cancel request.
+    const [withdrawPlan, setWithdrawPlan] = useState<CustomerPlan | null>(null);
 
     // Grouped for display: live plans on top ("Active plan"), history below
     // ("Expired plan") — same section style as the Notifications list.
-    const activePlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "active" || p.status === "frozen" || p.status === "freeze_requested");
+    const activePlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancel_requested");
     const pastPlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "cancelled" || p.status === "expired");
     // Distribute the overall Credit Balance across the LIVE packages so every
     // package card's "remaining" sums back to the balance (client 2026-08).
@@ -209,6 +218,7 @@ export default function MyPlanPage() {
 
     const renderCard = (p: CustomerPlan) => {
         const cta = ctaFor(p);
+        const cancelMode = cancelCtaFor(p);
         return (
             <PlanCard
                 key={p.id}
@@ -220,11 +230,13 @@ export default function MyPlanPage() {
                 freezeMode={cta.mode === "request" ? "request" : "direct"}
                 onFreeze={() => setFreezePlan(p)}
                 onUnfreeze={() => doUnfreeze(p)}
-                canCancel={canCancelPlan(p)}
+                canCancel={cancelMode !== "hidden"}
+                cancelMode={cancelMode === "request" ? "request" : "direct"}
                 onCancel={() => {
                     if (cancelRequireReason) setCancelPlan(p);
                     else setCancelConfirm({ plan: p, reason: "" });
                 }}
+                onWithdrawRequest={() => setWithdrawPlan(p)}
                 onReactivate={() => doReactivate(p)}
             />
         );
@@ -281,6 +293,18 @@ export default function MyPlanPage() {
         );
     }
     function doCancel(plan: CustomerPlan, reason: string) {
+        // Who-can-cancel = "Customers request, admins approve" → park the plan
+        // in cancel_requested (nothing changes until an admin approves).
+        if (cancelCtaFor(plan) === "request") {
+            requestCancellationByCustomer(plan.id, "period_end", reason);
+            showToast(
+                "Cancellation request sent",
+                `Your ${noun(plan)} cancellation is pending admin approval — you'll be notified when it's decided.`,
+                "success",
+                "check",
+            );
+            return;
+        }
         // Membership cancellation stops renewal only — access stays until the
         // paid period ends, no money moves (period_end mode, no refund).
         cancelCustomerPlan(plan.id, "period_end", reason);
@@ -290,6 +314,17 @@ export default function MyPlanPage() {
             "success",
             "check",
         );
+    }
+    // Withdraw a pending freeze/cancel request — routes to the matching store
+    // action based on which request is open. Plan reverts to active. client 2026-08-19.
+    function doWithdraw(plan: CustomerPlan) {
+        if (plan.status === "freeze_requested") {
+            withdrawFreezeRequest(plan.id);
+            showToast("Freeze request cancelled", `Your ${noun(plan)} stays active.`, "success", "check");
+        } else if (plan.status === "cancel_requested") {
+            withdrawCancellationRequest(plan.id);
+            showToast("Cancellation request cancelled", `Your ${noun(plan)} stays active.`, "success", "check");
+        }
     }
     function doReactivate(p: CustomerPlan) {
         reactivateCustomerPlan(p.id);
@@ -376,6 +411,17 @@ export default function MyPlanPage() {
                     : ""}
                 confirmLabel="Yes, cancel membership"
                 onConfirm={() => { if (cancelConfirm) doCancel(cancelConfirm.plan, cancelConfirm.reason); }}
+            />
+            {/* Withdraw a pending freeze/cancel request (client 2026-08-19). */}
+            <CancelConfirmSheet
+                open={!!withdrawPlan}
+                onClose={() => setWithdrawPlan(null)}
+                title="Cancel request"
+                description={withdrawPlan
+                    ? `Are you sure you want to cancel this ${withdrawPlan.status === "freeze_requested" ? "freeze" : "cancellation"} request? Your ${noun(withdrawPlan)} will stay active.`
+                    : ""}
+                confirmLabel="Yes, cancel request"
+                onConfirm={() => { if (withdrawPlan) doWithdraw(withdrawPlan); setWithdrawPlan(null); }}
             />
         </div>
     );

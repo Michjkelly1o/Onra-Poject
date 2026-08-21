@@ -37,7 +37,6 @@ export interface InstructorProfileDraft {
     lastName: string;
     email: string;
     phone: string;
-    introduction: string;
     avatarUrl: string;
 }
 
@@ -56,7 +55,6 @@ export function EditInstructorProfileModal({
     const [firstName,    setFirstName]    = useState(initial.firstName);
     const [lastName,     setLastName]     = useState(initial.lastName);
     const [email,        setEmail]        = useState(initial.email);
-    const [introduction, setIntroduction] = useState(initial.introduction);
     const [avatar,       setAvatar]       = useState(initial.avatarUrl);
 
     // Phone splits into a `{country, number}` pair the same way admin does it.
@@ -97,7 +95,6 @@ export function EditInstructorProfileModal({
             lastName: lastName.trim(),
             email: email.trim(),
             phone: composedPhone,
-            introduction: introduction.trim(),
             avatarUrl: avatar,
         });
     }
@@ -188,20 +185,7 @@ export function EditInstructorProfileModal({
                     </div>
                 </div>
 
-                {/* Introduction textarea — customer-facing bio */}
-                <div className="flex flex-col gap-1.5 w-full">
-                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">Introduction</p>
-                    <textarea
-                        value={introduction}
-                        onChange={e => setIntroduction(e.target.value)}
-                        rows={6}
-                        placeholder="Tell customers about your experience and teaching style…"
-                        className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none"
-                    />
-                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">
-                        This introduction will be show in customer side
-                    </p>
-                </div>
+                {/* Introduction removed from instructor data (client 2026-08-19). */}
             </div>
             </div>
 

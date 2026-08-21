@@ -65,7 +65,6 @@ export default function InstructorLayout({
                 email:      staffRow.email,
                 phone:      staffRow.phone,
                 avatar_url: staffRow.imageUrl ?? instructor_profile.avatar_url,
-                introduction: staffRow.bio ?? instructor_profile.introduction,
             }
             : instructor_profile;
         const already =

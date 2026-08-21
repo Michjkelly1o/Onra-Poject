@@ -32,10 +32,12 @@ export function PlanCard({
     onUnfreeze,
     onCancel,
     onReactivate,
+    onWithdrawRequest,
     canReactivate = false,
     canFreeze = true,
     canCancel = true,
     freezeMode = "direct",
+    cancelMode = "direct",
 }: {
     plan: CustomerPlan;
     /** Credits remaining for THIS plan (a membership → its balance; a package →
@@ -48,6 +50,10 @@ export function PlanCard({
     onUnfreeze: () => void;
     onCancel: () => void;
     onReactivate: () => void;
+    /** Withdraw a pending freeze/cancel request (client 2026-08-19). Opens the
+     *  "cancel this request?" confirm sheet. Only used while the plan is in a
+     *  `freeze_requested` / `cancel_requested` state. */
+    onWithdrawRequest?: () => void;
     /** Reactivate is offered only for a cancelled MEMBERSHIP while the customer
      *  holds no other active plan (packages never reactivate). */
     canReactivate?: boolean;
@@ -64,6 +70,10 @@ export function PlanCard({
      *  approve" (freeze policy v2). The Phase 5 wiring changes what the click
      *  does; this prop only controls the label. */
     freezeMode?: "direct" | "request";
+    /** How the Cancel CTA reads — "direct" applies immediately; "request" is
+     *  used when the studio picked Who can cancel = "Customers request, admins
+     *  approve" (the click parks the plan in cancel_requested). Label only. */
+    cancelMode?: "direct" | "request";
 }) {
     const isMembership = plan.kind === "membership";
     // Total credits — prefer the normalized field, fall back to parsing the label.
@@ -83,7 +93,7 @@ export function PlanCard({
     // history card. A pending-approval plan counts as live too so its Cancel
     // + info stays reachable while waiting on the admin decision.
     const isLive =
-        (plan.status === "active" || plan.status === "frozen" || plan.status === "freeze_requested") && !exhausted;
+        (plan.status === "active" || plan.status === "frozen" || plan.status === "freeze_requested" || plan.status === "cancel_requested") && !exhausted;
     const disabled = plan.status !== "active" || exhausted;
 
     const creditLine = total === null ? "Unlimited credits" : `${remaining} credits left`;
@@ -95,6 +105,8 @@ export function PlanCard({
             ? `Frozen until: ${plan.freezeEndISO ? dayMonthYear(plan.freezeEndISO) : "—"}`
             : plan.status === "freeze_requested"
               ? "Freeze pending approval"
+              : plan.status === "cancel_requested"
+                ? "Cancellation pending approval"
               : plan.status === "cancelled"
                 ? "Cancelled"
                 : plan.status === "expired"
@@ -188,6 +200,17 @@ export function PlanCard({
                 </div>
             )}
 
+            {/* Cancellation request info block — mirrors the freeze one.
+                Amber "awaiting approval" hint while a cancel request is open. */}
+            {plan.status === "cancel_requested" && (
+                <div className="flex items-start gap-2 rounded-xl border border-[#fec84b] bg-[#fffcf5] p-3">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-[#dc6803]" aria-hidden />
+                    <p className="text-sm leading-5 text-[#93370d]">
+                        Cancellation pending admin approval. Your plan stays active until it's decided.
+                    </p>
+                </div>
+            )}
+
             {/* Cancel / Freeze / Reactivate are MEMBERSHIP-only — packages
                 have no plan actions. */}
             {isMembership &&
@@ -197,6 +220,17 @@ export function PlanCard({
                             Reactivate plan
                         </Button>
                     ) : null
+                ) : (plan.status === "freeze_requested" || plan.status === "cancel_requested") ? (
+                    // A request is pending — the ONLY action is to withdraw it
+                    // (the conflicting freeze/cancel CTA is hidden). client 2026-08-19.
+                    <Button
+                        variant="secondary-gray"
+                        size="md"
+                        className="w-full rounded-full"
+                        onClick={onWithdrawRequest}
+                    >
+                        Cancel request
+                    </Button>
                 ) : isLive ? (
                     (canCancel || plan.status === "frozen" || canFreeze) ? (
                     <div className="flex gap-3">
@@ -207,7 +241,7 @@ export function PlanCard({
                                 className="flex-1 rounded-full font-semibold text-[#b42318]"
                                 onClick={onCancel}
                             >
-                                Cancel
+                                {cancelMode === "request" ? "Request cancel" : "Cancel"}
                             </Button>
                         )}
                         {plan.status === "frozen" ? (

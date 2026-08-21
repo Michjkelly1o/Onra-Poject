@@ -2192,14 +2192,15 @@ export interface StaffSeed {
     /** Display-ready "Feb 1, 2024". */
     joined_date: string;
     // ── Instructor-specific (nullable for other roles) ────────────────────
-    bio?: string;
     specialties?: string[];
     pay_rate_id?: string;
-    /** Short introduction paragraph — surfaces on the instructor detail
-     *  page + the customer-facing instructor portal. Multi-line text. */
+    /** Short introduction paragraph — the single source of truth for the
+     *  instructor blurb shown on the admin staff detail, the instructor's own
+     *  account page, and the customer-facing instructor profile. Multi-line. */
     short_intro?: string;
-    /** Years of working experience — single integer. Surfaces on the
-     *  instructor detail + the customer-facing instructor portal. */
+    /** Years of working experience — single integer. Shown (in sync from this
+     *  one source) on the admin staff detail, the instructor's account page, and
+     *  the customer-facing instructor profile. */
     working_experience_years?: number;
     /** Assigned shift id — FK → shifts.id. Optional per the brief
      *  (instructors can be unassigned and assigned later). */
@@ -2450,7 +2451,9 @@ export type NotificationEventSeed =
     //    freeze auto-resumes at end-date. Admin bell rows surface to
     //    the studio so they know a member paused / unpaused their plan.
     | "membership_frozen"        // customer self-freeze started
-    | "membership_reactivated";  // auto-resume swept a freeze back to active
+    | "membership_reactivated"   // auto-resume swept a freeze back to active
+    // ── Plan cancellation approval flow (client 2026-08-19) ──────────
+    | "membership_cancelled";    // customer requested/were cancelled a plan
 
 /** Tab grouping on the notifications page.
  *
