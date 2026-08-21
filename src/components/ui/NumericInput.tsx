@@ -64,7 +64,11 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
         if (raw === "") { onChange(0); return; }
         const num = Number(raw);
         if (Number.isNaN(num)) return;
-        if (num < floor) return;
+        // Only block negatives while typing. `min` is a submit-time bound (the
+        // stepper still respects it) — gating keystrokes on it makes fields with
+        // a positive min impossible to type into (e.g. typing "500" when min=50
+        // dies on the first "5").
+        if (num < 0) return;
         if (max !== undefined && num > max) return;
         onChange(num);
     };
@@ -138,7 +142,11 @@ export const NumericStringInput = forwardRef<HTMLInputElement, SharedProps & {
         if (raw === "") { onChange(""); return; }
         const num = Number(raw);
         if (Number.isNaN(num)) return;
-        if (num < floor) return;
+        // Only block negatives while typing. `min` is a submit-time bound (the
+        // stepper still respects it) — gating keystrokes on it makes fields with
+        // a positive min impossible to type into (e.g. typing "500" when min=50
+        // dies on the first "5").
+        if (num < 0) return;
         if (max !== undefined && num > max) return;
         onChange(raw);
     };

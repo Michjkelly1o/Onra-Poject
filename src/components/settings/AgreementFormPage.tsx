@@ -690,7 +690,7 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
     // Branch + service-template options. Services are grouped by branch in
     // the form — derived from classTemplates.branch_ids (each template
     // appears under every branch that offers it; templates with no
-    // `branch_ids` set fall under an "All locations" group).
+    // `branch_ids` set fall under an "All services" group).
     const branchOptions = useMemo(
         () => branches.filter(b => b.status === "active").map(b => ({ id: b.id, name: b.name })),
         [branches],
@@ -712,7 +712,7 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
                 opts.push({
                     id: t.id,
                     label: t.name,
-                    group: bid ? (branchNameById.get(bid) ?? "All locations") : "All locations",
+                    group: bid ? (branchNameById.get(bid) ?? "All services") : "All services",
                 });
             }
         }
