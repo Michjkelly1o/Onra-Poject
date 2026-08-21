@@ -739,7 +739,17 @@ export default function CustomersPage() {
     // Lead/Member/Inactive partition is WALLET-based (client 2026-08-10) — an
     // "At Risk" member with a live plan still sits in Members.
     const activeRows = useMemo(() => {
-        if (segment === "all") return nonArchived;
+        if (segment === "all") {
+            // "All" starts with the active ones first (client 2026-08): Members
+            // (live wallet) on top, then Leads, then Inactive. Stable sort keeps
+            // each group's existing relative order. This is the DEFAULT order —
+            // clicking a column header (useSort below) overrides it with a normal
+            // column sort.
+            const RANK: Record<CustomerSegment, number> = { member: 0, lead: 1, inactive: 2 };
+            return [...nonArchived].sort((a, b) =>
+                RANK[segmentById.get(a.id) ?? "lead"] - RANK[segmentById.get(b.id) ?? "lead"],
+            );
+        }
         const want: CustomerSegment = segment === "leads" ? "lead" : segment === "members" ? "member" : "inactive";
         return nonArchived.filter(r => (segmentById.get(r.id) ?? "lead") === want);
     }, [nonArchived, segment, segmentById]);
@@ -876,15 +886,16 @@ export default function CustomersPage() {
 
     // v83 client 2026-07-27 — segment tabs restated as SegmentedTabs for
     // the Staff/Shifts-style layout: toolbar row on top → rounded
-    // container box wrapping the pill-tab strip + table. Same tab keys
-    // (all / leads / members / inactive) so downstream filter code
+    // container box wrapping the pill-tab strip + table. Tab keys
+    // (all / members / leads / inactive) so downstream filter code
     // doesn't need to change.
     // No count badges on the tabs — client feedback only calls for a count on
     // the "View archived (n)" link, not the segment tabs.
+    // Order: All · Members · Leads · Inactive (client 2026-08 — Members before Leads).
     const segmentTabDefs = [
         { key: "all",      label: "All"      },
-        { key: "leads",    label: "Leads"    },
         { key: "members",  label: "Members"  },
+        { key: "leads",    label: "Leads"    },
         { key: "inactive", label: "Inactive" },
     ];
 
