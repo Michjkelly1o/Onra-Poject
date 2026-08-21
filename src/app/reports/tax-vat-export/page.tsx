@@ -70,8 +70,21 @@ export default function TaxVatExportReportPage() {
             const isSale = r.transactionType === "sale";
             const signed = r.signedAmount;             // positive on sales, negative on refunds/write-offs
             const grossAbs = Math.abs(signed);
-            const taxAbs   = Math.abs(Number(r.taxAed ?? 0));
-            const netAbs   = grossAbs - taxAbs;
+            // VAT by tax treatment (mirrors the Sales Breakdown tax split):
+            //  • zero-rated / exempt / out-of-scope carry NO VAT even if a stray
+            //    tax amount sits on the row → net is the full gross;
+            //  • standard refunds / write-offs store no tax, so derive it from the
+            //    rate (inclTax − inclTax/(1+rate)) so the VAT actually REVERSES
+            //    instead of showing 0 and dumping the tax into net-before-tax.
+            const rate = Number(r.taxRatePercentage ?? 5) / 100;
+            const treatment = r.taxTreatment ?? "standard";
+            const taxExempt = treatment === "zero_rated" || treatment === "exempt" || treatment === "out_of_scope";
+            const taxAbs = taxExempt
+                ? 0
+                : (r.taxAed != null
+                    ? Math.abs(Number(r.taxAed))
+                    : (rate <= 0 ? 0 : grossAbs - grossAbs / (1 + rate)));
+            const netAbs = grossAbs - taxAbs;
 
             return {
                 dateISO:              r.createdAtISO.slice(0, 10),

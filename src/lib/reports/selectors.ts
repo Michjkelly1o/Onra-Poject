@@ -1463,7 +1463,10 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
         const net = gross - discount;
         const unitCost = t.productSnapshotUnitCostAed ?? 0;
         const totalCost = unitCost * qty;
-        const grossMargin = net > 0 ? (net - totalCost) / net : 0;
+        // Stored 0-100 (the shell's "percent" kind formats N.N% directly),
+        // matching every other rate column — so a 62.5% margin reads "62.5%",
+        // not "0.6%".
+        const grossMargin = net > 0 ? ((net - totalCost) / net) * 100 : 0;
 
         const buyer = cust(t.customerId);
         const product = productById.get(t.retailProductId ?? "");
