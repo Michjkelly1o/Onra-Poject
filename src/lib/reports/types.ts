@@ -47,6 +47,7 @@ export type ColumnKind =
     | "date"       // ISO date → "DD Mmm YYYY" display
     | "currency"   // AED with thousands separator
     | "number"     // integer, tabular-num alignment
+    | "hours"      // 1-decimal hours, e.g. 7.5 (sums like a number)
     | "percent"    // 0.15 → "15.0%"
     | "id"         // short id, mono font
     | "status";    // colored badge

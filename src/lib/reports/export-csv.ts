@@ -37,6 +37,12 @@ export function formatCellForCsv(value: unknown, kind: ColumnDef["kind"]): strin
         if (!Number.isFinite(n)) return "";
         return String(Math.round(n));
     }
+    if (kind === "hours") {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return "";
+        // Keep one decimal so Excel reads the true fractional-hours value.
+        return (Math.round(n * 10) / 10).toFixed(1);
+    }
     if (kind === "percent") {
         const n = Number(value);
         if (!Number.isFinite(n)) return "";
@@ -78,7 +84,7 @@ export function buildListCsv(opts: ExportListOpts): string {
     // Total row — sum numeric columns; leading text columns say "Total".
     if (includeTotalRow) {
         const totals = columns.map(c => {
-            if (c.kind !== "currency" && c.kind !== "number") return null;
+            if (c.kind !== "currency" && c.kind !== "number" && c.kind !== "hours") return null;
             let sum = 0;
             for (const r of rows) {
                 const n = Number(r[c.key]);

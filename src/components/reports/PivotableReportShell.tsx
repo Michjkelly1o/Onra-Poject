@@ -171,6 +171,10 @@ function saveColVisibility(reportId: string, visible: Set<string>): void {
 
 const CURRENCY_FMT = new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 });
 const NUMBER_FMT   = new Intl.NumberFormat("en-US");
+// Hours render with a single decimal (e.g. "7.5", "1,234.5") — class lengths
+// are fractional (a 75-min class is 1.25h) so rounding to a whole number would
+// misstate scheduled / worked / variance totals.
+const HOURS_FMT    = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 // Accounting-style money: a negative value renders in brackets, e.g. (AED 170)
 // instead of AED -170. The red colour is applied at the cell (see isNegMoney),
 // since a string can't carry a class — this returns the bracketed text only.
@@ -189,6 +193,7 @@ function formatCell(value: unknown, kind: ColumnDef["kind"]): string {
     if (value === null || value === undefined || value === "") return "—";
     if (kind === "currency") { const n = Number(value); if (!Number.isFinite(n)) return String(value); return fmtCurrency(n); }
     if (kind === "number")   { const n = Number(value); if (!Number.isFinite(n)) return String(value); return NUMBER_FMT.format(Math.round(n)); }
+    if (kind === "hours")    { const n = Number(value); if (!Number.isFinite(n)) return String(value); return HOURS_FMT.format(n); }
     if (kind === "percent")  { const n = Number(value); if (!Number.isFinite(n)) return String(value); return `${n.toFixed(1)}%`; }
     if (kind === "date")     { const s = String(value).slice(0, 10); return s || "—"; }
     return String(value);
@@ -217,7 +222,7 @@ function groupListRows(
         const out: Record<string, unknown> = {};
         for (const c of columns) {
             if (c.groupCalc) { out[c.key] = 0; continue; } // derived — filled in pass 2
-            if (c.kind === "currency" || c.kind === "number") {
+            if (c.kind === "currency" || c.kind === "number" || c.kind === "hours") {
                 let sum = 0; let any = false;
                 for (const r of groupRows) { const n = Number(r[c.key]); if (Number.isFinite(n)) { sum += n; any = true; } }
                 out[c.key] = any ? sum : "";
@@ -789,7 +794,7 @@ function ListTable({
     }
 
     function sumFor(col: ColumnDef): number | null {
-        if (col.kind !== "currency" && col.kind !== "number") return null;
+        if (col.kind !== "currency" && col.kind !== "number" && col.kind !== "hours") return null;
         let s = 0, count = 0;
         for (const r of totalRowSource) { const n = Number(r[col.key]); if (Number.isFinite(n)) { s += n; count += 1; } }
         // "avg" columns (e.g. Days frozen) show the mean — a sum would be
@@ -809,13 +814,13 @@ function ListTable({
                                     style={{ minWidth: col.minWidth ?? 140 }}
                                     className={cn(
                                         "px-6 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] whitespace-nowrap",
-                                        col.kind === "currency" || col.kind === "number" || col.kind === "percent" ? "text-right" : "text-left",
+                                        col.kind === "currency" || col.kind === "number" || col.kind === "hours" || col.kind === "percent" ? "text-right" : "text-left",
                                     )}>
                                     <SortIconButton
                                         label={col.label}
                                         active={sortKey === col.key}
                                         dir={sortDir}
-                                        align={col.kind === "currency" || col.kind === "number" || col.kind === "percent" ? "right" : "left"}
+                                        align={col.kind === "currency" || col.kind === "number" || col.kind === "hours" || col.kind === "percent" ? "right" : "left"}
                                         onClick={() => onToggleSort(col.key)}
                                     />
                                 </th>
@@ -831,7 +836,7 @@ function ListTable({
                                         className={cn(
                                             "px-6 py-4 text-[14px] leading-[20px] whitespace-nowrap",
                                             isNegMoney(r[c.key], c.kind) ? "text-[#d92d20]" : "text-[var(--colors-text-tertiary)]",
-                                            c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
+                                            c.kind === "currency" || c.kind === "number" || c.kind === "hours" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
                                         )}>
                                         {formatCell(r[c.key], c.kind)}
                                     </td>
@@ -847,7 +852,7 @@ function ListTable({
                                         className={cn(
                                             "px-6 py-4 text-[14px] font-semibold whitespace-nowrap",
                                             isNegMoney(total, c.kind) ? "text-[#d92d20]" : "text-[var(--colors-text-primary)]",
-                                            c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
+                                            c.kind === "currency" || c.kind === "number" || c.kind === "hours" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
                                         )}>
                                         {i === 0 && total === null ? "Total" : total === null ? "" : formatCell(total, c.kind)}
                                     </td>

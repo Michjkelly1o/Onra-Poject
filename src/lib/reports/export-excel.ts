@@ -28,6 +28,7 @@ import type { ColumnDef, PivotResult } from "./types";
 
 const FMT_CURRENCY = '"AED" #,##0;[Red]("AED" #,##0)';
 const FMT_NUMBER   = "#,##0";
+const FMT_HOURS    = "#,##0.0";
 const FMT_PERCENT  = "0.00%";
 const FMT_DATE     = "yyyy-mm-dd";
 
@@ -35,6 +36,7 @@ const FMT_DATE     = "yyyy-mm-dd";
 function excelFormatFor(kind: ColumnDef["kind"]): string | undefined {
     if (kind === "currency") return FMT_CURRENCY;
     if (kind === "number")   return FMT_NUMBER;
+    if (kind === "hours")    return FMT_HOURS;
     if (kind === "percent")  return FMT_PERCENT;
     if (kind === "date")     return FMT_DATE;
     return undefined; // text, id, status → no format
@@ -47,7 +49,7 @@ function cellFor(value: unknown, kind: ColumnDef["kind"]): XLSX.CellObject {
     if (value === null || value === undefined || value === "") {
         return { t: "s", v: "" };
     }
-    if (kind === "currency" || kind === "number") {
+    if (kind === "currency" || kind === "number" || kind === "hours") {
         const n = Number(value);
         if (!Number.isFinite(n)) return { t: "s", v: String(value) };
         return { t: "n", v: n, z: excelFormatFor(kind) };
@@ -126,7 +128,7 @@ export function exportListXlsx(opts: ExportListXlsxOpts): void {
     if (includeTotalRow) {
         const totalRow: XLSX.CellObject[] = columns.map((c, i) => {
             if (i === 0) return { t: "s", v: "Total" };
-            if (c.kind !== "currency" && c.kind !== "number") return { t: "s", v: "" };
+            if (c.kind !== "currency" && c.kind !== "number" && c.kind !== "hours") return { t: "s", v: "" };
             let sum = 0;
             for (const r of rows) {
                 const n = Number(r[c.key]);
