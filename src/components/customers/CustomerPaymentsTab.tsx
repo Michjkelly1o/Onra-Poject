@@ -702,8 +702,9 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     // ── Payment-history sort — Transaction name / Products / Amount (numeric) /
     //    Status / Date & time — all at the ORDER level. ──
     const { sorted: sortedOrders, sortKey: txnSortKey, sortDir: txnSortDir, toggle: toggleTxnSort } = useSort<OrderRow>(orders, {
-        name:     (a, b) => a.name.localeCompare(b.name),
-        planType: (a, b) => a.kindLabel.localeCompare(b.kindLabel),
+        name:      (a, b) => a.name.localeCompare(b.name),
+        txnNumber: (a, b) => a.number.localeCompare(b.number),
+        planType:  (a, b) => a.kindLabel.localeCompare(b.kindLabel),
         amount:   (a, b) => a.amount - b.amount,
         status:   (a, b) => a.status.localeCompare(b.status),
         date:     (a, b) => a.dateISO.localeCompare(b.dateISO),
@@ -871,16 +872,20 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                             <div className="px-6">
                                 {/* table-fixed → column widths come from the header row only,
                                     so expanding an accordion never re-flows the columns. The
-                                    min-width keeps the Transaction-name column comfortably wide
-                                    (never truncating); the panel scrolls horizontally if narrow. */}
-                                <table className="w-full min-w-[980px] border-collapse table-fixed">
+                                    min-width keeps the name (~320px) + number (260px) columns
+                                    comfortably wide (never truncating / overlapping); the panel
+                                    scrolls horizontally when narrow, like the Transactions module. */}
+                                <table className="w-full min-w-[1260px] border-collapse table-fixed">
                                     <thead>
                                         <tr>
                                             <th className={TH}>
-                                                <SortableHeader sortKey="name"     currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Transaction name</SortableHeader>
+                                                <SortableHeader sortKey="name"      currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Transaction name</SortableHeader>
+                                            </th>
+                                            <th className={cn(TH, "w-[260px]")}>
+                                                <SortableHeader sortKey="txnNumber" currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Transaction number</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[160px]")}>
-                                                <SortableHeader sortKey="planType" currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Products</SortableHeader>
+                                                <SortableHeader sortKey="planType"  currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Products</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[120px]", "!text-right")}>
                                                 <SortableHeader sortKey="amount"   currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort} align="right">Amount</SortableHeader>
@@ -923,6 +928,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                                 <span className="text-[14px] font-medium text-[var(--colors-text-primary)] min-w-0 truncate">{o.name}</span>
                                                             </div>
                                                         </td>
+                                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums")}>{o.number}</td>
                                                         <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{o.kindLabel}</td>
                                                         {/* Refunded orders prefix `+` so the amount reads as
                                                             money returned to the customer — matches the
@@ -974,6 +980,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                                     <span className="text-[14px] font-medium text-[var(--colors-text-primary)] min-w-0 truncate">{t.name}</span>
                                                                 </div>
                                                             </td>
+                                                            <td className={TD} />
                                                             <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
                                                             <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap text-right")}>
                                                                 {t.status === "refunded" ? `+ ${fmtAed(Math.abs(t.amountAed))}` : fmtAed(t.amountAed)}
