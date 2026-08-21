@@ -19,6 +19,10 @@ export default function BookingsReportPage() {
     const classSchedules = useAppStore(s => s.classSchedules);
     const customers      = useAppStore(s => s.customers);
     const branches       = useAppStore(s => s.branches);
+    // Private + Recovery bookings live in these slices — selectBookings folds
+    // them in so the report covers every session type, not just classes.
+    const appointments        = useAppStore(s => s.appointments);
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
     const scope          = useInstructorScope();
 
     const report = getReportById("bookings");
@@ -26,12 +30,12 @@ export default function BookingsReportPage() {
     const rows = useMemo<BookingRow[]>(() => {
         if (!report) return [];
         const fn = resolveSelector(report) as unknown as (state: unknown) => BookingRow[];
-        const all = fn({ classBookings, classSchedules, customers, branches });
+        const all = fn({ classBookings, classSchedules, customers, branches, appointments, appointmentBookings });
         // Instructor scope: only bookings for classes taught by the
         // current instructor. Admin sees everything.
         if (!scope.isInstructor) return all;
         return all.filter(r => r.instructor === scope.instructorFullName);
-    }, [report, classBookings, classSchedules, customers, branches, scope]);
+    }, [report, classBookings, classSchedules, customers, branches, appointments, appointmentBookings, scope]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),

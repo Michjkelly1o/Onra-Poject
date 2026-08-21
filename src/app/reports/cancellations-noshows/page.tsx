@@ -40,14 +40,17 @@ export default function CancellationsNoshowsReportPage() {
     const classSchedules = useAppStore(s => s.classSchedules);
     const customers      = useAppStore(s => s.customers);
     const branches       = useAppStore(s => s.branches);
+    // Private + Recovery bookings — selectBookings folds them in.
+    const appointments        = useAppStore(s => s.appointments);
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
 
     const report = getReportById("cancellations-noshows");
 
     const raw = useMemo<BookingRow[]>(() => {
         if (!report) return [];
         const fn = resolveSelector(report) as unknown as (state: unknown) => BookingRow[];
-        return fn({ classBookings, classSchedules, customers, branches });
-    }, [report, classBookings, classSchedules, customers, branches]);
+        return fn({ classBookings, classSchedules, customers, branches, appointments, appointmentBookings });
+    }, [report, classBookings, classSchedules, customers, branches, appointments, appointmentBookings]);
 
     const rows = useMemo<CancellationsDisplayRow[]>(() => {
         return raw
