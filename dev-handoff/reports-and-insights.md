@@ -35,18 +35,20 @@ Cross-references: [`rbac-and-permissions.md`](rbac-and-permissions.md), [`backen
 
 ## 2. Stubbed data fields in selectors — MEDIUM
 
-These are real reports whose specific columns are hardcoded pending upstream wiring:
-- **Cancellations & No-shows: `charge` is always `0`** and `paymentStatus` always `""` (`selectors.ts:707-708`). The report can't show real late-cancel/no-show penalty AED until penalty settings thread through — the `computeCancellationPenalty` logic exists (`store.ts:8203`) but isn't wired into `selectBookings`.
-- **`waitlistConverted` is a dead field** — declared and emitted but never incremented (`selectors.ts:757,796`), so waitlist-conversion always reads 0.
-- **Retail tax = 0** — reads `t.taxAed ?? 0` but the seed carries none (`selectors.ts:1126,1233`); retail tax "lands in a later commit."
+Real reports whose specific columns were hardcoded pending upstream wiring:
+- **Cancellations & No-shows: `charge` is always `0`** and `paymentStatus` always `""` (`selectors.ts:707-708`) — **still open.** Needs penalty settings threaded through — the `computeCancellationPenalty` logic exists (`store.ts:8203`) but isn't wired into `selectBookings`.
+- **`waitlistConverted`** — **FIXED (2026-08-21):** a `promoted_from_waitlist` flag was added to the booking model (seed type + store type + `bookingFromSeed`), seeded on demo bookings, and `selectClassSessions` now counts it, so Class Performance "Waitlist converted" reads real values.
+- **Retail tax** — **FIXED (2026-08-21):** `selectRetailSales` now computes it per the doc as `Net × rate` (standard-rated → 5%, zero-rated/exempt/out-of-scope → 0) instead of the unseeded `taxAed`.
 
-**Build:** wire the cancellation penalty into `selectBookings.charge`; compute `waitlistConverted` from promoted bookings; populate retail tax.
+(Also fixed 2026-08-21, outside this list: Retail "Gross margin %" now ×100 (was a fraction), Stock "Sell-through %" ×100, package plan prices backfilled from the catalog so Plan Price / Plan Changes / Intro converted-price / Win-back aren't AED 0, VAT Export refund reversal + zero-rated guard, ARPM net-of-refunds, gift-card last-redeemed + Intro sessions-used + Referrals plan/sales populated. See git log `fix(reports): Phase 1–4`.)
+
+**Build (remaining):** wire the cancellation penalty into `selectBookings.charge`.
 
 ---
 
 ## 3. Consistency / refactor items — MEDIUM/LOW
 
-- **Revenue Recognition report re-implements recognition inline** (`revenue-recognition/page.tsx:104-140`) instead of calling the shared `recognizedRevenueLineItems` engine — a drift risk (the report could disagree with the dashboard). Route it through the shared engine.
+- **Revenue Recognition report re-implements recognition inline** (`revenue-recognition/page.tsx`) instead of calling the shared `recognizedRevenueLineItems` engine — a drift risk (the report could disagree with the dashboard). Route it through the shared engine. (2026-08-21: historical package sales with no live plan now recognize off elapsed validity instead of reading 0 — but the logic is still inline, so the drift risk stands.)
 - **Classes "Sales/Revenue" tiles include private + recovery** money (`class.ts:143` via `revenueTotals` → the full ledger), though the comment states "membership + package = the class economy." This overlaps the dedicated Private/Recovery tabs. Decide: relabel the tiles, or filter the ledger to membership+package for the Classes tab.
 - **Retail same-day refund is never collapsed to a void** — `selectRetailSales` always emits a later-style negative row (`selectors.ts:1249-1261`) because retail has no settlement timeline. Safe (never restates a past period) but diverges from the ledger's void rule; disclosed in-code.
 - **Payments report `revenueCategory`** is TS-cast to `"membership" | "package"` but private/recovery kinds also flow through (`selectors.ts:487`) — the runtime value is the real kind, but the narrow cast/label handling should be widened.
@@ -63,6 +65,6 @@ These are real reports whose specific columns are hardcoded pending upstream wir
 
 ## Priority
 1. **RBAC enforcement + route guards + branch-admin scope** (§1) — security, and part of the app-wide RBAC work.
-2. Wire the stubbed selector fields (§2) — cancellation charge, waitlist conversions, retail tax.
+2. Wire the remaining stubbed selector field (§2) — cancellation charge. (Waitlist conversions + retail tax now populate.)
 3. Route the Revenue Recognition report through the shared engine; resolve the Classes revenue label/overlap (§3).
 4. Remove the dead export/branch-filter code (§4).

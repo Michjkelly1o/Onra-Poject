@@ -28,7 +28,8 @@ Because of this, almost everything that would touch an external system in produc
 
 **Integrations & external systems:**
 - [`integrations.md`](integrations.md) — every integration is a fake "connect" (spinner → open provider page → flip a status string). WhatsApp, Stripe/cards, Apple/Google Pay, email/SMS/push, calendar, Mailchimp, Instagram, Xero, GA4, maps.
-- [`payments-and-pos.md`](payments-and-pos.md) — checkout is a `setTimeout` + local write; no gateway, settlement, webhooks, or failure path; card auto-"Approved"; refunds have no role enforcement; no print; receipts don't send.
+- [`payments-and-pos.md`](payments-and-pos.md) — checkout is a `setTimeout` + local write; no gateway, settlement, webhooks, or failure path; card auto-"Approved"; refunds have no role enforcement; no print; receipts don't send. The **Sales** nav group now holds Point of Sale + a **Transactions** module (`/admin/transactions`) — the all-customers payment ledger, reusing the customer Payment History table.
+- [`notifications-center.md`](notifications-center.md) — the in-app **notification center** feature/flow: the bell + feeds, what shows to admin / instructor / customer, and the event → notification → click-through → read path. Two separate systems (store slice vs the customer localStorage feed).
 - [`notifications-delivery.md`](notifications-delivery.md) — nothing is ever sent; quiet-hours config is enforced nowhere; only 5 of ~28 events fire; WhatsApp approval is simulated.
 - [`whatsapp-backend-integration.md`](whatsapp-backend-integration.md) — deep, step-by-step spec for the real Meta WhatsApp Cloud API build (existing).
 

@@ -50,6 +50,26 @@ Depends on [`backend-and-auth.md`](backend-and-auth.md) (a server must exist) an
 
 ---
 
+## 4b. Transactions module — all-customers ledger — INFO
+
+The **Sales** nav group (formerly the top-level "Point of Sale" item) is now a
+dropdown holding **Point of Sale** (`/admin/pos`) + **Transactions**
+(`/admin/transactions`). The Transactions page is the **all-customers payment
+ledger**: every `customerTransactions` row, newest first, with a Customer column,
+a synthesized Transaction number (`#R-…`), Location filter, search (transaction
+or customer), Status, Date & Time, and a per-row **Refund** action.
+
+It **reuses the exact same view + refund flow as the customer-detail Payment
+History tab** — the table atoms (`TxnIcon` / `TxnStatusBadge` / `RefundModal` /
+`PaymentFilterPanel` / formatters / refund gating) are exported from
+[`CustomerPaymentsTab.tsx`](../src/components/customers/CustomerPaymentsTab.tsx)
+and shared, and refunds run through the same store `refundTransaction`. So this
+table, the customer profile, and the Refunds report stay in lock-step — **and it
+inherits every §4 refund caveat** (store-only status flip, no gateway refund, and
+**no role/limit enforcement**). Layout mirrors the Private-sessions list (flush
+on the admin chrome, table scrolls internally). File:
+[`src/app/admin/transactions/page.tsx`](../src/app/admin/transactions/page.tsx).
+
 ## 5. Receipts / print — no print, fake delivery — MEDIUM
 
 **Now:** the receipt is a React card only. **No print path exists** (no `window.print()`, PDF, or ESC/POS). Receipt/transaction IDs are `Math.random()`-generated client-side. Delivery is hardcoded copy: "This receipt will be automatically sent to the customer via email and SMS." — nothing sends.
