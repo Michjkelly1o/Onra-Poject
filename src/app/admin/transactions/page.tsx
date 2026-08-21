@@ -194,8 +194,11 @@ export default function TransactionsPage() {
                         />
                     ) : (
                         // table-fixed → column widths come from the header row only,
-                        // so expanding an accordion never re-flows the columns.
-                        <table className="w-full min-w-[1180px] border-collapse table-fixed">
+                        // so expanding an accordion never re-flows the columns. The
+                        // min-width is sized so the (flexible) Transaction-name column
+                        // gets a generous ~320px and never squeezes/truncates — the
+                        // table scrolls horizontally instead.
+                        <table className="w-full min-w-[1360px] border-collapse table-fixed">
                             <thead>
                                 <tr>
                                     <th className={TH}>

@@ -859,7 +859,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                     </div>
 
                     {/* Table */}
-                    <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                    <div className="flex-1 overflow-auto scrollbar-hide relative">
                         {paged.length === 0 ? (
                             <EmptyBlock
                                 title={txns.length === 0 ? "No transactions yet" : "No transactions found"}
@@ -870,8 +870,10 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                         ) : (
                             <div className="px-6">
                                 {/* table-fixed → column widths come from the header row only,
-                                    so expanding an accordion never re-flows the columns. */}
-                                <table className="w-full border-collapse table-fixed">
+                                    so expanding an accordion never re-flows the columns. The
+                                    min-width keeps the Transaction-name column comfortably wide
+                                    (never truncating); the panel scrolls horizontally if narrow. */}
+                                <table className="w-full min-w-[980px] border-collapse table-fixed">
                                     <thead>
                                         <tr>
                                             <th className={TH}>
