@@ -25,6 +25,7 @@ const ICON_FOR: Record<NotifEvent, ComponentType<SVGProps<SVGSVGElement>>> = {
     membership_frozen: Snowflake01,
     membership_reactivated: RefreshCcw02,
     freeze_reminder: Snowflake01,
+    membership_cancelled: CalendarMinus02,
     announcement: Announcement01,
     campaign: Send01,
     promo: Ticket01,

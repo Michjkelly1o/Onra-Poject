@@ -4,10 +4,11 @@
 // Onra Studio — Plan cancellation side panel
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Split out of the combined "Cancel & freeze plan policy" (client 2026-08-14).
+// Now lives on the dedicated "Plan rules" settings tab (client 2026-08-19).
 // Mirrors the Plan-freeze panel chrome + components, with cancellation copy.
-// Controls, in order:
-//   • Members can cancel their own membership  → freezePolicy.members_can_cancel
+// The standalone "Members can cancel their own membership" master toggle was
+// retired — "Who can cancel" is the single gate (admins_only hides the customer
+// CTA; the middle option routes through the request/approve flow). Controls:
 //   • Who can cancel                           → cancellationPolicy.plan_cancel_who
 //   • Cancellation fee                         → cancellationPolicy.plan_cancel_fee_*
 //   • Cancellation reasons (toggleable list)   → cancellationPolicy.cancellation_reasons
@@ -137,7 +138,6 @@ function ReasonCheckbox({ checked, onChange }: { checked: boolean; onChange: () 
 }
 
 interface CancelForm {
-    members_can_cancel: boolean;
     who: WhoCanCancel;
     fee_enabled: boolean;
     fee_aed: number;
@@ -148,15 +148,12 @@ interface CancelForm {
 }
 
 export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-    const freezePolicy             = useAppStore(s => s.freezePolicy);
     const cancellationPolicy       = useAppStore(s => s.cancellationPolicy);
     const memberships              = useAppStore(s => s.memberships);
-    const updateFreezePolicy       = useAppStore(s => s.updateFreezePolicy);
     const updateCancellationPolicy = useAppStore(s => s.updateCancellationPolicy);
     const showToast                = useAppStore(s => s.showToast);
 
     const build = (): CancelForm => ({
-        members_can_cancel: freezePolicy.members_can_cancel ?? false,
         who:                cancellationPolicy.plan_cancel_who ?? "members_and_admins",
         fee_enabled:        cancellationPolicy.plan_cancel_fee_enabled ?? false,
         fee_aed:            cancellationPolicy.plan_cancel_fee_aed ?? 0,
@@ -215,9 +212,6 @@ export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClos
         .map(m => ({ id: m.id, label: m.name }));
 
     function handleSave() {
-        // Cancel toggle lives on the freeze policy (the customer plan page reads
-        // it there); the rest live on the cancellation policy.
-        updateFreezePolicy({ members_can_cancel: form.members_can_cancel });
         updateCancellationPolicy({
             plan_cancel_who: form.who,
             plan_cancel_fee_enabled: form.fee_enabled,
@@ -249,18 +243,10 @@ export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClos
                     </button>
                 </div>
 
-                {/* Body */}
+                {/* Body — the master "members can cancel" toggle was retired
+                    (client 2026-08-19): "Who can cancel" is the single source of
+                    truth (admins_only hides the customer CTA). */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-6 py-5 flex flex-col gap-7">
-                    <ToggleCard
-                        title="Members can cancel their own membership"
-                        subtitle="Allow customers to cancel their membership from their account. Cancelling stops renewal — access stays until the end of the paid period."
-                        on={form.members_can_cancel}
-                        onChange={v => patch({ members_can_cancel: v })}
-                    />
-
-                    {/* Full configuration always visible — the toggle above governs
-                        whether customers can SELF-cancel; these settings still apply
-                        (Who can cancel, fee, reasons, scope) client 2026-08-14. */}
                     <Section title="Who can cancel">
                                 <RadioCardGroup
                                     ariaLabel="Who can cancel"

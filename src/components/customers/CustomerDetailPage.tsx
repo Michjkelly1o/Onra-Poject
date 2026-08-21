@@ -154,6 +154,7 @@ const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
     expired: "Expired",
     frozen: "Frozen",
     freeze_requested: "Freeze requested",
+    cancel_requested: "Cancellation requested",
     cancelled: "Cancelled",
     removed: "Removed",
 };
@@ -166,6 +167,7 @@ function PlanStatusBadge({ status }: { status: PlanStatus }) {
         // Amber for "waiting on us" — matches the pending-approval convention
         // used by refund requests (needs-attention row on the dashboard).
         freeze_requested: "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
+        cancel_requested: "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
         cancelled: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         removed: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
@@ -490,6 +492,84 @@ function FreezeRequestReviewModal({ plan, onClose, onApprove, onReject }: {
     );
 }
 
+// ─── Cancellation-request review modal (client 2026-08-19) ─────────────────────
+//
+// Mirrors FreezeRequestReviewModal for the cancel approval flow. Shows the
+// requested timing + reason; Approve applies the cancellation (period-end),
+// Decline (optionally with a note) restores the plan to active.
+
+function CancelRequestReviewModal({ plan, onClose, onApprove, onReject }: {
+    plan: CustomerPlan;
+    onClose: () => void;
+    onApprove: () => void;
+    onReject: (note: string) => void;
+}) {
+    const [rejectMode, setRejectMode] = useState(false);
+    const [note, setNote] = useState("");
+    const timingLabel = (plan.cancelRequestMode ?? "period_end") === "today"
+        ? "Immediately"
+        : "At the end of the paid period";
+    return (
+        <ModalShell
+            title={rejectMode ? "Decline cancellation request" : "Review cancellation request"}
+            subtitle={
+                rejectMode
+                    ? "Optionally add a note — the customer will see it in their notifications."
+                    : "The customer has requested to cancel this plan. Approve to cancel, or decline to keep it active."
+            }
+            onClose={onClose}
+            footer={
+                rejectMode ? (
+                    <>
+                        <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setRejectMode(false)}>
+                            Back
+                        </Button>
+                        <Button variant="destructive" size="lg" className="flex-1" onClick={() => onReject(note)}>
+                            Decline request
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setRejectMode(true)}>
+                            Decline
+                        </Button>
+                        <Button variant="primary" size="lg" className="flex-1" onClick={onApprove}>
+                            Approve request
+                        </Button>
+                    </>
+                )
+            }
+        >
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Cancellation timing</label>
+                <div className="rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-3.5 py-2.5 text-[14px] text-[var(--colors-text-tertiary)]">
+                    {timingLabel}
+                </div>
+            </div>
+            {plan.cancelRequestReason && (
+                <div className="mt-4 flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Reason</label>
+                    <div className="rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-3.5 py-2.5 text-[14px] text-[var(--colors-text-tertiary)]">
+                        {plan.cancelRequestReason}
+                    </div>
+                </div>
+            )}
+            {rejectMode && (
+                <div className="mt-4 flex flex-col gap-1.5">
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Note to customer (optional)</label>
+                    <textarea
+                        value={note}
+                        onChange={e => setNote(e.target.value)}
+                        rows={3}
+                        placeholder="e.g. Reach out to us before cancelling — we'd love to help with a pause instead."
+                        className="w-full rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-fg-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-500)]/40"
+                    />
+                </div>
+            )}
+        </ModalShell>
+    );
+}
+
 // ─── Cancel-plan modal ────────────────────────────────────────────────────────
 
 function CancelPlanModal({ plan, onClose, onConfirm }: {
@@ -727,7 +807,7 @@ function CustomerStatusModal({ action, customerName, onClose, onConfirm }: {
 
 // ─── Plan-row actions (⋮) ─────────────────────────────────────────────────────
 
-type PlanActionKind = "freeze" | "unfreeze" | "cancel" | "remove" | "view" | "freeze_review";
+type PlanActionKind = "freeze" | "unfreeze" | "cancel" | "remove" | "view" | "freeze_review" | "cancel_review";
 
 /** Which row actions a plan offers, given its kind + status. */
 function planActions(plan: CustomerPlan): PlanActionKind[] {
@@ -741,7 +821,13 @@ function planActions(plan: CustomerPlan): PlanActionKind[] {
     // Phase 5 — pending freeze request. Admin can approve or reject via
     // the shared review modal; Cancel stays available in case the admin
     // wants to end the plan altogether rather than acting on the request.
-    if (plan.status === "freeze_requested") return ["freeze_review", "cancel"];
+    // While a request is pending, the ONLY action is to review it (Approve /
+    // Decline in the modal — Decline reverts the plan to active, which is the
+    // admin's equivalent of the customer's "Cancel request"). The conflicting
+    // freeze / cancel actions are hidden until the request is resolved
+    // (client 2026-08-19 — mirrors the customer card).
+    if (plan.status === "freeze_requested") return ["freeze_review"];
+    if (plan.status === "cancel_requested") return ["cancel_review"];
     return [];
 }
 
@@ -779,6 +865,12 @@ function PlanRowActions({ plan, onAction }: {
                     <button type="button" onClick={() => trigger("freeze_review")}
                         className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         <PauseCircle className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Review freeze request
+                    </button>
+                )}
+                {actions.includes("cancel_review") && (
+                    <button type="button" onClick={() => trigger("cancel_review")}
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XCircle className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Review cancellation request
                     </button>
                 )}
                 {actions.includes("view") && (
@@ -938,7 +1030,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type PlanModalState =
-    | { kind: "freeze" | "unfreeze" | "cancel" | "remove" | "view" | "freeze_review"; plan: CustomerPlan }
+    | { kind: "freeze" | "unfreeze" | "cancel" | "remove" | "view" | "freeze_review" | "cancel_review"; plan: CustomerPlan }
     | null;
 
 export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }: { customerId: string; returnTo?: string }) {
@@ -960,6 +1052,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const unfreezeCustomerPlan = useAppStore(s => s.unfreezeCustomerPlan);
     const approveFreezeRequest = useAppStore(s => s.approveFreezeRequest);
     const rejectFreezeRequest = useAppStore(s => s.rejectFreezeRequest);
+    const approveCancellationRequest = useAppStore(s => s.approveCancellationRequest);
+    const rejectCancellationRequest = useAppStore(s => s.rejectCancellationRequest);
     const cancelCustomerPlan = useAppStore(s => s.cancelCustomerPlan);
     const removeComplimentaryPlan = useAppStore(s => s.removeComplimentaryPlan);
     const showToast = useAppStore(s => s.showToast);
@@ -1047,7 +1141,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
 
     // ── Plan tab sort — Transaction name / Plan type / Status / Expiry. ──
     const PLAN_STATUS_ORDER: Record<PlanStatus, number> = {
-        active: 0, freeze_requested: 0, frozen: 1, expired: 2, cancelled: 3, removed: 4,
+        active: 0, freeze_requested: 0, cancel_requested: 0, frozen: 1, expired: 2, cancelled: 3, removed: 4,
     };
     const { sorted: sortedPlans, sortKey: planSortKey, sortDir: planSortDir, toggle: togglePlanSort } = useSort<CustomerPlan>(filteredPlans, {
         name:       (a, b) => a.name.localeCompare(b.name),
@@ -1188,6 +1282,26 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
         setPlanModal(null);
         showToast(
             "Freeze request declined",
+            note.trim()
+                ? `${plan.name} stays active — the customer was told: "${note.trim()}"`
+                : `${plan.name} stays active — the customer has been notified.`,
+            "error", "slash",
+        );
+    }
+    function handleApproveCancellationRequest(plan: CustomerPlan) {
+        approveCancellationRequest(plan.id);
+        setPlanModal(null);
+        showToast(
+            "Cancellation approved",
+            `${plan.name} has been cancelled — the customer has been notified.`,
+            "success", "check",
+        );
+    }
+    function handleRejectCancellationRequest(plan: CustomerPlan, note: string) {
+        rejectCancellationRequest(plan.id, note.trim() || undefined);
+        setPlanModal(null);
+        showToast(
+            "Cancellation request declined",
             note.trim()
                 ? `${plan.name} stays active — the customer was told: "${note.trim()}"`
                 : `${plan.name} stays active — the customer has been notified.`,
@@ -1578,6 +1692,14 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                     onClose={() => setPlanModal(null)}
                     onApprove={() => handleApproveFreezeRequest(planModal.plan)}
                     onReject={note => handleRejectFreezeRequest(planModal.plan, note)}
+                />
+            )}
+            {planModal?.kind === "cancel_review" && (
+                <CancelRequestReviewModal
+                    plan={planModal.plan}
+                    onClose={() => setPlanModal(null)}
+                    onApprove={() => handleApproveCancellationRequest(planModal.plan)}
+                    onReject={note => handleRejectCancellationRequest(planModal.plan, note)}
                 />
             )}
             {planModal?.kind === "cancel" && (

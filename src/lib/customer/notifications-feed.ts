@@ -33,6 +33,8 @@ export type NotifEvent =
     | "membership_frozen"
     | "membership_reactivated"
     | "freeze_reminder"
+    // ── Plan cancellation approval flow (client 2026-08-19) ─────────
+    | "membership_cancelled"
     // ── Marketing rework (2026-08) — Studio announcements + campaigns ─
     | "announcement"
     | "campaign"

@@ -72,8 +72,6 @@ export const instructor_profile: User & { staff_profile_id: string } = {
     // instructor-side page.
     staff_profile_id: "staff_liam_chen",
     // ── Instructor profile fields (Figma 7282:5289) ──────────────────────
-    introduction:
-        "With 7 years of experience, Liam Chen brings dedicated expertise to every Pilates session. With a strong background in fitness, Liam empowers clients to master body awareness, functional movement, and core strength.",
     working_days: ["M", "T", "W", "Th", "F"] as const,
     working_hours_start: "07:00",
     working_hours_end: "20:00",

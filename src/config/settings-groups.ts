@@ -71,6 +71,11 @@ export const SETTINGS_GROUPS: SettingsGroupDef[] = [
             // this studio actually sell" configuration.
             { label: "Services",            href: "/admin/settings/services"            },
             { label: "Booking rules",        href: "/admin/settings/booking-rules"       },
+            // Plan rules (client 2026-08-19) — Plan cancellation + Plan freeze
+            // moved out of the Booking rules tab into their own tab. Same
+            // cancellationPolicy / freezePolicy store slices + the same two
+            // side panels; only the entry point changed.
+            { label: "Plan rules",           href: "/admin/settings/plan-rules"          },
             { label: "Tax",                  href: "/admin/settings/tax"                 },
             // Retail categories tab retired 2026-07-31 — moved out of
             // Settings and into the "Products & pricing" sidebar group

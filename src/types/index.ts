@@ -109,8 +109,6 @@ export interface User {
     // Phase 4 will revisit whether these belong on the `staff_profile` row
     // instead — for Phase 1 they live on `User` so the existing camel-case
     // store action keeps working unchanged.
-    /** Instructor bio — shown verbatim on the customer-facing portal. */
-    introduction?: string;
     /** Weekday literals the instructor works. Inactive days render in red
      *  on the chip row (matches Figma). */
     working_days?: ReadonlyArray<WorkingDay>;

@@ -606,7 +606,6 @@ export function buildCatalog(state: AppState): Catalog {
                 role:                    { row: "role",                    type: "string", label: "role" },
                 status:                  { row: "status",                  type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
                 specialties:             { row: "specialties",             type: "string", label: "specialties" },
-                working_experience_years:{ row: "working_experience_years",type: "number", label: "years experience" },
                 first_login_completed:   { row: "first_login_completed",   type: "enum",   label: "logged in yet", values: ["true", "false"] },
                 pay_rate_id:             { row: "pay_rate_id",             type: "string", label: "assigned pay rate id" },
                 shift_id:                { row: "shift_id",                type: "string", label: "assigned shift id" },
