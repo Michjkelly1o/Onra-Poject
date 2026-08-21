@@ -32,7 +32,7 @@ interface PaymentsDisplayRow {
     paymentStatus:   string;
     failureReason:   string;
     retryAttempt:    number;
-    recoveredYN:     "Y" | "N" | "—";
+    recoveredYN:     "Y" | "N";
     recoveredISO:    string;
     payoutId:        string;
     processorFee:    number;
@@ -97,7 +97,7 @@ export default function PaymentsReportPage() {
             paymentStatus:  STATUS_LABEL[p.status] ?? p.status,
             failureReason:  p.failureReason ?? "",
             retryAttempt:   p.retryAttempt ?? 0,
-            recoveredYN:    p.recovered === true ? "Y" : p.recovered === false ? "N" : "—",
+            recoveredYN:    p.recovered ? "Y" : "N",
             recoveredISO:   p.recoveredISO ? p.recoveredISO.slice(0, 10) : "",
             payoutId:       p.payoutId ?? "",
             processorFee:   p.processorFee ?? 0,
