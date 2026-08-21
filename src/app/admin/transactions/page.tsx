@@ -193,7 +193,9 @@ export default function TransactionsPage() {
                                 : "Try adjusting your search or filter."}
                         />
                     ) : (
-                        <table className="w-full min-w-[1180px] border-collapse">
+                        // table-fixed → column widths come from the header row only,
+                        // so expanding an accordion never re-flows the columns.
+                        <table className="w-full min-w-[1180px] border-collapse table-fixed">
                             <thead>
                                 <tr>
                                     <th className={TH}>
@@ -228,7 +230,7 @@ export default function TransactionsPage() {
                                             <tr className={cn("transition-colors", o.isMulti ? "cursor-pointer hover:bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}
                                                 onClick={o.isMulti ? () => toggleExpand(o.key) : undefined}>
                                                 <td className={TD}>
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-3 min-w-0">
                                                         {o.isMulti ? (
                                                             <span className="shrink-0 w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)]">
                                                                 {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -236,7 +238,7 @@ export default function TransactionsPage() {
                                                         ) : (
                                                             <TxnIcon kind={o.txns[0].kind} />
                                                         )}
-                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{o.name}</span>
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] min-w-0 truncate">{o.name}</span>
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums")}>{o.number}</td>
@@ -259,9 +261,9 @@ export default function TransactionsPage() {
                                                    lightly indented to show it's nested. */
                                                 <tr key={`${o.key}-${t.id}`} className="bg-[var(--colors-bg-secondary)]/40">
                                                     <td className={TD}>
-                                                        <div className="flex items-center gap-3 pl-8">
+                                                        <div className="flex items-center gap-3 pl-8 min-w-0">
                                                             <TxnIcon kind={t.kind} />
-                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{t.name}</span>
+                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] min-w-0 truncate">{t.name}</span>
                                                         </div>
                                                     </td>
                                                     <td className={TD} />
