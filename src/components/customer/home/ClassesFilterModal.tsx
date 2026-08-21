@@ -97,7 +97,7 @@ export function ClassesFilterModal({
                 {/* Time of day — three predefined pills (reuses the Categories chip). */}
                 {showTime && (
                     <div className="flex flex-col gap-2">
-                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Time</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)] font-heading">Time</span>
                         {/* Horizontal — one column per slot, illustration on top */}
                         <div className="grid grid-cols-3 gap-2">
                             {TIME_SLOTS.map((slot) => {
@@ -133,7 +133,7 @@ export function ClassesFilterModal({
                 {showInstructor && (
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Instructor</span>
+                            <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)] font-heading">Instructor</span>
                             {showSeeAll && (
                                 <button type="button" onClick={onSeeAll} className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">
                                     See all
@@ -178,7 +178,7 @@ export function ClassesFilterModal({
 
                 {/* Categories */}
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Categories</span>
+                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)] font-heading">Categories</span>
                     <div className="flex flex-wrap gap-2">
                         {categories.map((c) => (
                             <FilterPill

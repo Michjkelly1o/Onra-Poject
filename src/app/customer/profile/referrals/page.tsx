@@ -235,7 +235,7 @@ export default function ReferralsPage() {
                         </div>
                     ) : (
                         <div className="flex flex-col items-center gap-1 rounded-2xl border border-dashed border-[var(--colors-border-tertiary)] py-10 text-center">
-                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">No referrals yet</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">No referrals yet</p>
                             <p className="text-sm leading-5 text-[var(--colors-text-tertiary)]">Refer friends and get free credits!</p>
                         </div>
                     )}

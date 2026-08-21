@@ -452,7 +452,7 @@ export function ReviewBookSheet({
                 ) : (
                     <span aria-hidden className="absolute left-0 size-8" />
                 )}
-                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{stepTitle}</p>
+                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{stepTitle}</p>
                 {backTarget != null ? (
                     <span aria-hidden className="absolute right-0 size-8" />
                 ) : (
@@ -532,7 +532,7 @@ export function ReviewBookSheet({
 
                     {/* Book to */}
                     <section className="flex w-full flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Book to</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Book to</p>
                         <div className="flex rounded-full border border-[#e4e7ec] bg-[#f9fafb] p-1">
                             {(["myself", "guest"] as BookTo[]).map((t) => {
                                 const active = bookTo === t;
@@ -625,7 +625,7 @@ export function ReviewBookSheet({
                         <>
                             <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
                             <section className="flex w-full flex-col gap-3">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Pay with</p>
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Pay with</p>
 
                                 {bookTo === "myself" ? (
                                     hasEligiblePlan ? (
@@ -767,7 +767,7 @@ export function ReviewBookSheet({
                         <>
                             <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
                             <section className="flex w-full flex-col gap-2">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Cancellation policy</p>
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Cancellation policy</p>
                                 <p className="text-sm font-normal leading-5 text-[#475467]">Full refund if you cancel 24 hours before.</p>
                             </section>
                         </>

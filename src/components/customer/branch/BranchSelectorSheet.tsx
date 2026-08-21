@@ -50,7 +50,7 @@ function BranchCard({
         >
             <button type="button" onClick={onSelect} aria-pressed={selected} className="flex w-full items-start gap-3 text-left">
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="truncate text-sm font-semibold leading-5 text-[var(--brand-text)]">{name}</span>
+                    <span className="truncate text-sm font-semibold leading-5 text-[var(--brand-text)] font-heading">{name}</span>
                     {operational && (
                         <span className="flex items-center gap-1 text-sm leading-5">
                             <span className="font-medium text-[#164e52]">{operational.isOpen ? "Open" : "Closed"}</span>

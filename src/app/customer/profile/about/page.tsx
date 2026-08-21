@@ -86,7 +86,7 @@ export default function AboutPage() {
                         <img src="/brand-logo/icon/Icon%20-%20Black.svg" alt="" className="size-[60px] object-contain" />
                     </div>
                     <div className="flex flex-col items-center gap-1">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Onra</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Onra</p>
                         <p className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">Version {APP_VERSION}</p>
                     </div>
                 </div>

@@ -38,7 +38,7 @@ export function CancelConfirmSheet({
                     <SlashCircle01 className="size-6 text-[#d92d20]" aria-hidden />
                 </span>
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{title}</p>
+                    <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)] font-heading">{title}</p>
                     <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{description}</p>
                 </div>
                 {refundNote && (

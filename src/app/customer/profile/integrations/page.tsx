@@ -53,7 +53,7 @@ export default function IntegrationsPage() {
                         <img src="/customer/pay/google-calendar.svg" alt="" className="size-8" />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Calendar</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Calendar</p>
                         <p className="text-sm leading-5 text-[var(--colors-text-tertiary)]">Sync your schedule events</p>
                     </div>
                     {calendar.connected ? (
@@ -80,7 +80,7 @@ export default function IntegrationsPage() {
                         <Link01 className="size-6 text-[var(--brand-primary)]" aria-hidden />
                     </div>
                     <div>
-                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Connect to your calendar</p>
+                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)] font-heading">Connect to your calendar</p>
                         <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             Allow Onra to integrate with Google Calendar to view and sync your class schedule.
                         </p>

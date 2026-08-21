@@ -138,7 +138,7 @@ export function RateSheet({
         <CustomerSheet open={open} onClose={onClose} tall>
             {/* Header — centred title + X close (reuses the sheet chrome). */}
             <div className="relative flex shrink-0 items-center justify-center pb-3">
-                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Add ratings &amp; review</p>
+                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Add ratings &amp; review</p>
                 <button
                     type="button"
                     onClick={onClose}
@@ -166,7 +166,7 @@ export function RateSheet({
                             </div>
                             <div className="flex min-w-0 flex-1 flex-col gap-1">
                                 <div className="flex flex-col">
-                                    <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{overview.name}</p>
+                                    <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{overview.name}</p>
                                     <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{overview.subtitle}</p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
@@ -201,7 +201,7 @@ export function RateSheet({
                         {/* Stars */}
                         <section className="flex flex-col gap-4">
                             <div className="flex flex-col gap-2">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">How was your {isAppt ? "session" : "class"}?</p>
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">How was your {isAppt ? "session" : "class"}?</p>
                                 <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                     Your feedback helps improve future {isAppt ? "sessions" : "classes"}.
                                 </p>
@@ -225,7 +225,7 @@ export function RateSheet({
 
                         {/* What stood out */}
                         <section className="flex flex-col gap-4">
-                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">What stood out?</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">What stood out?</p>
                             <div className="flex flex-wrap gap-2">
                                 {TAGS.map((t) => {
                                     const on = tags.includes(t);

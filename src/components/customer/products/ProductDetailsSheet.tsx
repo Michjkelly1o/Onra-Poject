@@ -89,13 +89,13 @@ export function ProductDetailsSheet({ open, onClose, plan, onAdd, upgrade, initi
                     {/* Title + (upgrade/downgrade) + price */}
                     <div className="flex w-full flex-col gap-5">
                         <div className="flex flex-col gap-0.5">
-                            <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{plan.name}</p>
+                            <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)] font-heading">{plan.name}</p>
                             <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{plan.sub}</p>
                         </div>
 
                         {upgrade && (
                             <section className="flex flex-col gap-3">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                                     {upgrade.mode === "upgrade" ? "Upgrade plan" : "Downgrade plan"}
                                 </p>
                                 <div className="flex items-center gap-2">

@@ -332,7 +332,7 @@ export default function MyPlanPage() {
                         <div className="flex size-12 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)]">
                             <CreditCardX className="size-6 text-[var(--colors-text-quaternary)]" aria-hidden />
                         </div>
-                        <p className="mt-4 text-base font-semibold leading-6 text-[var(--brand-text)]">No active plan</p>
+                        <p className="mt-4 text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">No active plan</p>
                         <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">Browse our plans to start booking classes.</p>
                         <Button
                             variant="primary"

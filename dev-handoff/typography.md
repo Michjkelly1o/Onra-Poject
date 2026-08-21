@@ -8,8 +8,9 @@
 ## The system in one line
 
 **Urbanist for headlines & subheadlines. DM Sans for everything else — body,
-captions, and all data/numbers.** Applies to **admin / attendee / instructor**.
-The **customer (member) app stays 100% DM Sans**.
+captions, and all data/numbers.** Applies **app-wide — admin, attendee,
+instructor AND the customer (member) app** (the customer app was originally
+excluded; that exclusion was removed 2026-08-21 so it now follows the same rule).
 
 This is the app's *own* typography — it has **nothing to do** with the branding
 module's live font picker ([`src/app/branding-fonts.ts`](../src/app/branding-fonts.ts)),
@@ -52,18 +53,23 @@ Two mechanisms, both in globals.css / Tailwind:
 
 `sans` (DM Sans) is unchanged and remains the body/default.
 
-## The customer exclusion (airtight)
+## The customer app (now included — 2026-08-21)
 
-The customer shell root already carries **`data-brand-scope="customer"`**
-([`src/app/customer/layout.tsx`](../src/app/customer/layout.tsx)). The CSS reverts
-BOTH mechanisms under it, so the customer app stays entirely DM Sans even for
-shared components (EmptyState, SectionHeader) that carry font-heading:
-```css
-[data-brand-scope="customer"] :is(h1, h2, h3),
-[data-brand-scope="customer"] .font-heading {
-  font-family: 'DM Sans', system-ui, sans-serif;
-}
-```
+The customer app **originally** stayed 100% DM Sans via a revert under its shell
+root's `data-brand-scope="customer"`. That revert was **removed**, so the
+customer app now follows the same two-font rule as the rest of the app:
+- its ~46 semantic `<h1>/<h2>/<h3>` switch to Urbanist automatically via the
+  global heading rule (plus shared components like EmptyState/SectionHeader that
+  carry `font-heading`);
+- its `<p>`/`<span>` titles (sheet/modal/card/section headers, empty-state +
+  success headlines, names-used-as-titles) got `font-heading` in a sweep across
+  ~75 files.
+
+The `data-brand-scope="customer"` attribute itself still exists (it scopes brand
+colours), but there is **no longer any font revert** under it. As with admin,
+the rule holds: **values stay DM Sans** — customer prices (`--brand-primary`
+amounts), metric values, ratings, counts, avatar initials, and receipt line
+items were deliberately left un-tagged.
 
 ## The mapping — what is Urbanist vs DM Sans
 

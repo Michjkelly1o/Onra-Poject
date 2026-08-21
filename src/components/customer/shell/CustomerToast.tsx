@@ -59,7 +59,7 @@ export function CustomerToast({ icon: Icon, iconColor = "var(--brand-text)", tit
         <div className="flex w-full items-start gap-3 rounded-2xl border border-[var(--colors-bg-tertiary)] bg-white p-4 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
             <Icon className="size-5 shrink-0" style={{ color: iconColor }} aria-hidden />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{title}</p>
+                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)] font-heading">{title}</p>
                 {subtext && <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-secondary)]">{subtext}</p>}
             </div>
         </div>

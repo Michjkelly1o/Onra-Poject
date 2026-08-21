@@ -57,7 +57,7 @@ export function AppointmentCheckoutContent({
     if (!appointment || appointmentDraft.appointmentId !== id || !appointmentDraft.slotISO || !appointmentDraft.slotTime) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[var(--brand-text)]">Appointment unavailable</p>
+                <p className="text-base font-semibold text-[var(--brand-text)] font-heading">Appointment unavailable</p>
                 <Button
                     variant="secondary-gray"
                     size="sm"
@@ -79,7 +79,7 @@ export function AppointmentCheckoutContent({
                 <div className="flex size-12 items-center justify-center rounded-full bg-[#fee4e2]">
                     <AlertCircle className="size-6 text-[#d92d20]" aria-hidden />
                 </div>
-                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Your membership is frozen</p>
+                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Your membership is frozen</p>
                 <p className="max-w-[280px] text-sm leading-5 text-[var(--colors-text-tertiary)]">
                     Your <span className="font-semibold text-[var(--brand-text)]">{frozenMembership.planName}</span> is paused.
                     You can book again on {shortDate(frozenMembership.resumeISO)}.

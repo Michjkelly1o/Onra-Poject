@@ -61,7 +61,7 @@ export function FeaturedIconHero({
                     <Icon className={`${upright ? "" : "-rotate-45"} ${iconClassName}`} aria-hidden />
                 </div>
             </div>
-            <p className="mt-1 text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{title}</p>
+            <p className="mt-1 text-xl font-semibold leading-[30px] text-[var(--brand-text)] font-heading">{title}</p>
             <p className="mt-1 text-sm font-medium leading-5 text-[var(--colors-text-tertiary)]">{subtitle}</p>
         </div>
     );

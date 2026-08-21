@@ -236,7 +236,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                 >
                     <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">Bookings</p>
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Bookings</p>
                 <button
                     type="button"
                     onClick={() => {

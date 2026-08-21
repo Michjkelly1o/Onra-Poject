@@ -42,7 +42,7 @@ export function AppointmentFlowHeader({ title, progress, onBack, onClose }: Appo
                 ) : (
                     <div className="size-10 shrink-0" aria-hidden />
                 )}
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                     {title}
                 </p>
                 {onClose ? (

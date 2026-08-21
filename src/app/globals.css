@@ -240,14 +240,11 @@ body {
    which is how Phase 3's `font-heading` on <p>-titles and any explicit override
    keep working.
 
-   The CUSTOMER app is EXCLUDED (stays 100% DM Sans, per the locked plan): its
-   shell root carries `data-brand-scope="customer"`, so we revert its headings. */
+   Applies app-wide — admin, attendee, instructor AND the customer (member) app.
+   The customer app used to be excluded; it now follows the same two-font rule
+   (Urbanist titles / DM Sans body + all numbers). */
 h1, h2, h3 {
   font-family: 'Urbanist', 'DM Sans', system-ui, sans-serif;
-}
-[data-brand-scope="customer"] :is(h1, h2, h3),
-[data-brand-scope="customer"] .font-heading {
-  font-family: 'DM Sans', system-ui, sans-serif;
 }
 
 /* Scrollbar styling */

@@ -28,10 +28,10 @@ export default function BookingProcessingPage() {
 
 function StepLine({ text, variant }: { text: string; variant: "done" | "active" | "next" }) {
     if (variant === "active") {
-        return <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">{text}</p>;
+        return <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)] font-heading">{text}</p>;
     }
     return (
-        <p className={`text-base font-semibold leading-6 text-[var(--colors-text-secondary)] ${variant === "done" ? "opacity-30" : "opacity-10"}`}>
+        <p className={`text-base font-semibold font-heading leading-6 text-[var(--colors-text-secondary)] ${variant === "done" ? "opacity-30" : "opacity-10"}`}>
             {text || " "}
         </p>
     );

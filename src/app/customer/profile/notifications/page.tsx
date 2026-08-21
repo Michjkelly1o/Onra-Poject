@@ -123,7 +123,7 @@ export default function NotificationSettingsPage() {
                     </>
                 ) : (
                     <div className="overflow-hidden rounded-2xl border border-[var(--colors-border-tertiary)] bg-white p-6 text-center">
-                        <p className="text-base font-semibold text-[var(--brand-text)]">Sign in required</p>
+                        <p className="text-base font-semibold text-[var(--brand-text)] font-heading">Sign in required</p>
                         <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             Log in to manage your notification preferences.
                         </p>

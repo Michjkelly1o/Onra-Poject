@@ -70,7 +70,7 @@ function BookingConfirmation() {
     if (!detail) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[var(--brand-text)]">Class not found</p>
+                <p className="text-base font-semibold text-[var(--brand-text)] font-heading">Class not found</p>
                 <p className="text-sm text-[var(--colors-text-quaternary)]">This class is no longer available.</p>
                 <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/search")}>
                     Back to Search
@@ -192,7 +192,7 @@ function BookingConfirmation() {
                 }`}
             >
                 <div className="size-10 shrink-0" aria-hidden />
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                     Review and book
                 </p>
                 <button
@@ -219,7 +219,7 @@ function BookingConfirmation() {
                         )}
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.name}</p>
+                        <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{detail.name}</p>
                         <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                             {fullDate} at {to12h(detail.startTime)}
                         </p>
@@ -260,7 +260,7 @@ function BookingConfirmation() {
 
                 {/* Location */}
                 <section className="flex w-full flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Location</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Location</p>
                     <div className="flex w-full items-start gap-2">
                         <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -275,7 +275,7 @@ function BookingConfirmation() {
                 {/* Spot — picker when the admin enabled spot selection, else an
                     auto-assign note. */}
                 <section className="flex w-full flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                         {spotRequired ? (spotSeats.length > 1 ? "Select spots" : "Select spot") : "Spot"}
                     </p>
                     {/* `spotRequired` (not `spotLayout`) — a WAITLIST join never
@@ -308,7 +308,7 @@ function BookingConfirmation() {
                     reserve it for someone else instead. */}
                 <section className="flex w-full flex-col gap-3">
                     <div className="flex w-full items-center justify-between">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Reserve to</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Reserve to</p>
                         {!reservee && (
                             <button
                                 type="button"
@@ -381,7 +381,7 @@ function BookingConfirmation() {
                     <>
                         <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                         <section className="flex w-full flex-col gap-3">
-                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Detail payment</p>
                             <div className="flex items-center justify-between gap-3 text-sm leading-5">
                                 <span className="min-w-0 truncate font-normal text-[var(--colors-text-tertiary)]">
                                     {detail.name} x{memberCreditSeats}

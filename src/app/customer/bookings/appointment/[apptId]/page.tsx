@@ -80,7 +80,7 @@ export default function AppointmentBookingDetailPage() {
                     <div className="flex-1" />
                 </CustomerHeader>
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-                    <p className="text-base font-semibold text-[var(--brand-text)]">This booking is no longer available</p>
+                    <p className="text-base font-semibold text-[var(--brand-text)] font-heading">This booking is no longer available</p>
                     <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/bookings")}>
                         Back to Bookings
                     </Button>

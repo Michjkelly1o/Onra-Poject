@@ -122,7 +122,7 @@ export default function WelcomePage() {
                 <div className="flex flex-col items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={brandLogoUrl} alt="" className={brandLogoClass} aria-hidden />
-                    <span className="text-[32px] font-semibold leading-none text-[var(--brand-text)]">{brandDisplayName}</span>
+                    <span className="text-[32px] font-semibold leading-none text-[var(--brand-text)] font-heading">{brandDisplayName}</span>
                 </div>
                 <div className="absolute bottom-[max(24px,env(safe-area-inset-bottom))] flex items-center gap-1.5">
                     <span className="text-sm leading-5 text-[#98a2b3]">powered by</span>

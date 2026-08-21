@@ -41,7 +41,7 @@ export function BranchOptionCard({ name, subtitle, selected, onClick, operationa
                 </span>
 
                 <div className="flex flex-col gap-1">
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{name}</p>
                     <p className="line-clamp-2 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{subtitle}</p>
                 </div>
             </div>

@@ -76,7 +76,7 @@ export function ProductCard({
             )}
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex min-w-0 flex-col">
-                    <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{product.name}</p>
+                    <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)] font-heading">{product.name}</p>
                     <p className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{product.sub}</p>
                 </div>
                 {/* Price + per-class, inline (Figma 4548:45171): the price leads

@@ -41,7 +41,7 @@ function BookingSuccess() {
     if (!detail) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[var(--brand-text)]">Booking complete</p>
+                <p className="text-base font-semibold text-[var(--brand-text)] font-heading">Booking complete</p>
                 <Button variant="secondary-gray" size="sm" className="rounded-full" onClick={() => router.push("/customer/bookings")}>
                     View bookings
                 </Button>
@@ -86,7 +86,7 @@ function BookingSuccess() {
                     </span>
                 </div>
 
-                <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">
+                <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)] font-heading">
                     {waitlist ? "You're on the waitlist!" : "Your booking is confirmed!"}
                 </p>
 
@@ -114,7 +114,7 @@ function BookingSuccess() {
 
                     <div className="flex w-full flex-col gap-5">
                         <div className="flex w-full flex-col gap-1">
-                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.name}</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{detail.name}</p>
                             <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                 {fullDate} at {to12h(detail.startTime)}
                             </p>

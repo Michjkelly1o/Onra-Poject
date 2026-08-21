@@ -118,7 +118,7 @@ export default function InstructorDetailPage() {
                     <div className="flex-1" />
                 </CustomerHeader>
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-                    <p className="text-base font-semibold text-[var(--brand-text)]">Instructor not found</p>
+                    <p className="text-base font-semibold text-[var(--brand-text)] font-heading">Instructor not found</p>
                     <p className="text-sm text-[var(--colors-text-quaternary)]">This instructor is no longer available.</p>
                     <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer")}>
                         Back to Home
@@ -179,7 +179,7 @@ export default function InstructorDetailPage() {
                 )}
                 <div className="absolute inset-x-0 bottom-0 h-[160px] bg-gradient-to-b from-transparent to-black/65" />
                 <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4">
-                    <p className="text-xl font-semibold leading-[30px] text-white">{instructor.name}</p>
+                    <p className="text-xl font-semibold leading-[30px] text-white font-heading">{instructor.name}</p>
                     <p className="text-sm font-normal leading-5 text-[var(--colors-border-primary)]">{instructor.email}</p>
                 </div>
             </div>

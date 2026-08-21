@@ -46,7 +46,7 @@ export default function PaymentDetailPage() {
                     <span aria-hidden className="size-10 shrink-0" />
                 </CustomerHeader>
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 pt-[80px] text-center">
-                    <p className="text-base font-semibold text-[var(--brand-text)]">This payment is no longer available</p>
+                    <p className="text-base font-semibold text-[var(--brand-text)] font-heading">This payment is no longer available</p>
                     <Button variant="secondary" size="sm" className="rounded-full" onClick={goBack}>
                         Back to Payment history
                     </Button>
@@ -84,7 +84,7 @@ export default function PaymentDetailPage() {
                     </span>
                 </div>
                 <div className="flex flex-col items-center gap-0.5">
-                    <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">
+                    <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)] font-heading">
                         {ok ? "Payment successful" : "Payment failed"}
                     </p>
                     <p className="text-center text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">

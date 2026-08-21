@@ -61,7 +61,7 @@ export default function PromoDetailPage() {
                 >
                     <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                     Promo detail
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />
@@ -78,7 +78,7 @@ export default function PromoDetailPage() {
 
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{promo.label}</p>
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{promo.label}</p>
                                 <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2">
                                     <Sale04 className="size-3 text-[var(--brand-primary)]" aria-hidden />
                                     <span className="text-xs font-medium leading-[18px] text-[var(--brand-primary)]">1x</span>

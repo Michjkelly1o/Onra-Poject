@@ -35,7 +35,7 @@ import {
 const FIELD =
     "w-full rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[var(--colors-text-quaternary)] focus:border-[var(--brand-primary)]";
 const LABEL = "text-sm font-medium leading-5 text-[var(--colors-text-secondary)]";
-const SECTION = "text-base font-semibold leading-6 text-[var(--brand-text)]";
+const SECTION = "text-base font-semibold leading-6 text-[var(--brand-text)] font-heading";
 const RELATIONS = ["Siblings", "Parent", "Spouse", "Child", "Friend", "Other"];
 
 function dobLabel(iso: string): string {
@@ -409,7 +409,7 @@ export default function ProfileInformationPage() {
                         <Trash01 className="size-6 text-[#d92d20]" aria-hidden />
                     </div>
                     <div>
-                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Delete your account?</p>
+                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)] font-heading">Delete your account?</p>
                         <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             This permanently removes your profile, plans, and bookings. This can&apos;t be undone.
                         </p>

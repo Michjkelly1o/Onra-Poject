@@ -84,7 +84,7 @@ export function PromoCard({ promo, disabled = false, onOpen, onApply, applied = 
             <div className="flex flex-col gap-3 px-4 pb-4 pt-3">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between gap-2">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{promo.label}</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{promo.label}</p>
                         <SaleBadge />
                     </div>
                     <p className="line-clamp-2 text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">

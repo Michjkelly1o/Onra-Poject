@@ -310,7 +310,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
             // a centered title with the X-close absolutely pinned right.
             <div className="relative flex shrink-0 items-center justify-center pb-3">
                 <span aria-hidden className="absolute left-0 size-8" />
-                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Payment</p>
+                <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Payment</p>
                 <button
                     type="button"
                     onClick={onBack}
@@ -334,7 +334,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                     Payment
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />
@@ -347,7 +347,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                 {/* Summary — products "Detail product" cart, or a caller-supplied summary (appointments). */}
                 {summary ?? (
                 <section className="flex flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail product</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Detail product</p>
                     {purchaseCart.items.map((it) => {
                         // Retail + packages both allow qty adjustments in the cart.
                         // Retail lines clamp at the shopper's on-hand at the branch
@@ -410,7 +410,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                     (right of the header) opens the full "Payment method" sheet. */}
                 <section className="flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-3">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Pay with</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Pay with</p>
                         {methods.length > 1 && (
                             <button
                                 type="button"
@@ -428,7 +428,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
 
                 {/* Detail payment */}
                 <section className="flex flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Detail payment</p>
                     <div className="flex items-center justify-between text-sm leading-5">
                         <span className="font-normal text-[#475467]">Subtotal</span>
                         <span className="font-medium text-[var(--brand-text)]">AED {totals.subtotal}</span>
@@ -535,7 +535,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                     >
                         <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                     </button>
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Payment method</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Payment method</p>
                     <span aria-hidden className="absolute right-0 size-8" />
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

@@ -96,7 +96,7 @@ export function ClassScheduleCard({
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
+                    <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{name}</p>
                     <div className="flex min-w-0 items-center gap-1.5">
                         <p className="truncate text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">with {instructorName}</p>
                         {statusPill && (() => {

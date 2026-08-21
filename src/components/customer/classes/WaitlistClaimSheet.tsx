@@ -49,7 +49,7 @@ export function WaitlistClaimSheet({
                     <CalendarCheck02 className="size-6 text-[var(--brand-primary)]" aria-hidden />
                 </span>
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">A spot is available 🎉</p>
+                    <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)] font-heading">A spot is available 🎉</p>
                     <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         A spot has opened up in {className} on {when}. Claim it to confirm your booking before it&apos;s
                         offered to the next person.

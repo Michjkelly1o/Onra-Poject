@@ -308,7 +308,7 @@ export function AppointmentBookingFlow({ appointmentId, open, onClose }: {
                     ) : (
                         <span aria-hidden className="absolute left-0 size-8" />
                     )}
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{title}</p>
                     <button
                         type="button"
                         onClick={onClose}

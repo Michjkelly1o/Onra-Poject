@@ -56,7 +56,7 @@ export default function RedeemGiftCardPage() {
                             className="max-w-[335px]"
                         />
                         <div className="text-center">
-                            <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">{gift.senderName} sent you a gift</p>
+                            <p className="text-lg font-semibold leading-7 text-[var(--brand-text)] font-heading">{gift.senderName} sent you a gift</p>
                             <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">{gift.message}</p>
                         </div>
                     </>

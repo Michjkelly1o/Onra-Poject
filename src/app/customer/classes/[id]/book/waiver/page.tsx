@@ -136,7 +136,7 @@ function Waiver() {
                 >
                     <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                     Waiver &amp; Liability Agreement
                 </p>
                 <div className="size-10 shrink-0" aria-hidden />

@@ -30,7 +30,7 @@ export function CategoryCard({ name, imageUrl, onClick }: CategoryCardProps) {
                 : {})}
             className={`flex min-h-[88px] items-center justify-between gap-2 overflow-hidden rounded-lg bg-[var(--colors-tertiary-50)] pl-3 ${interactive ? "cursor-pointer outline-none" : ""}`}
         >
-            <p className="truncate text-sm font-semibold leading-5 text-[var(--colors-text-secondary)]">{name}</p>
+            <p className="truncate text-sm font-semibold leading-5 text-[var(--colors-text-secondary)] font-heading">{name}</p>
 
             {imageUrl ? (
                 <div className="relative w-[96px] shrink-0 self-stretch overflow-hidden">

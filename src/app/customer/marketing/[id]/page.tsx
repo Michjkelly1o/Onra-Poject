@@ -106,7 +106,7 @@ export default function MarketingDetailPage() {
                         />
 
                         <div className="flex flex-col gap-2">
-                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{item.title}</p>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{item.title}</p>
                             <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{item.description}</p>
                         </div>
 

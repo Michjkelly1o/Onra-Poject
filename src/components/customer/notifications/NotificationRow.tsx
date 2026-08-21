@@ -50,7 +50,7 @@ export function NotificationRow({
             {/* Text */}
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex items-baseline gap-1.5">
-                    <span className="text-sm font-semibold leading-5 text-[var(--colors-text-secondary)]">{notification.title}</span>
+                    <span className="text-sm font-semibold leading-5 text-[var(--colors-text-secondary)] font-heading">{notification.title}</span>
                     <span className="shrink-0 text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{timeAgo}</span>
                 </span>
                 <span className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{notification.message}</span>

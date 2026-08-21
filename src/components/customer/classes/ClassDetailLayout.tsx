@@ -175,7 +175,7 @@ export function ClassDetailLayout({
                 <div className="absolute inset-x-0 bottom-0 h-[160px] bg-gradient-to-b from-transparent to-black/65" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
                     <div className="flex min-w-0 flex-col gap-1">
-                        <p className="truncate text-xl font-semibold leading-[30px] text-white">{detail.name}</p>
+                        <p className="truncate text-xl font-semibold leading-[30px] text-white font-heading">{detail.name}</p>
                         {heroSubtitle && (
                             <p className="text-sm font-normal leading-5 text-[var(--colors-border-primary)]">{heroSubtitle}</p>
                         )}

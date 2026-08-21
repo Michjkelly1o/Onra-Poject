@@ -36,7 +36,7 @@ export function DiscoverCard({
                 )}
             </div>
             <div className="flex w-full flex-col gap-1">
-                <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
+                <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{title}</p>
                 {avatar ? (
                     <div className="flex min-w-0 items-center gap-1.5">
                         <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">

@@ -120,7 +120,7 @@ export function PromoPanel({
                     >
                         <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                         {atDetail ? "Promo detail" : "Promo"}
                     </p>
                     <span aria-hidden className="absolute right-0 size-8" />
@@ -197,7 +197,7 @@ export function PromoPanel({
 
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center justify-between gap-2">
-                                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.label}</p>
+                                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{detail.label}</p>
                                             <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2">
                                                 <Sale04 className="size-3 text-[var(--brand-primary)]" aria-hidden />
                                                 <span className="text-xs font-medium leading-[18px] text-[var(--brand-primary)]">1x</span>

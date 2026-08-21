@@ -35,7 +35,7 @@ export function InstructorCard({ name, activeClasses, imageUrl, initials, onClic
             className={`flex h-[100px] w-[240px] shrink-0 items-center gap-4 overflow-hidden rounded-xl border border-[var(--colors-border-secondary)] bg-white pl-4 ${interactive ? "cursor-pointer outline-none" : ""}`}
         >
             <div className="flex min-w-0 flex-1 flex-col">
-                <p className="truncate text-sm font-semibold leading-5 text-[var(--brand-text)]">{name}</p>
+                <p className="truncate text-sm font-semibold leading-5 text-[var(--brand-text)] font-heading">{name}</p>
                 <p className="truncate text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">{label}</p>
             </div>
 

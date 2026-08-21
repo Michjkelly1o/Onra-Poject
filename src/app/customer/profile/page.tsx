@@ -130,7 +130,7 @@ export default function ProfilePage() {
                         <User01 className="size-7 text-[var(--colors-text-quaternary)]" aria-hidden />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="truncate text-lg font-semibold leading-7 text-[var(--brand-text)]">Hi guest</p>
+                        <p className="truncate text-lg font-semibold leading-7 text-[var(--brand-text)] font-heading">Hi guest</p>
                         <p className="truncate text-base leading-6 text-[var(--colors-text-quaternary)]">You&apos;re browsing as a guest</p>
                     </div>
                 </div>
@@ -138,7 +138,7 @@ export default function ProfilePage() {
                 <div className={`relative overflow-hidden p-4 ${CARD}`}>
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Hey there!</p>
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Hey there!</p>
                         <p className="text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             Log in or sign up to access your profile, bookings, and memberships.
                         </p>
@@ -174,7 +174,7 @@ export default function ProfilePage() {
                     </div>
                 )}
                 <div className="flex flex-col items-center">
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">{name}</p>
                     <p className="text-sm leading-5 text-[var(--colors-text-secondary)]">{member?.email}</p>
                 </div>
             </button>
@@ -320,7 +320,7 @@ export default function ProfilePage() {
                         <LogOut01 className="size-6 text-[#d92d20]" aria-hidden />
                     </div>
                     <div>
-                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Log out of your account?</p>
+                        <p className="text-lg font-semibold leading-7 text-[var(--brand-text)] font-heading">Log out of your account?</p>
                         <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             You&apos;ll need to sign in again to access your bookings.
                         </p>

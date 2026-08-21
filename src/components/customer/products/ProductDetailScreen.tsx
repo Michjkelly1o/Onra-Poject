@@ -112,7 +112,7 @@ export function ProductDetailScreen({
     if (!product) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-                <p className="text-base font-semibold text-[var(--brand-text)]">This product is no longer available</p>
+                <p className="text-base font-semibold text-[var(--brand-text)] font-heading">This product is no longer available</p>
                 <Button variant="secondary" size="sm" className="rounded-full" onClick={onBack}>
                     Go back
                 </Button>
@@ -370,7 +370,7 @@ export function ProductDetailScreen({
             <div className={`flex flex-1 flex-col gap-8 px-4 pt-6 ${isSheet ? "pb-6" : "pb-[120px]"}`}>
                 <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
-                        <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{product.name}</p>
+                        <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)] font-heading">{product.name}</p>
                         <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">
                             {product.priceLabel ?? `AED ${product.price}`}
                         </p>
@@ -497,7 +497,7 @@ export function ProductDetailScreen({
                 {/* Membership upgrade / downgrade panel */}
                 {upgrade && (
                     <section className="flex flex-col gap-3">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                             {upgrade.mode === "upgrade" ? "Upgrade plan" : "Downgrade plan"}
                         </p>
                         <div className="flex items-center gap-2">

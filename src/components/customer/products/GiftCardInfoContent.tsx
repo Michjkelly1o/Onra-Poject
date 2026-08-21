@@ -75,7 +75,7 @@ export function GiftCardInfoContent({
                     ) : (
                         <span aria-hidden className="absolute left-0 size-8" />
                     )}
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Gift card information</p>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Gift card information</p>
                     <button
                         type="button"
                         onClick={onDone}
@@ -101,7 +101,7 @@ export function GiftCardInfoContent({
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">
                     Gift card information
                 </p>
                 <span aria-hidden className="size-10 shrink-0" />

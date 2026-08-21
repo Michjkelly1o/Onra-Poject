@@ -57,7 +57,7 @@ export function PickerSheet({
 
     return (
         <CustomerSheet open={open} onClose={onClose} tall>
-            <p className="shrink-0 pb-3 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">{title}</p>
+            <p className="shrink-0 pb-3 text-center text-lg font-semibold leading-7 text-[var(--brand-text)] font-heading">{title}</p>
 
             {/* Search */}
             <div className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">

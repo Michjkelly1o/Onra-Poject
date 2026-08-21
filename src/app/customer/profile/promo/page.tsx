@@ -85,7 +85,7 @@ export default function ProfilePromoPage() {
                 >
                     <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">Promo</p>
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)] font-heading">Promo</p>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 

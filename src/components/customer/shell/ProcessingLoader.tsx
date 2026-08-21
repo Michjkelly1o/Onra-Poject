@@ -20,7 +20,7 @@ export function ProcessingLoader({ label, fill = false }: { label: string; fill?
                     />
                 ))}
             </div>
-            <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">{label}</p>
+            <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)] font-heading">{label}</p>
         </div>
     );
 }

@@ -45,7 +45,7 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                 </div>
 
                 <div className="flex flex-col items-center gap-0.5">
-                    <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Payment successful</p>
+                    <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)] font-heading">Payment successful</p>
                     <p className="text-center text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         Your payment of AED {order?.total ?? 0} has been successfully processed.
                     </p>

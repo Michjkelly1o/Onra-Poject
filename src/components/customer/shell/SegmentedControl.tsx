@@ -22,7 +22,7 @@ export function SegmentedControl<T extends string>({
 }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">{label}</span>
+            <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)] font-heading">{label}</span>
             <div className="flex overflow-hidden rounded-md border border-[var(--colors-border-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 {options.map((opt, i) => {
                     const on = value === opt;
