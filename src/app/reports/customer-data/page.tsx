@@ -72,11 +72,15 @@ export default function CustomerDataReportPage() {
                 + (today.getMonth() - joined.getMonth()),
             );
             const avgVisits = c.totalVisits / monthsActive;
-            // "Months with us" — active: today − joined; inactive/lapsed: their
-            // leave date (last visit) − joined (how long they stayed).
+            // "Months with us" = how long they've been a CUSTOMER:
+            //   • Lead      → 0 — a prospect hasn't joined as a customer yet,
+            //                 so the "joined date" clock hasn't started (client
+            //                 2026-08: "if they're a lead it's 0 months, no?").
+            //   • Inactive  → leave date (last visit) − joined (how long they stayed).
+            //   • Member    → today − joined.
             const gone = c.status === "Inactive";
             const endDate = gone && c.lastVisitISO ? new Date(c.lastVisitISO) : today;
-            const monthsWith = Math.max(0,
+            const monthsWith = c.status === "Lead" ? 0 : Math.max(0,
                 (endDate.getFullYear() - joined.getFullYear()) * 12
                 + (endDate.getMonth() - joined.getMonth()),
             );
