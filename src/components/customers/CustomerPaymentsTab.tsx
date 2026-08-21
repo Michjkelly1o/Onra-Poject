@@ -54,13 +54,13 @@ type TxnStatus = CustomerTransaction["status"];
 type TxnKind = CustomerTransaction["kind"];
 type FilterStatus = "complete" | "pending" | "failed";
 
-interface PaymentFilter {
+export interface PaymentFilter {
     dateStart: string;
     dateEnd: string;
     statuses: FilterStatus[];
     kinds: TxnKind[];
 }
-const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", statuses: [], kinds: [] };
+export const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", statuses: [], kinds: [] };
 
 // Filter-chip / column labels. Only the two purchase kinds get a chip
 // or a column value — a `cancellation_penalty` row's Plan type column
@@ -81,12 +81,12 @@ const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package" | "retail" | 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** "AED 1,200". */
-function fmtAed(n: number): string {
+export function fmtAed(n: number): string {
     return `AED ${n.toLocaleString("en-US")}`;
 }
 
 /** "2025-10-28, 10:00 PM" — the payment-history Date & Time column format. */
-function fmtDateTime(iso: string): string {
+export function fmtDateTime(iso: string): string {
     const d = new Date(iso.length <= 10 ? `${iso}T00:00:00Z` : iso);
     if (Number.isNaN(d.getTime())) return "—";
     const y = d.getUTCFullYear();
@@ -122,7 +122,7 @@ const TXN_STATUS_LABEL: Record<TxnStatus, string> = {
     complete: "Complete", pending: "Pending", failed: "Failed", refunded: "Refunded",
 };
 
-function TxnStatusBadge({ status }: { status: TxnStatus }) {
+export function TxnStatusBadge({ status }: { status: TxnStatus }) {
     const styles: Record<TxnStatus, string> = {
         complete: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         pending: "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
@@ -138,7 +138,7 @@ function TxnStatusBadge({ status }: { status: TxnStatus }) {
 
 // ─── Transaction kind icon ────────────────────────────────────────────────────
 
-function TxnIcon({ kind }: { kind: TxnKind }) {
+export function TxnIcon({ kind }: { kind: TxnKind }) {
     // Membership → card · package → package · penalty → slash-circle
     // (block glyph — per client spec Jul 2026). Same neutral colour
     // stack as the other two so the row doesn't shout — the icon is
@@ -171,7 +171,7 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
 // once any balance is spent (or it's already refunded), the sale can't be
 // reversed. All other kinds pass through (their own `isRefundable` flag +
 // status already gate them). Mirrors the store guard in `refundTransaction`.
-function isTxnRefundable(t: CustomerTransaction, cards: IssuedGiftCard[]): boolean {
+export function isTxnRefundable(t: CustomerTransaction, cards: IssuedGiftCard[]): boolean {
     if (t.kind !== "gift_card") return true;
     if (!t.issuedGiftCardId) return true;
     const card = cards.find(c => c.id === t.issuedGiftCardId);
@@ -179,7 +179,7 @@ function isTxnRefundable(t: CustomerTransaction, cards: IssuedGiftCard[]): boole
     return card.status === "active" && card.current_balance_aed >= card.face_value_aed;
 }
 
-function planTypeLabel(t: CustomerTransaction): string {
+export function planTypeLabel(t: CustomerTransaction): string {
     // Penalty + freeze-fee rows are membership-scoped fees → always "Membership".
     if (t.kind === "cancellation_penalty" || t.kind === "freeze_fee") return "Membership";
     if (t.kind === "retail") return "Retail";
@@ -283,7 +283,7 @@ function GiftCardWidget({ card, design }: { card: IssuedGiftCard; design?: GiftC
 
 // ─── Payment-history filter panel (Figma 2481:114232) ─────────────────────────
 
-function PaymentFilterPanel({ open, onClose, applied, onApply }: {
+export function PaymentFilterPanel({ open, onClose, applied, onApply }: {
     open: boolean; onClose: () => void;
     applied: PaymentFilter; onApply: (f: PaymentFilter) => void;
 }) {
@@ -406,7 +406,7 @@ function paymentBreakdown(t: CustomerTransaction): { label: string; amountAed: n
     return out;
 }
 
-function RefundModal({ txn, onClose, onConfirm }: {
+export function RefundModal({ txn, onClose, onConfirm }: {
     txn: CustomerTransaction;
     onClose: () => void;
     onConfirm: (reason: string) => void;
@@ -516,7 +516,7 @@ function RefundModal({ txn, onClose, onConfirm }: {
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
+export function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">

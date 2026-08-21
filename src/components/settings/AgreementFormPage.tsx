@@ -111,7 +111,7 @@ function FormCard({ title, children, footer }: {
     footer: React.ReactNode;
 }) {
     return (
-        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
                 {title && (
                     <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h2>

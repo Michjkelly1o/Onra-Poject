@@ -74,7 +74,13 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Reports",  href: "/admin/reports"  },
         ],
     },
-    { label: "Point of Sale", href: "/admin/pos", icon: ShoppingBag02, permission: "process_sales" },
+    {
+        label: "Sales", icon: ShoppingBag02, permission: "process_sales",
+        children: [
+            { label: "Point of Sale", href: "/admin/pos" },
+            { label: "Transactions",  href: "/admin/transactions" },
+        ],
+    },
     {
         label: "Marketing", icon: Announcement01, permission: "manage_marketing",
         children: [
