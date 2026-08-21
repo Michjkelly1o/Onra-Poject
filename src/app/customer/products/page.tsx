@@ -37,6 +37,11 @@ import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelector
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { ShoppingBag03 } from "@untitledui/icons";
 
+// Slide timing for the in-sheet Detail ⇄ Payment transition — matches the
+// appointment flow's continuous motion (no sheet close/reopen).
+const SLIDE_MS = 360;
+const SLIDE_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+
 type Tab = "all" | "membership" | "packages" | "giftcard" | "retail";
 const TABS: { id: Tab; label: string }[] = [
     { id: "all", label: "All" },
@@ -66,10 +71,44 @@ export default function ProductsPage() {
         const t = new URLSearchParams(window.location.search).get("tab");
         if (TABS.some((x) => x.id === t)) setTab(t as Tab);
     }, []);
-    const [detailId, setDetailId] = useState<string | null>(null);
-    const [checkoutOpen, setCheckoutOpen] = useState(false);
-    // (same sheet, forward/back). `pay` carries the Pay-now intent.
-    const closeProductSheet = () => { setDetailId(null); };
+    // ── Purchase flow — ONE bottom sheet with a horizontally-sliding track of
+    // THREE panels, mirroring the appointment flow so every move slides forward
+    // (next) / back instead of closing + reopening a fresh sheet:
+    //   pos 0 = Detail (product opened from the catalog)
+    //   pos 1 = Payment
+    //   pos 2 = Detail (editing a cart line, opened from the payment edit icon)
+    // Editing lives to the RIGHT of Payment so it slides in as a "next" step, and
+    // Back / Update cart slides back to Payment. ──────────────────────────────────
+    const [flow, setFlow] = useState<{
+        /** Product in panel 0 (catalog-opened). Null when entered straight at Payment. */
+        viewDetailId: string | null;
+        /** Product in panel 2 (the edited line's product). */
+        editDetailId: string | null;
+        /** The cart line being edited (drives panel 2's edit mode). */
+        editLineId: string | null;
+        /** Front panel index. */
+        pos: 0 | 1 | 2;
+        /** Payment reached directly (floating cart) → Back closes instead of sliding. */
+        paymentRoot: boolean;
+    } | null>(null);
+    const closeFlow = () => setFlow(null);
+    // Floating cart → straight to Payment (its own root; Back closes).
+    const openCheckout = () => setFlow({ viewDetailId: null, editDetailId: null, editLineId: null, pos: 1, paymentRoot: true });
+    // Detail "Pay now" → slide forward to Payment.
+    const goToPayment = () => setFlow((f) => (f ? { ...f, pos: 1, paymentRoot: false } : f));
+    // Payment edit icon → slide FORWARD (next) to the edit panel (pos 2).
+    const openLineEditor = (lineId: string) => {
+        const it = purchaseCart.items.find((i) => i.lineId === lineId);
+        if (!it) return;
+        setFlow((f) => (f ? { ...f, editDetailId: it.id, editLineId: lineId, pos: 2 } : f));
+    };
+    // Panel 0 (catalog product) Back / Add-to-cart → close back to the catalog.
+    const detailViewBack = () => setFlow(null);
+    // Panel 2 (edit) Back / Update cart → slide back to Payment.
+    const detailEditBack = () => setFlow((f) => (f ? { ...f, pos: 1 } : null));
+    // Payment Back: from a Pay-now push → slide back to Detail (pos 0); from the
+    // floating-cart root → close.
+    const paymentBack = () => setFlow((f) => (f && !f.paymentRoot ? { ...f, pos: 0 } : null));
     const [branchSheet, setBranchSheet] = useState(false);
     const [, bump] = useReducer((x) => x + 1, 0);
 
@@ -153,8 +192,8 @@ export default function ProductsPage() {
             router.push("/customer/profile/plan");
             return;
         }
-        // Product Details opens as a bottom sheet over the catalog.
-        setDetailId(p.id);
+        // Product Details opens as a bottom sheet over the catalog (Detail panel 0).
+        setFlow({ viewDetailId: p.id, editDetailId: null, editLineId: null, pos: 0, paymentRoot: false });
     }
 
     /** `?back=` param that returns the detail's Back button to the current tab. */
@@ -163,7 +202,7 @@ export default function ProductsPage() {
     }
 
     function onAdd(plan: PlanRow, qty: number) {
-        setDetailId(null);
+        closeFlow();
         // Guests can't purchase — any add-to-cart routes to the login front door.
         if (!member) {
             router.push(loginHref(pathname));
@@ -361,44 +400,75 @@ export default function ProductsPage() {
                 <FloatingCartCard
                     count={cartCount()}
                     total={cartTotal()}
-                    onCheckout={() => setCheckoutOpen(true)}
+                    onCheckout={openCheckout}
                 />
             )}
 
             <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
 
-            {/* Gift cards open the Gift card information sheet DIRECTLY (illustration
-                + amount + recipient), skipping the product-detail step. Every other
-                product opens the product detail. Client 2026-08-11. */}
-            <CustomerSheet open={detailId != null} onClose={closeProductSheet} tall bleed={!(detailId != null && giftCards.some((g) => g.id === detailId))}>
-                {detailId && (giftCards.some((g) => g.id === detailId) ? (
-                    <GiftCardInfoContent
-                            designId={detailId}
-                            variant="sheet"
-                            onDone={closeProductSheet}
-                            onCheckout={() => { closeProductSheet(); setCheckoutOpen(true); }}
-                        />
-                ) : (
-                    <div className="h-full w-full">
-                        <ProductDetailScreen
-                            productId={detailId}
-                            originId="products"
-                            variant="sheet"
-                            onBack={closeProductSheet}
-                            afterAdd={closeProductSheet}
-                            onCheckout={() => { closeProductSheet(); setCheckoutOpen(true); }}
-                        />
-                    </div>
-                ))}
-            </CustomerSheet>
-
-            <CustomerSheet open={checkoutOpen} onClose={() => setCheckoutOpen(false)} tall>
-                <CheckoutCart
-                    variant="sheet"
-                    originId="products"
-                    onBack={() => setCheckoutOpen(false)}
-                    processingHref="/customer/products/checkout/processing"
-                />
+            {/* Purchase flow — Detail → Payment → Detail(edit) in ONE sheet, a
+                3-panel track that always slides forward (next) / back, like the
+                appointment flow. Bleed keeps the Detail hero edge-to-edge; the
+                Payment panel re-adds px-4 (which CheckoutCart's own sub-panel slide
+                needs) + top clearance for the floating handle + pb-5 for the footer
+                (matches the appointment payment sheet). Gift cards ride panel 0. */}
+            <CustomerSheet open={flow != null} onClose={closeFlow} tall bleed>
+                {flow && (() => {
+                    const isGiftView = flow.viewDetailId != null && giftCards.some((g) => g.id === flow.viewDetailId);
+                    return (
+                        <div className="relative min-h-0 flex-1 overflow-hidden">
+                            <div
+                                className="flex h-full w-full"
+                                style={{ transform: `translateX(-${flow.pos * 100}%)`, transition: `transform ${SLIDE_MS}ms ${SLIDE_EASE}` }}
+                            >
+                                {/* Panel 0 — Detail (catalog product) */}
+                                <div className={`h-full w-full shrink-0 ${isGiftView ? "px-4 pt-6" : ""}`}>
+                                    {flow.viewDetailId && (isGiftView ? (
+                                        <GiftCardInfoContent
+                                            designId={flow.viewDetailId}
+                                            variant="sheet"
+                                            onDone={closeFlow}
+                                            onCheckout={goToPayment}
+                                        />
+                                    ) : (
+                                        <ProductDetailScreen
+                                            productId={flow.viewDetailId}
+                                            originId="products"
+                                            variant="sheet"
+                                            onBack={detailViewBack}
+                                            afterAdd={detailViewBack}
+                                            onCheckout={goToPayment}
+                                        />
+                                    ))}
+                                </div>
+                                {/* Panel 1 — Payment */}
+                                <div className="h-full w-full shrink-0 px-4 pt-6 pb-5">
+                                    <CheckoutCart
+                                        variant="sheet"
+                                        originId="products"
+                                        onBack={paymentBack}
+                                        processingHref="/customer/products/checkout/processing"
+                                        onEditLine={openLineEditor}
+                                    />
+                                </div>
+                                {/* Panel 2 — Detail (editing a cart line) */}
+                                <div className="h-full w-full shrink-0">
+                                    {flow.editDetailId && (
+                                        <ProductDetailScreen
+                                            productId={flow.editDetailId}
+                                            originId="products"
+                                            variant="sheet"
+                                            editLineId={flow.editLineId}
+                                            onBack={detailEditBack}
+                                            afterAdd={detailEditBack}
+                                            onCheckout={goToPayment}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
             </CustomerSheet>
         </div>
     );
