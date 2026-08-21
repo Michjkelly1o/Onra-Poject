@@ -119,8 +119,11 @@ export const customer_plans: CustomerPlan[] = [
         sold_by_staff_id: "user_casey_desk",
     },
     {
-        // Frozen 2026-05-01 → 2026-05-31 (30 days) — expiry extended +30 days
-        // from 2026-07-10 to 2026-08-09. Drives the Unfreeze action demo.
+        // Currently frozen — anchored to "now" so it's a LIVE freeze (drives
+        // both the Unfreeze action demo and the Frozen Plans report). Frozen
+        // ~25 days ago, still ongoing (ends in ~20 days); expiry pushed out to
+        // cover the freeze window. A second package alongside the active
+        // cp_bosa_1 is allowed (a customer may hold multiple packages).
         id: "cp_bosa_2",
         customer_id: "cust_bosa_ahmed",
         kind: "package",
@@ -129,11 +132,12 @@ export const customer_plans: CustomerPlan[] = [
         plan_type_label: "Package",
         credits_label: "5 credits",
         status: "frozen",
-        purchased_at: "2026-04-10",
-        expiry_iso: "2026-08-09T22:00:00Z",
-        freeze_start_iso: "2026-05-01",
-        freeze_end_iso: "2026-05-31",
+        purchased_at: isoDate(daysAgo(120)),
+        expiry_iso: daysFromNow(50),
+        freeze_start_iso: isoDate(daysAgo(25)),
+        freeze_end_iso: isoDate(daysAgo(-20)),
         freeze_reason: "Travelling abroad",
+        freeze_source: "customer_portal",
         sold_by_staff_id: "user_jordan_ops",
     },
     {
@@ -291,6 +295,87 @@ export const customer_plans: CustomerPlan[] = [
         removed_by: "Alex Owen",
         removed_by_role: "Owner",
         removed_at: "2026-03-05",
+    },
+
+    // ── Currently-frozen packages — Frozen Plans report demo ─────────────────
+    // Live, in-window freezes anchored to "now" so the Frozen Plans report is
+    // always populated with real, varied data (mix of durations, reasons, and
+    // freeze sources). Each sits on a customer who already holds an ACTIVE
+    // package — a second package is allowed (the one-membership-OR-many-packages
+    // rule only forbids membership+package / two memberships), so none of these
+    // break plan exclusivity. Days frozen = today − freeze start (the selector
+    // caps an ongoing freeze at today).
+    {
+        // Rosale — 60-day freeze, ~30 days elapsed, still ongoing.
+        id: "cp_rosale_frozen",
+        customer_id: "cust_rosale_martin",
+        kind: "package",
+        product_id: "pkg_5_class",
+        name: "5-Class Package for One Month",
+        plan_type_label: "Package",
+        credits_label: "5 credits",
+        status: "frozen",
+        purchased_at: isoDate(daysAgo(75)),
+        expiry_iso: daysFromNow(45),
+        freeze_start_iso: isoDate(daysAgo(30)),
+        freeze_end_iso: isoDate(daysAgo(-30)),
+        freeze_reason: "Medical leave",
+        freeze_source: "front_desk",
+        sold_by_staff_id: "user_casey_desk",
+    },
+    {
+        // James — 30-day freeze, ~20 days elapsed, still ongoing.
+        id: "cp_james_frozen",
+        customer_id: "cust_james_taylor",
+        kind: "package",
+        product_id: "pkg_10_class",
+        name: "10-Class Package for One Month",
+        plan_type_label: "Package",
+        credits_label: "10 credits",
+        status: "frozen",
+        purchased_at: isoDate(daysAgo(60)),
+        expiry_iso: daysFromNow(40),
+        freeze_start_iso: isoDate(daysAgo(20)),
+        freeze_end_iso: isoDate(daysAgo(-10)),
+        freeze_reason: "Travelling abroad",
+        freeze_source: "customer_portal",
+        sold_by_staff_id: "user_jordan_ops",
+    },
+    {
+        // Lucas — 30-day freeze, ~12 days elapsed, still ongoing.
+        id: "cp_lucas_frozen",
+        customer_id: "cust_lucas_brown",
+        kind: "package",
+        product_id: "pkg_5_class",
+        name: "5-Class Package for One Month",
+        plan_type_label: "Package",
+        credits_label: "5 credits",
+        status: "frozen",
+        purchased_at: isoDate(daysAgo(50)),
+        expiry_iso: daysFromNow(35),
+        freeze_start_iso: isoDate(daysAgo(12)),
+        freeze_end_iso: isoDate(daysAgo(-18)),
+        freeze_reason: "Injury recovery",
+        freeze_source: "admin",
+        sold_by_staff_id: "user_sam_admin",
+    },
+    {
+        // Fatima — 60-day freeze, ~45 days elapsed, still ongoing.
+        id: "cp_fatima_frozen",
+        customer_id: "cust_fatima_al_sayed",
+        kind: "package",
+        product_id: "pkg_5_class",
+        name: "5-Class Package for One Month",
+        plan_type_label: "Package",
+        credits_label: "5 credits",
+        status: "frozen",
+        purchased_at: isoDate(daysAgo(90)),
+        expiry_iso: daysFromNow(20),
+        freeze_start_iso: isoDate(daysAgo(45)),
+        freeze_end_iso: isoDate(daysAgo(-15)),
+        freeze_reason: "Work relocation",
+        freeze_source: "customer_portal",
+        sold_by_staff_id: "user_casey_desk",
     },
 
     // ── Notification-backing rows ────────────────────────────────────────────
