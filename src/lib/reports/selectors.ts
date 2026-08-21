@@ -1615,7 +1615,10 @@ export function selectRetailStockOnHand(
             unitsSold = Math.max(0, unitsSold);
             // Client comment: when nothing came in during the period the
             // denominator is zero — show "—", not 0%. null renders as "—".
-            const sellThrough = unitsReceived > 0 ? unitsSold / unitsReceived : null;
+            // Stored 0-100 (the shell's "percent" kind formats N.N% directly),
+            // matching every other rate column — so 5 sold ÷ 30 received = 16.7%,
+            // not 0.2%.
+            const sellThrough = unitsReceived > 0 ? (unitsSold / unitsReceived) * 100 : null;
 
             // Stock turnover approximation — units sold in period ÷ average on
             // hand. Average on hand = (start + end) / 2 where
