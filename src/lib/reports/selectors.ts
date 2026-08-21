@@ -85,6 +85,9 @@ export interface PaymentRow {
     failureReason?: string;
     retryAttempt?: number;
     recovered?: boolean;
+    /** "Recovered" column — whether a FAILED charge was later recovered.
+     *  "Y" / "N" for failed charges; "" (n/a) for non-failed rows. */
+    recoveredYN: string;
     recoveredISO?: string;
     payoutId?: string;
     processorFee?: number;
@@ -506,6 +509,7 @@ export function selectPayments(state: AppState): PaymentRow[] {
             failureReason: undefined as string | undefined,
             retryAttempt: undefined as number | undefined,
             recovered: undefined as boolean | undefined,
+            recoveredYN: "" as string,
             recoveredISO: undefined as string | undefined,
         };
 
@@ -545,7 +549,10 @@ export function selectPayments(state: AppState): PaymentRow[] {
             ...base, id: t.id, paymentDateISO: t.createdAtISO,
             paymentAmount: t.amountAed, status: t.status,
             failureReason: t.failureReason, retryAttempt: t.retryAttempt,
-            recovered: t.recovered, recoveredISO: t.recoveredISO,
+            recovered: t.recovered,
+            // Recovered column — Y/N only for failed charges; blank otherwise.
+            recoveredYN: t.status === "failed" ? (t.recovered ? "Y" : "N") : "",
+            recoveredISO: t.recoveredISO,
             payoutId: t.payoutId, processorFee: t.processorFee, netPayout,
         });
     }
