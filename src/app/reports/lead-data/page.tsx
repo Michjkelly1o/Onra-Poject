@@ -51,7 +51,7 @@ export default function LeadDataReportPage() {
         phone:               l.phone,
         gender:              l.gender,
         leadSource:          l.source,
-        leadStage:           l.stage,
+        leadStage:           l.stageLabel,
         leadAssignedTo:      l.assignedTo,
         engagementStatus:    l.engagementStatus,
         firstPurchase:       l.firstPurchase,

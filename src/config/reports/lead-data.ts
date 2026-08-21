@@ -5,9 +5,10 @@
 // Columns + labels are Excel-verbatim from new-prd/Onra_Reporting.xlsx
 // (Sheet 2 rows 381-422 · Lead Data).
 //
-// The store doesn't carry a leads slice yet — this report renders empty
-// until the leads module lands. The registry entry + page are ready so
-// wiring is a one-line change when the source arrives.
+// Live off the `leads` slice (selectLeads). The "Lead stage" column shows the
+// studio's editable lead-pipeline vocabulary (New · Contacted · Trial booked ·
+// Follow-up · Won · Lost) — see selectLeads' STAGE_LABEL map — so it matches
+// how the client manages leads in Settings → Lead Lifecycle.
 
 import type { ReportDefinition } from "@/lib/reports/types";
 

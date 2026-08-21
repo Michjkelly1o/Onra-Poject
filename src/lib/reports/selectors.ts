@@ -140,7 +140,14 @@ export interface LeadRow {
     phone: string;
     gender: string;
     source: string;
+    /** Raw funnel stage, title-cased ("Paid", "Trial Attended") — kept for the
+     *  Lead Conversion report's stage-substring logic. */
     stage: string;
+    /** Lead stage aligned to the studio's editable lead pipeline
+     *  (Settings → Lead Lifecycle: New · Contacted · Trial booked · Follow-up ·
+     *  Won · Lost) — the vocabulary the client manages leads with. Shown as the
+     *  "Lead stage" column on the Leads report. */
+    stageLabel: string;
     assignedTo: string;
     engagementStatus: string;
     firstPurchase: string;
@@ -1107,6 +1114,18 @@ export function selectLeads(state: AppState): LeadRow[] {
         `${(s as unknown as { first_name?: string; firstName?: string }).first_name ?? (s as unknown as { firstName?: string }).firstName ?? ""} ${(s as unknown as { last_name?: string; lastName?: string }).last_name ?? (s as unknown as { lastName?: string }).lastName ?? ""}`.trim(),
     ]));
     const leads = (state as unknown as { leads: import("@/lib/store").Lead[] }).leads ?? [];
+    // Map the lead funnel enum onto the studio's editable lead-pipeline stages
+    // (Settings → Lead Lifecycle) so the report's "Lead stage" matches how the
+    // client actually manages leads: a lead who attended a trial but hasn't
+    // bought sits in Follow-up; a lead who paid is Won.
+    const STAGE_LABEL: Record<string, string> = {
+        "new":            "New",
+        "contacted":      "Contacted",
+        "trial-booked":   "Trial booked",
+        "trial-attended": "Follow-up",
+        "paid":           "Won",
+        "lost":           "Lost",
+    };
     return leads.map(l => ({
         id: l.id,
         addedAtISO: l.added_at.slice(0, 10),
@@ -1116,6 +1135,7 @@ export function selectLeads(state: AppState): LeadRow[] {
         gender: l.gender ?? "",
         source: l.source,
         stage: l.stage.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+        stageLabel: STAGE_LABEL[l.stage] ?? l.stage,
         assignedTo: l.assigned_to_staff_id ? (staffById.get(l.assigned_to_staff_id) ?? "—") : "",
         engagementStatus: l.engagement_status.charAt(0).toUpperCase() + l.engagement_status.slice(1),
         firstPurchase: l.first_purchase_name ?? "",
