@@ -509,9 +509,9 @@ export function selectPayments(state: AppState): PaymentRow[] {
             failureReason: undefined as string | undefined,
             retryAttempt: undefined as number | undefined,
             recovered: undefined as boolean | undefined,
-            // "—" = recovery not applicable (the charge never failed). Failed
-            // charges override this with "Y"/"N" on the sale/failed path below.
-            recoveredYN: "—" as string,
+            // Y/N flag — "N" default (not recovered); the sale/failed path below
+            // flips it to "Y" when the transaction's `recovered` flag is set.
+            recoveredYN: "N" as string,
             recoveredISO: undefined as string | undefined,
         };
 
@@ -552,8 +552,9 @@ export function selectPayments(state: AppState): PaymentRow[] {
             paymentAmount: t.amountAed, status: t.status,
             failureReason: t.failureReason, retryAttempt: t.retryAttempt,
             recovered: t.recovered,
-            // Recovered column — Y/N for failed charges; "—" (n/a) otherwise.
-            recoveredYN: t.status === "failed" ? (t.recovered ? "Y" : "N") : "—",
+            // Recovered column — plain Y/N: "Y" when the charge was recovered,
+            // "N" otherwise. Derived from the transaction's real `recovered` flag.
+            recoveredYN: t.recovered ? "Y" : "N",
             recoveredISO: t.recoveredISO,
             payoutId: t.payoutId, processorFee: t.processorFee, netPayout,
         });
