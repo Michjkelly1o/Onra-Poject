@@ -1678,6 +1678,9 @@ export interface ClassBooking {
     booked_at: string;         // ISO 8601
     /** 1-based queue position, only set when status="waitlisted". */
     waitlist_position?: number;
+    /** True when this seat started on the waitlist and was later promoted to a
+     *  confirmed booking. Feeds Class Performance "Waitlist converted". */
+    promoted_from_waitlist?: boolean;
     cancelled_at?: string;
     cancellation_reason?: string;
     refund_credit_issued?: boolean;

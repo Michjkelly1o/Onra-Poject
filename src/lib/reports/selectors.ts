@@ -867,6 +867,8 @@ export function selectClassSessions(state: AppState): ClassSessionRow[] {
             if (b.status === "cancelled") continue;
             // booked-status rows count as "confirmed seats held".
             booked += 1;
+            // Seats given a confirmed spot after starting on the waitlist.
+            if ((b as { promotedFromWaitlist?: boolean }).promotedFromWaitlist) waitlistConverted += 1;
             if (b.attendanceStatus === "present") {
                 attended += 1;
                 uniqueAttendees.add(b.customerId);

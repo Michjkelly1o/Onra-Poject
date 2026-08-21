@@ -1231,6 +1231,9 @@ export interface ClassBooking {
     cancellationReason?: string;
     refundCreditIssued?: boolean;
     waitlistPosition?: number;
+    /** True when this seat started on the waitlist and was later promoted to a
+     *  confirmed booking. Feeds Class Performance "Waitlist converted". */
+    promotedFromWaitlist?: boolean;
     /** Waitlist claim offer — set on the next-in-line seat when a spot frees up
      *  and Booking Rules are in "Notify to accept" mode. The seat stays
      *  `waitlisted` until the member claims it; if the claim lapses or is
@@ -3000,6 +3003,7 @@ function bookingFromSeed(b: SeedClassBooking): ClassBooking {
         cancellationReason: b.cancellation_reason,
         refundCreditIssued: b.refund_credit_issued,
         waitlistPosition: b.waitlist_position,
+        promotedFromWaitlist: b.promoted_from_waitlist,
         bookingSource: b.booking_source,
         cancelledSource: b.cancelled_source,
         attendanceMarkedAt: b.attendance_marked_at,
@@ -13877,7 +13881,7 @@ export const useAppStore = create<AppState>()(persist(
         //   the campaign) + an SMS send-stat on the Summer HIIT campaign. Bump so
         //   persisted demos re-seed with the campaign budgets that feed the
         //   Acquisition Efficiency report.
-        version: 128,
+        version: 129,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

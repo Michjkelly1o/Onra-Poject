@@ -16,11 +16,12 @@
 //                          Recognized this period = (Amount ÷ Term months) ×
 //                                                   Months elapsed
 //
-// Today's demo seed doesn't track credit usage against a specific
-// contract, so `usedThisPeriod` / `recognizedToDate` / `remaining` /
-// `deferredBalance` show blank / 0 for packages until credit
-// consumption events land in the store. Membership rows compute
-// months-elapsed via the plan's purchase date and today's date.
+// Package credit usage: when the sale still has a live plan row, credits used
+// come from derivePlanBalances (the same math the customer profile + Memberships
+// report use). For a historical sale whose plan no longer survives, consumption
+// is estimated from how much of the package's validity window has elapsed (a
+// fully-elapsed / expired package is fully recognized) so recognition isn't
+// stuck at 0. Membership rows recognize straight-line via purchase date + term.
 
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
@@ -93,6 +94,15 @@ export default function RevenueRecognitionReportPage() {
         () => new Map(packages.map(p => [p.id, typeof p.credits === "number" ? p.credits : 0] as const)),
         [packages],
     );
+    // Validity window (days) per package id — used to estimate how much of a
+    // historical package sale has been consumed when no live plan row survives.
+    const packageValidityById = useMemo(
+        () => new Map(packages.map(p => {
+            const v = (p as { validity_days?: number }).validity_days;
+            return [p.id, typeof v === "number" ? v : 30] as const;
+        })),
+        [packages],
+    );
 
     const rawLedger = useMemo<LedgerRow[]>(() => {
         if (!report) return [];
@@ -150,8 +160,23 @@ export default function RevenueRecognitionReportPage() {
                 const bal = plan ? planBalById.get(plan.id) : undefined;
                 const totalCredits = bal?.total
                     ?? (isMembership ? (memCredits ?? 0) : (packageCreditsById.get(r.productId ?? "") ?? 0));
-                const usedCredits   = bal?.used ?? 0;
-                const leftCredits   = bal?.left ?? totalCredits;
+                let usedCredits: number;
+                let leftCredits: number;
+                if (bal) {
+                    usedCredits = bal.used;
+                    leftCredits = bal.left;
+                } else {
+                    // No live plan (historical / churned contract) — estimate
+                    // consumption from how much of the package's validity window
+                    // has elapsed, so recognition isn't stuck at 0. A fully-
+                    // elapsed (expired) package is fully recognized; the rest is
+                    // still deferred.
+                    const validityDays = packageValidityById.get(r.productId ?? "") ?? 30;
+                    const daysElapsed = Math.max(0, (today.getTime() - purchased.getTime()) / 86_400_000);
+                    const frac = validityDays > 0 ? Math.min(1, daysElapsed / validityDays) : 1;
+                    usedCredits = Math.round(totalCredits * frac);
+                    leftCredits = totalCredits - usedCredits;
+                }
                 const perCredit     = totalCredits > 0 ? amount / totalCredits : 0;
                 const creditWord = (n: number) => `${n} credit${n === 1 ? "" : "s"}`;
                 termOrCredits    = totalCredits > 0 ? creditWord(totalCredits) : "—";
