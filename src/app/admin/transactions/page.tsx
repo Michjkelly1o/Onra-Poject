@@ -198,13 +198,13 @@ export default function TransactionsPage() {
                         // min-width is sized so the (flexible) Transaction-name column
                         // gets a generous ~320px and never squeezes/truncates — the
                         // table scrolls horizontally instead.
-                        <table className="w-full min-w-[1360px] border-collapse table-fixed">
+                        <table className="w-full min-w-[1460px] border-collapse table-fixed">
                             <thead>
                                 <tr>
                                     <th className={TH}>
                                         <SortableHeader sortKey="name"     currentSort={sortKey} dir={sortDir} onSort={toggle}>Transaction name</SortableHeader>
                                     </th>
-                                    <th className={cn(TH, "w-[170px]")}>
+                                    <th className={cn(TH, "w-[260px]")}>
                                         <SortableHeader sortKey="txnNumber" currentSort={sortKey} dir={sortDir} onSort={toggle}>Transaction number</SortableHeader>
                                     </th>
                                     <th className={cn(TH, "w-[200px]")}>
