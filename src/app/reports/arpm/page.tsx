@@ -99,15 +99,19 @@ export default function ARPMReportPage() {
             if (p.status === "active") customerActivePlan.set(p.customerId, p.planName);
         }
         for (const l of ledger) {
-            if (l.transactionType !== "sale") continue;
+            // Net revenue = sales − refunds − write-offs, per the report's
+            // "net after discounts & refunds" definition. signedAmount is
+            // already positive on sales and negative on refunds / write-offs,
+            // so summing it (not abs) deducts refunds instead of adding them.
+            if (l.transactionType !== "sale" && l.transactionType !== "refund" && l.transactionType !== "write_off") continue;
             const seg = customerActivePlan.get(l.customerId);
             if (!seg) continue;
             const key = `${l.branchId}|${seg}`;
             const bucket = buckets.get(key);
             if (!bucket) continue;
             const d = new Date(l.createdAtISO);
-            if (d >= currStart  && d <= currEnd)  bucket.netRevenueCurr  += Math.abs(l.signedAmount);
-            if (d >= priorStart && d <= priorEnd) bucket.netRevenuePrior += Math.abs(l.signedAmount);
+            if (d >= currStart  && d <= currEnd)  bucket.netRevenueCurr  += l.signedAmount;
+            if (d >= priorStart && d <= priorEnd) bucket.netRevenuePrior += l.signedAmount;
         }
 
         return Array.from(buckets.values()).map(b => {

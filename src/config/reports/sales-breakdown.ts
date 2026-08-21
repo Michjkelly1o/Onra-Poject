@@ -76,6 +76,10 @@ export const SALES_BREAKDOWN_REPORT: ReportDefinition = {
 
     // "Break down by" = Item / Item type, in the standard toolbar slot. Opens
     // on None (flat rows) like every other report — user picks the break-down.
+    // Opens grouped by Item — this is a per-item breakdown, and the "% of
+    // total net" column is a per-group ratio (groupCalc) that only computes
+    // when a grouping is active. Without this it opened flat and showed 0.0%.
+    defaultDimensionKey: "item",
     dimensions: [
         { key: "item",     label: "Item",      extract: r => String(r[K.item]     ?? "—") },
         { key: "itemType", label: "Item type", extract: r => String(r[K.itemType] ?? "—") },

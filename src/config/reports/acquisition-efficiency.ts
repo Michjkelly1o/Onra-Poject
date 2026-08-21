@@ -65,6 +65,11 @@ export const ACQUISITION_EFFICIENCY_REPORT: ReportDefinition = {
     ],
 
     // Sheet 1 default: channel.
+    // Opens grouped by Channel — this is a per-channel efficiency report, and
+    // grouping recombines each channel's spend with its leads/members (referral
+    // spend carries no branch, so on the flat per-branch view CPL/CAC/ROAS read
+    // 0 until grouped). The CPL/CAC/ROAS/LTV:CAC ratios are per-group calcs.
+    defaultDimensionKey: "channel",
     dimensions: [
         { key: "channel",  label: "Channel",  extract: r => String(r[K.channel]  ?? "—") },
         { key: "location", label: "Location", extract: r => String(r[K.location] ?? "—") },

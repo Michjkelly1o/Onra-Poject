@@ -3430,7 +3430,11 @@ function deriveStaffAttendanceLog(schedules: ClassSchedule[]): StaffAttendanceLo
                 covered_by_staff_id: undefined,
                 is_substitute: true,
                 late_start_minutes: 0,
-                scheduled_hours: scheduled,
+                // A picked-up cover shift was NOT on the substitute's schedule,
+                // so scheduled = 0 while they worked the full session → their
+                // Variance reads +worked (extra hours), and the covered original
+                // shows −scheduled. Net across both nets to zero.
+                scheduled_hours: 0,
                 actual_hours: scheduled,
             });
         }
@@ -13873,7 +13877,7 @@ export const useAppStore = create<AppState>()(persist(
         //   the campaign) + an SMS send-stat on the Summer HIIT campaign. Bump so
         //   persisted demos re-seed with the campaign budgets that feed the
         //   Acquisition Efficiency report.
-        version: 127,
+        version: 128,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
