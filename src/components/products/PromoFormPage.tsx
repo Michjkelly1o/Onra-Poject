@@ -81,7 +81,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
 
 function FormCard({ children, footer }: { children: React.ReactNode; footer: React.ReactNode }) {
     return (
-        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-8">{children}</div>
             <div className="shrink-0 px-6 pb-6 pt-6 flex items-center">{footer}</div>
         </div>

@@ -211,7 +211,7 @@ export function BranchFormPage({ mode, branchId }: {
                     <StepSidebar steps={[{ n: 1, label: "Branch details" }]} current={1} />
 
                     {/* Center form card */}
-                    <div className="flex-1 min-w-0 max-w-[628px] flex flex-col min-h-0">
+                    <div className="flex-1 min-w-0 flex flex-col min-h-0">
                         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex-1 flex flex-col gap-6 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] min-h-0">
                             <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-1 -mx-1 min-h-0">
                                 <SectionHeader title="Branch details" />

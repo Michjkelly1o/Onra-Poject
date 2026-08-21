@@ -305,7 +305,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                 </div>
 
                 {/* Form card */}
-                <div className="flex-1 max-w-[628px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <div className="flex-1 min-w-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-8">
                         {/* ─── Complimentary configuration ─── */}
                         <div className="flex flex-col gap-4">

@@ -1061,7 +1061,7 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                 </div>
 
                 {/* Center — content card */}
-                <div className="flex-1 min-w-0 max-w-[628px] h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
                         {step === 1 ? (
                             <div className="flex flex-col gap-8 w-full">
