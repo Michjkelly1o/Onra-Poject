@@ -27,7 +27,6 @@ import { SelectInput } from "@/components/ui/select-input";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
-import { Button } from "@/components/ui/button";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { customerTransactionsExportData } from "@/lib/export/specs/customer-records";
 import { useAppStore, type CustomerTransaction } from "@/lib/store";
@@ -156,8 +155,6 @@ export default function TransactionsPage() {
         return items;
     }
 
-    const COL_COUNT = 8;
-
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
@@ -255,37 +252,33 @@ export default function TransactionsPage() {
                                                 </td>
                                             </tr>
 
-                                            {o.isMulti && isOpen && (
-                                                <tr className="bg-[var(--colors-bg-secondary)]/40">
-                                                    <td className={cn(TD, "!py-0")} colSpan={COL_COUNT}>
-                                                        <div className="flex flex-col gap-2 pl-11 pr-4 py-3">
-                                                            {o.txns.map(t => (
-                                                                <div key={t.id} className="flex items-center gap-3">
-                                                                    <TxnIcon kind={t.kind} />
-                                                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
-                                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)]">{planTypeLabel(t)}</span>
-                                                                    </div>
-                                                                    <span className="text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums w-[120px] text-right">
-                                                                        {t.status === "refunded" ? `+ ${fmtAed(Math.abs(t.amountAed))}` : fmtAed(t.amountAed)}
-                                                                    </span>
-                                                                    <div className="w-[140px] flex items-center">
-                                                                        <TxnStatusBadge status={t.status} />
-                                                                    </div>
-                                                                    <div className="w-[140px] flex justify-end">
-                                                                        {refundableLine(t) && (
-                                                                            <Button variant="secondary-gray" size="sm" leftIcon={<CoinsSwap02 className="w-4 h-4" />}
-                                                                                onClick={() => setRefundTxn(t)}>
-                                                                                Refund
-                                                                            </Button>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
+                                            {o.isMulti && isOpen && o.txns.map(t => (
+                                                /* Product line — rendered like a normal row (icon +
+                                                   name, type / amount / status in their own columns)
+                                                   so everything aligns under the header. Only col 1 is
+                                                   lightly indented to show it's nested. */
+                                                <tr key={`${o.key}-${t.id}`} className="bg-[var(--colors-bg-secondary)]/40">
+                                                    <td className={TD}>
+                                                        <div className="flex items-center gap-3 pl-8">
+                                                            <TxnIcon kind={t.kind} />
+                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{t.name}</span>
                                                         </div>
                                                     </td>
+                                                    <td className={TD} />
+                                                    <td className={TD} />
+                                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
+                                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap text-right")}>
+                                                        {t.status === "refunded" ? `+ ${fmtAed(Math.abs(t.amountAed))}` : fmtAed(t.amountAed)}
+                                                    </td>
+                                                    <td className={TD}><TxnStatusBadge status={t.status} /></td>
+                                                    <td className={TD} />
+                                                    <td className={TD}>
+                                                        {refundableLine(t) && (
+                                                            <RowActions items={[{ label: "Refund payment", icon: CoinsSwap02, onClick: () => setRefundTxn(t) }]} />
+                                                        )}
+                                                    </td>
                                                 </tr>
-                                            )}
+                                            ))}
                                         </Fragment>
                                     );
                                 })}

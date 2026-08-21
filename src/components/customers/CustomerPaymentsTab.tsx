@@ -959,43 +959,38 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                         </td>
                                                     </tr>
 
-                                                    {o.isMulti && isOpen && (
-                                                        <tr className="bg-[var(--colors-bg-secondary)]/40">
-                                                            <td className={cn(TD, "!py-0")} colSpan={6}>
-                                                                <div className="flex flex-col gap-2 pl-11 pr-2 py-3">
-                                                                    {o.txns.map(t => (
-                                                                        <div key={t.id} className="flex items-center gap-3">
-                                                                            <TxnIcon kind={t.kind} />
-                                                                            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
-                                                                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">{planTypeLabel(t)}</span>
-                                                                            </div>
-                                                                            <span className="text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums w-[120px] text-right">
-                                                                                {t.status === "refunded" ? `+ ${fmtAed(Math.abs(t.amountAed))}` : fmtAed(t.amountAed)}
-                                                                            </span>
-                                                                            <div className="w-[150px] flex items-center">
-                                                                                {t.status === "complete" && t.refundRequestedAtISO ? (
-                                                                                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
-                                                                                        Refund requested
-                                                                                    </span>
-                                                                                ) : (
-                                                                                    <TxnStatusBadge status={t.status} />
-                                                                                )}
-                                                                            </div>
-                                                                            <div className="w-[120px] flex justify-end">
-                                                                                {refundableLine(t) && (
-                                                                                    <Button variant="secondary-gray" size="sm" leftIcon={<CoinsSwap02 className="w-4 h-4" />}
-                                                                                        onClick={() => setRefundTxn(t)}>
-                                                                                        Refund
-                                                                                    </Button>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
+                                                    {o.isMulti && isOpen && o.txns.map(t => (
+                                                        /* Product line — rendered like a normal row so
+                                                           type / amount / status align under the header.
+                                                           Only col 1 is lightly indented to show nesting. */
+                                                        <tr key={`${o.key}-${t.id}`} className="bg-[var(--colors-bg-secondary)]/40">
+                                                            <td className={TD}>
+                                                                <div className="flex items-center gap-3 pl-8">
+                                                                    <TxnIcon kind={t.kind} />
+                                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{t.name}</span>
                                                                 </div>
                                                             </td>
+                                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
+                                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap text-right")}>
+                                                                {t.status === "refunded" ? `+ ${fmtAed(Math.abs(t.amountAed))}` : fmtAed(t.amountAed)}
+                                                            </td>
+                                                            <td className={TD}>
+                                                                {t.status === "complete" && t.refundRequestedAtISO ? (
+                                                                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]">
+                                                                        Refund requested
+                                                                    </span>
+                                                                ) : (
+                                                                    <TxnStatusBadge status={t.status} />
+                                                                )}
+                                                            </td>
+                                                            <td className={TD} />
+                                                            <td className={TD}>
+                                                                {refundableLine(t) && (
+                                                                    <RowActions items={[{ label: "Refund payment", icon: CoinsSwap02, onClick: () => setRefundTxn(t) }]} />
+                                                                )}
+                                                            </td>
                                                         </tr>
-                                                    )}
+                                                    ))}
                                                 </Fragment>
                                             );
                                         })}
