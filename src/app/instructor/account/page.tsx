@@ -167,7 +167,6 @@ export default function InstructorAccountPage() {
             last_name:     draft.lastName,
             email:         draft.email,
             phone:         draft.phone,
-            introduction:  draft.introduction,
             avatar_url:    draft.avatarUrl,
         });
         setFlow({ kind: "idle" });
@@ -227,6 +226,7 @@ export default function InstructorAccountPage() {
                         branchTimezoneLabel={branch ? branchTzLabel(branch) : undefined}
                         branchWorkingDays={branchOpenBySunSat}
                         branchWorkingHoursLabel={branchHoursWindow}
+                        shortIntro={myStaffRow?.shortIntro}
                         workingExperienceYears={myStaffRow?.workingExperienceYears}
                         categories={myCategoryNames}
                         shiftName={myShift?.name}
@@ -260,7 +260,6 @@ export default function InstructorAccountPage() {
                         lastName:     currentUser.last_name ?? "",
                         email:        currentUser.email ?? "",
                         phone:        currentUser.phone ?? "",
-                        introduction: currentUser.introduction ?? "",
                         avatarUrl:    currentUser.avatar_url ?? "",
                     }}
                     onSubmit={submitEditProfile}
@@ -298,8 +297,12 @@ interface PersonalInformationTabProps {
     /** Pre-formatted branch operating window, e.g. "07:00 AM - 08:00 PM".
      *  "—" when the branch has no business_hours rows seeded. */
     branchWorkingHoursLabel?: string;
-    /** Admin-side staff fields synced through the `staff` slice. Undefined
-     *  when the instructor's staff row isn't loaded yet. */
+    /** Instructor short introduction — read live from the admin `staff` slice
+     *  (single source; admin owns editing) so it matches the staff detail +
+     *  customer profile. */
+    shortIntro?: string;
+    /** Years of working experience — read live from the admin `staff` slice
+     *  (single source) so admin / instructor / customer stay in sync. */
     workingExperienceYears?: number;
     categories?: string[];
     /** Shift label + window. When provided drives the Shift hours row;
@@ -319,6 +322,7 @@ function PersonalInformationTab({
     branchTimezoneLabel,
     branchWorkingDays,
     branchWorkingHoursLabel,
+    shortIntro,
     workingExperienceYears,
     categories,
     shiftName,
@@ -346,17 +350,11 @@ function PersonalInformationTab({
     } else {
         for (const code of user.working_days ?? []) workingDaySet.add(code);
     }
-    const introduction = user.introduction ?? "";
 
     // Categories: comma-separated string, "—" when empty (matches the
     // Figma reference at the top of this conversation turn).
     const categoriesLabel = categories && categories.length > 0
         ? categories.join(", ")
-        : "—";
-
-    // Work experience: "1 year" / "5 years" / "—" when missing or 0.
-    const workExpLabel = workingExperienceYears && workingExperienceYears > 0
-        ? `${workingExperienceYears} ${workingExperienceYears === 1 ? "year" : "years"}`
         : "—";
 
     // Shift hours row — prefer the live shift slice ("Morning shift (07:00
@@ -417,7 +415,9 @@ function PersonalInformationTab({
                         <ReadOnlyField label="Joined date"     value={fmtJoinedDate(user.joined_at ?? user.created_at)} />
                         <ReadOnlyField label="Email"           value={user.email || "—"} />
                         <ReadOnlyField label="Phone"           value={user.phone || "—"} />
-                        <ReadOnlyField label="Work experience" value={workExpLabel} />
+                        <ReadOnlyField label="Work experience" value={workingExperienceYears != null && workingExperienceYears > 0
+                            ? `${workingExperienceYears} year${workingExperienceYears === 1 ? "" : "s"}`
+                            : "—"} />
                         <ReadOnlyField label="Categories"      value={categoriesLabel} />
                         <div className="flex flex-col gap-1.5 min-w-0">
                             <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Working days</p>
@@ -441,8 +441,11 @@ function PersonalInformationTab({
                         <ReadOnlyField label="Shift hours" value={shiftHoursLabel} />
                     </FieldGrid>
 
-                    {/* Introduction (tinted card with "See more" toggle) */}
-                    <IntroductionCard text={introduction} />
+                    {/* Introduction (read-only) — the short intro admin sets on
+                        the staff detail; shown here + on the customer profile so
+                        all three sides read the same copy. Work experience stays
+                        removed (client 2026-08-19). */}
+                    <IntroductionCard text={shortIntro ?? ""} />
                 </Section>
 
                 <Divider />
@@ -568,10 +571,6 @@ function IntroductionCard({ text }: { text: string }) {
     const truncated = text.length > 220 && !expanded;
 
     return (
-        // Figma 7282:5327 — white card (not tinted), 1px gray border, ~16px
-        // padding. "Introduction" label sits flush to the top edge in muted
-        // gray; body text directly below; "See more" link in sage-green at
-        // the bottom-left.
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-5 py-4 flex flex-col gap-1.5 w-full">
             <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Introduction</p>
             <p className={cn(

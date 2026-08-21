@@ -38,7 +38,6 @@ export function staffExportData(rows: Staff[], look: StaffExportLookups): Export
         { key: "phone", value: s => s.phone },
         { key: "status", value: s => s.status },
         { key: "joined_date", value: s => s.joinedDate },
-        { key: "bio", value: s => s.bio ?? "" },
         { key: "specialties", value: s => (s.specialties ?? []).join("; ") },
         { key: "short_intro", value: s => s.shortIntro ?? "" },
         { key: "working_experience_years", value: s => s.workingExperienceYears ?? "" },

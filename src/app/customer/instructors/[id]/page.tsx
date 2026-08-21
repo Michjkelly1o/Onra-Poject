@@ -35,31 +35,6 @@ import { BranchLocationCard } from "@/components/customer/branch/BranchLocationC
 // Date helpers (to12h / durationMins / REAL_TODAY_ISO …) are shared in
 // `@/lib/customer/dates` (LOCAL date math, matching the admin seed's isoDay).
 
-/** Work experience from the joined date (e.g. "Feb 1, 2024"), to the real today. */
-function workExperience(joinedDate: string): string {
-    const joined = new Date(joinedDate);
-    if (Number.isNaN(joined.getTime())) return "—";
-    const ms = new Date().getTime() - joined.getTime();
-    const years = Math.floor(ms / (365.25 * 86_400_000));
-    if (years >= 1) return `${years} year${years === 1 ? "" : "s"}`;
-    const months = Math.floor(ms / (30.44 * 86_400_000));
-    return months <= 0 ? "New" : `${months} month${months === 1 ? "" : "s"}`;
-}
-
-/** Deterministic career-experience years (5–10), stable per instructor id. */
-function experienceYears(id: string): number {
-    let h = 0;
-    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-    return 5 + (h % 6);
-}
-
-/** Templated bio — there is no bio field in the seed, so it is generated
- *  deterministically from the instructor's name + primary category. */
-function introduction(name: string, primaryCategory: string, years: number): string {
-    const firstName = name.split(" ")[0];
-    return `With ${years} years of experience, ${name} brings dedicated expertise to every ${primaryCategory} session. With a strong background in fitness, ${firstName} empowers clients to master body awareness, functional movement, and core strength.`;
-}
-
 // ── small presentational pieces ────────────────────────────────────────────────
 
 // Last selected schedule date per instructor — preserved for the session (in-memory,
@@ -72,6 +47,7 @@ export default function InstructorDetailPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
     const instructors = useCustomerInstructors();
+    const staff = useAppStore((s) => s.staff);
     const branches = useAppStore((s) => s.branches);
     const schedules = useAppStore((s) => s.classSchedules);
     const showToast = useAppStore((s) => s.showToast);
@@ -130,8 +106,16 @@ export default function InstructorDetailPage() {
 
     const branch = branches.find((b) => b.id === instructor.branchId) ?? null;
 
-    const primaryCategory = categories[0] ?? "fitness";
-    const introText = introduction(instructor.name, primaryCategory, experienceYears(instructor.id));
+    // Short intro — the SAME copy admin sets on the staff detail + the instructor
+    // sees on their account page (single source: the staff row). Instructor id
+    // maps 1:1 to the staff row id.
+    const introText = staff.find((s) => s.id === instructor.id)?.shortIntro ?? "";
+    // Work experience — read from the SAME staff row (single source) so it stays
+    // in sync with the admin staff detail + the instructor's account page.
+    const workExpYears = staff.find((s) => s.id === instructor.id)?.workingExperienceYears;
+    const workExpText = workExpYears != null && workExpYears > 0
+        ? `${workExpYears} year${workExpYears === 1 ? "" : "s"} work experience`
+        : "";
     const categoriesText = categories.length > 0 ? categories.join(", ") : "—";
 
     function selectDate(dateISO: string) {
@@ -208,22 +192,25 @@ export default function InstructorDetailPage() {
 
                 {tab === "details" ? (
                     <div className="flex w-full flex-col gap-6">
-                        {/* Introduction — description with See more (matches Class details) */}
-                        <section className="flex w-full flex-col gap-2">
-                            <p className={`text-sm font-normal leading-5 text-[var(--colors-text-tertiary)] ${descOpen ? "" : "line-clamp-3"}`}>
-                                {introText}
-                            </p>
-                            {introText.length > 120 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setDescOpen((v) => !v)}
-                                    className="self-start text-sm font-semibold text-[var(--brand-text)]"
-                                >
-                                    {descOpen ? "See less" : "See more"}
-                                </button>
-                            )}
-                        </section>
-
+                        {/* Introduction — same short intro as admin detail +
+                            instructor account (single source: staff row). Work
+                            experience stays removed (client 2026-08-19). */}
+                        {introText && (
+                            <section className="flex w-full flex-col gap-2">
+                                <p className={`text-sm font-normal leading-5 text-[var(--colors-text-tertiary)] ${descOpen ? "" : "line-clamp-3"}`}>
+                                    {introText}
+                                </p>
+                                {introText.length > 120 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setDescOpen((v) => !v)}
+                                        className="self-start text-sm font-semibold text-[var(--brand-text)]"
+                                    >
+                                        {descOpen ? "See less" : "See more"}
+                                    </button>
+                                )}
+                            </section>
+                        )}
                         {/* Info list — single-column inline rows (matches Class details) */}
                         <div className="flex w-full flex-col gap-4">
                             <InfoRow icon={Mail01}>
@@ -232,9 +219,11 @@ export default function InstructorDetailPage() {
                             <InfoRow icon={Phone}>
                                 <span>{instructor.phone}</span>
                             </InfoRow>
-                            <InfoRow icon={Briefcase01}>
-                                <span>{workExperience(instructor.joinedDate)} work experience</span>
-                            </InfoRow>
+                            {workExpText && (
+                                <InfoRow icon={Briefcase01}>
+                                    <span>{workExpText}</span>
+                                </InfoRow>
+                            )}
                             <InfoRow icon={Sun}>
                                 <span>{categoriesText}</span>
                             </InfoRow>

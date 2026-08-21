@@ -921,8 +921,15 @@ export interface Staff {
     inviteSentAt?: string;
     firstLoginCompleted: boolean;
     joinedDate: string;
-    bio?: string;
     specialties?: string[];
+    /** Short introduction (instructor-only). Single source of truth for the
+     *  blurb shown on the admin staff detail, the instructor account page, and
+     *  the customer-facing instructor profile. */
+    shortIntro?: string;
+    /** Years of working experience (instructor-only). Single source shown in
+     *  sync on the admin staff detail, the instructor account, and the customer
+     *  instructor profile. */
+    workingExperienceYears?: number;
     /** Canonical "default pay rate" FK (FK → payRates.id). Kept in sync with
      *  `payConfig.default.payRateId` — existing sidebar / preview / payroll
      *  reads still use this single field. */
@@ -930,11 +937,6 @@ export interface Staff {
     /** Multi-track pay configuration. Instructors get Default + Pay per class +
      *  Pay per private; other roles get Default only. */
     payConfig?: StaffPayConfig;
-    /** Short introduction (instructor-only). Surfaces on the instructor
-     *  detail page + (later) the customer-facing instructor portal. */
-    shortIntro?: string;
-    /** Years of working experience (instructor-only). */
-    workingExperienceYears?: number;
     /** Assigned shift id — FK to a future shifts slice (placeholder for
      *  now — Shift management module designs land next). */
     shiftId?: string;
@@ -1189,7 +1191,9 @@ export const customerNotificationSink: {
                   // Freeze policy v2 (client 2026-07-20)
                   | "membership_frozen"
                   | "membership_reactivated"
-                  | "freeze_reminder";
+                  | "freeze_reminder"
+                  // Plan cancellation approval flow (client 2026-08-19)
+                  | "membership_cancelled";
               title: string;
               message: string;
               relatedType: "booking" | "customer_plan";
@@ -2115,7 +2119,7 @@ export interface CustomerPlan {
     name: string;
     planTypeLabel: string;
     creditsLabel: string;
-    status: "active" | "expired" | "frozen" | "freeze_requested" | "cancelled" | "removed";
+    status: "active" | "expired" | "frozen" | "freeze_requested" | "cancel_requested" | "cancelled" | "removed";
     purchasedAtISO: string;
     expiryISO: string;
     priceAed?: number;
@@ -2179,6 +2183,20 @@ export interface CustomerPlan {
     cancelMode?: "today" | "period_end";
     cancelReason?: string;
     cancelledAtISO?: string;
+    // ── Plan cancellation approval flow (client 2026-08-19) — mirrors the
+    //    freeze-request fields above. Populated while `status ===
+    //    "cancel_requested"` (Who-can-cancel = "Customers request, admins
+    //    approve"). Approval copies mode/reason onto the cancel + flips the
+    //    plan to "cancelled"; reject discards them and restores "active". */
+    /** Requested cancel timing while pending admin approval. */
+    cancelRequestMode?: "today" | "period_end";
+    /** Reason the customer supplied with the cancellation request. */
+    cancelRequestReason?: string;
+    /** ISO timestamp the customer submitted the cancellation request. */
+    cancelRequestedAtISO?: string;
+    /** Optional note the admin wrote when rejecting a cancellation request.
+     *  Cleared when the customer submits a new request. */
+    cancelRejectionNote?: string;
     removeReason?: string;
     removedBy?: string;
     removedByRole?: string;
@@ -3265,11 +3283,11 @@ function derivedFlatPlanFields(
     const heldMemberships = plans.filter(p =>
         p.customerId === customerId
         && p.kind === "membership"
-        && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"));
+        && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancel_requested"));
     const heldPackages = plans.filter(p =>
         p.customerId === customerId
         && p.kind === "package"
-        && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"));
+        && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancel_requested"));
     // Membership wins over package if both are present — matches
     // `applyPurchase`'s cascade-cancel bias and reads correctly on the
     // rare interim state before the cascade has run.
@@ -3675,7 +3693,6 @@ function staffFromSeed(s: StaffSeed): Staff {
         inviteSentAt: s.invite_sent_at,
         firstLoginCompleted: s.first_login_completed,
         joinedDate: s.joined_date,
-        bio: s.bio,
         specialties: s.specialties,
         payRateId: s.pay_rate_id,
         shortIntro: s.short_intro,
@@ -4194,7 +4211,7 @@ function reconcileCreditsRemaining(customers: Customer[], plans: CustomerPlan[])
         if (typeof c.creditsRemaining === "number") return c;
         const cust_plans = plans.filter(p =>
             p.customerId === c.id
-            && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
+            && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancel_requested"),
         );
         if (cust_plans.length === 0) return c;
         // Any active unlimited plan → leave the counter undefined so
@@ -4225,7 +4242,7 @@ function reconcileDenormPlan(customers: Customer[], plans: CustomerPlan[]): Cust
     const held = new Map<string, CustomerPlan[]>();
     for (const p of plans) {
         if (p.kind !== "membership" && p.kind !== "package") continue;
-        if (p.status !== "active" && p.status !== "frozen" && p.status !== "freeze_requested") continue;
+        if (p.status !== "active" && p.status !== "frozen" && p.status !== "freeze_requested" && p.status !== "cancel_requested") continue;
         const arr = held.get(p.customerId);
         if (arr) arr.push(p); else held.set(p.customerId, [p]);
     }
@@ -4955,6 +4972,27 @@ export interface AppState {
     rejectFreezeRequest: (planId: string, note?: string) => void;
     /** Cancel a plan — status → cancelled, with the mode + reason recorded. */
     cancelCustomerPlan: (planId: string, mode: "today" | "period_end", reason: string) => void;
+    /** Customer-portal cancellation REQUEST — parks the plan in
+     *  `cancel_requested` with the requested timing + reason. Nothing changes
+     *  (access continues) until an admin approves. Used when the studio's
+     *  `plan_cancel_who === "members_request_admins_approve"`. Mirrors
+     *  requestFreezeByCustomer. */
+    requestCancellationByCustomer: (planId: string, mode: "today" | "period_end", reason: string) => void;
+    /** Admin approves a pending cancellation request — applies the recorded
+     *  mode + reason via `cancelCustomerPlan` (plan → cancelled). Fires
+     *  customer + admin bell rows. */
+    approveCancellationRequest: (planId: string) => void;
+    /** Admin rejects a pending cancellation request. Reverts to `active` and
+     *  stores the optional note so the customer sees why. */
+    rejectCancellationRequest: (planId: string, note?: string) => void;
+    /** Customer WITHDRAWS their own pending freeze request (client 2026-08-19).
+     *  Reverts `freeze_requested` → active + clears the request scratch fields.
+     *  Distinct from rejectFreezeRequest (admin decline) — the copy + bell say
+     *  the member cancelled their own request. */
+    withdrawFreezeRequest: (planId: string) => void;
+    /** Customer WITHDRAWS their own pending cancellation request. Reverts
+     *  `cancel_requested` → active + clears the request scratch fields. */
+    withdrawCancellationRequest: (planId: string) => void;
     reactivateCustomerPlan: (planId: string) => void;
     /** Remove a complimentary grant — status → removed, with reason + actor. */
     removeComplimentaryPlan: (planId: string, reason: string, removedBy: string, removedByRole: string) => void;
@@ -6811,13 +6849,6 @@ export const useAppStore = create<AppState>()(persist(
             const email = nextUser.email ?? "";
             const phone = nextUser.phone ?? "";
 
-            // Phase 3 cascade — instructor's `introduction` (User-level
-            // free-text bio shown in /instructor/account) mirrors to
-            // `staff[].bio` so admin sees the same copy on the staff
-            // profile page. The merged user shape carries it via
-            // optional chaining (instructor_profile augments User).
-            const introduction = (nextUser as typeof nextUser & { introduction?: string }).introduction;
-
             return {
                 currentUser: nextUser,
                 // staff[] (camelCase store) — drives admin Staff & Permissions list
@@ -6832,11 +6863,6 @@ export const useAppStore = create<AppState>()(persist(
                             phone,
                             imageUrl: imageUrl ?? s.imageUrl,
                             initials,
-                            // Bio cascade: only patch when the merged user
-                            // has a defined introduction so callers that
-                            // edit just the name/email don't accidentally
-                            // clobber an existing staff bio.
-                            bio: introduction !== undefined ? introduction : s.bio,
                         }
                         : s,
                 ),
@@ -8354,7 +8380,7 @@ export const useAppStore = create<AppState>()(persist(
         const activePlan = state.customerPlans.find(
             p => p.customerId === customerId
                 && p.planTypeLabel === "Membership"
-                && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"),
+                && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancel_requested"),
         );
         if (activePlan?.status === "frozen" || activePlan?.status === "freeze_requested") {
             return { applies: false, amountAed: 0, scenario };
@@ -9192,7 +9218,7 @@ export const useAppStore = create<AppState>()(persist(
                 if (c.id !== target.customerId) return c;
                 const stillCounted = customerPlans.filter(p =>
                     p.customerId === c.id
-                    && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"));
+                    && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested" || p.status === "cancel_requested"));
                 let cap = 0;
                 let hasUnlimited = false;
                 for (const p of stillCounted) {
@@ -9223,6 +9249,237 @@ export const useAppStore = create<AppState>()(persist(
             const cid = targetPlan.customerId;
             set(state => recomputePatch(state, cid));
         }
+    },
+
+    requestCancellationByCustomer: (planId, mode, reason) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        if (!target) return;
+        const customer = get().customers.find(c => c.id === target.customerId);
+        const nowISO = new Date().toISOString();
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? {
+                          ...p,
+                          status: "cancel_requested" as const,
+                          cancelRequestMode: mode,
+                          cancelRequestReason: reason || undefined,
+                          cancelRequestedAtISO: nowISO,
+                          // Clear a stale rejection note on resubmit.
+                          cancelRejectionNote: undefined,
+                      }
+                    : p,
+            ),
+        }));
+        if (customer) {
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().recordAudit(`${customerName} requested a cancellation`, "customer_plan", planId, target.name, { mode });
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_cancelled",
+                title: "Cancellation requested",
+                message: `Your request to cancel ${target.name} is pending admin approval.`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_cancelled",
+                    title: "Cancellation requested",
+                    body: `${customerName} requested to cancel ${target.name}.`,
+                    icon: "calendar-x",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
+        set(state => recomputePatch(state, target.customerId));
+    },
+
+    approveCancellationRequest: (planId) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        if (!target || target.status !== "cancel_requested") return;
+        const mode = target.cancelRequestMode ?? "period_end";
+        const reason = target.cancelRequestReason ?? "";
+        const customer = get().customers.find(c => c.id === target.customerId);
+        // Clear the request scratch fields, then hand off to the shared cancel
+        // action (flips status → cancelled, records mode/reason, clamps credits,
+        // re-derives flat plan fields, audits).
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? { ...p, cancelRequestMode: undefined, cancelRequestReason: undefined, cancelRequestedAtISO: undefined, cancelRejectionNote: undefined }
+                    : p,
+            ),
+        }));
+        get().cancelCustomerPlan(planId, mode, reason);
+        if (customer) {
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_cancelled",
+                title: "Cancellation approved",
+                message: `Your request to cancel ${target.name} was approved.`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_cancelled",
+                    title: "Cancellation approved",
+                    body: `Approved ${customerName}'s cancellation of ${target.name}.`,
+                    icon: "calendar-x",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
+    },
+
+    rejectCancellationRequest: (planId, note) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        if (!target || target.status !== "cancel_requested") return;
+        const customer = get().customers.find(c => c.id === target.customerId);
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? {
+                          ...p,
+                          status: "active" as const,
+                          cancelRequestMode: undefined,
+                          cancelRequestReason: undefined,
+                          cancelRequestedAtISO: undefined,
+                          cancelRejectionNote: note?.trim() ? note.trim() : undefined,
+                      }
+                    : p,
+            ),
+        }));
+        if (customer) {
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().recordAudit(`Rejected ${customerName}'s cancellation request`, "customer_plan", planId, target.name, note ? { note } : undefined);
+            const noteSuffix = note?.trim() ? ` Note from the studio: ${note.trim()}` : "";
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_reactivated",
+                title: "Cancellation request declined",
+                message: `Your ${target.name} cancellation request was declined.${noteSuffix}`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_reactivated",
+                    title: "Cancellation request declined",
+                    body: `Declined ${customerName}'s cancellation request on ${target.name}.`,
+                    icon: "refresh",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
+        set(state => recomputePatch(state, target.customerId));
+    },
+
+    withdrawFreezeRequest: (planId) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        if (!target || target.status !== "freeze_requested") return;
+        const customer = get().customers.find(c => c.id === target.customerId);
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? {
+                          ...p,
+                          status: "active" as const,
+                          freezeRequestStartISO: undefined,
+                          freezeRequestEndISO: undefined,
+                          freezeRequestReason: undefined,
+                          freezeRequestedAtISO: undefined,
+                          freezeRejectionNote: undefined,
+                      }
+                    : p,
+            ),
+        }));
+        if (customer) {
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().recordAudit(`${customerName} cancelled their freeze request`, "customer_plan", planId, target.name);
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_reactivated",
+                title: "Freeze request cancelled",
+                message: `You cancelled your ${target.name} freeze request — the plan stays active.`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_reactivated",
+                    title: "Freeze request cancelled",
+                    body: `${customerName} cancelled their freeze request on ${target.name}.`,
+                    icon: "refresh",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
+        set(state => recomputePatch(state, target.customerId));
+    },
+
+    withdrawCancellationRequest: (planId) => {
+        const target = get().customerPlans.find(p => p.id === planId);
+        if (!target || target.status !== "cancel_requested") return;
+        const customer = get().customers.find(c => c.id === target.customerId);
+        set(state => ({
+            customerPlans: state.customerPlans.map(p =>
+                p.id === planId
+                    ? {
+                          ...p,
+                          status: "active" as const,
+                          cancelRequestMode: undefined,
+                          cancelRequestReason: undefined,
+                          cancelRequestedAtISO: undefined,
+                          cancelRejectionNote: undefined,
+                      }
+                    : p,
+            ),
+        }));
+        if (customer) {
+            const customerName = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().recordAudit(`${customerName} cancelled their cancellation request`, "customer_plan", planId, target.name);
+            customerNotificationSink.emit?.({
+                customerId: customer.id,
+                event: "membership_reactivated",
+                title: "Cancellation request cancelled",
+                message: `You cancelled your ${target.name} cancellation request — the plan stays active.`,
+                relatedType: "customer_plan",
+                relatedId: planId,
+            });
+            get().emitNotifications({
+                admin: {
+                    tab: "booking",
+                    event: "membership_reactivated",
+                    title: "Cancellation request withdrawn",
+                    body: `${customerName} withdrew their cancellation request on ${target.name}.`,
+                    icon: "refresh",
+                    sourceModule: "booking",
+                    sourceId: planId,
+                    customerId: customer.id,
+                    branchId: customer.branchId,
+                },
+            });
+        }
+        set(state => recomputePatch(state, target.customerId));
     },
 
     reactivateCustomerPlan: (planId) => {
@@ -12096,15 +12353,9 @@ export const useAppStore = create<AppState>()(persist(
                 : state.classSchedules;
 
             if (editingCurrent && editedRow) {
-                // Phase 3 cascade — `staff[].bio` mirrors back to
-                // `currentUser.introduction` so when admin edits Liam's
-                // bio via /admin/staff/[id]/edit, Liam's own
-                // /instructor/account reads the new copy. Only patch
-                // when bio is defined on the edited row (admin may have
-                // only changed identity fields without touching bio).
-                const introductionPatch = editedRow.bio !== undefined
-                    ? { introduction: editedRow.bio }
-                    : {};
+                // When admin edits the logged-in instructor's own row, mirror
+                // the identity fields back to `currentUser` so /instructor/account
+                // reads the new copy on the same render.
                 return {
                     staff: nextStaff,
                     instructors: nextInstructors,
@@ -12116,7 +12367,6 @@ export const useAppStore = create<AppState>()(persist(
                         email:      editedRow.email,
                         phone:      editedRow.phone,
                         avatar_url: editedRow.imageUrl ?? state.currentUser.avatar_url,
-                        ...introductionPatch,
                     },
                 };
             }
@@ -13854,7 +14104,10 @@ export const useAppStore = create<AppState>()(persist(
         // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
         //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
         //   demos re-seed with the 1-credit package instead of the old 3-credit one.
-        version: 122,
+        // v123 — restore instructor "working experience (years)" on the staff rows
+        //   (shown in sync on admin detail / instructor account / customer profile).
+        //   Bump so persisted demos re-seed with the field populated.
+        version: 123,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
