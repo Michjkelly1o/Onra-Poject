@@ -40,11 +40,10 @@ export const CANCELLATIONS_NOSHOWS_REPORT: ReportDefinition = {
     rbac:        ["admin"],
 
     columns: [
-        // Column order matches the client spec image (2026-08). Class date first;
-        // Location kept but hidden-by-default (not in the spec) so the default
-        // visible order matches the image exactly — toggled on it sits after date.
+        // Column order matches the client spec image (2026-08): Class date first,
+        // Location visible right after it, then Class day, Cancellation date, …
         { key: K.classDateISO,    label: "Class date",        kind: "date",     minWidth: 140 },
-        { key: K.location,        label: "Location",          kind: "text",     minWidth: 180, hiddenByDefault: true },
+        { key: K.location,        label: "Location",          kind: "text",     minWidth: 180 },
         { key: K.classDay,        label: "Class day",         kind: "text",     minWidth: 120 },
         { key: K.cancelledAtISO,  label: "Cancellation date", kind: "date",     minWidth: 160 },
         { key: K.startTime,       label: "Start time",        kind: "text",     minWidth: 120 },
