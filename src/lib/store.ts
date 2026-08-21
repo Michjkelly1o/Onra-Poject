@@ -2217,6 +2217,12 @@ export interface CustomerPlan {
  *  the customer-detail Payments tab (Overview metrics + history table). */
 export interface CustomerTransaction {
     id: string;
+    /** Groups the per-product line-item transactions of ONE checkout — all
+     *  lines of a cart share it (stamped in applyPurchase). Undefined on legacy /
+     *  seeded single-item rows, so each of those is its own order. Drives the
+     *  Transactions/Payment-History accordion + the shared transaction number in
+     *  the tables and reports. */
+    orderId?: string;
     customerId: string;
     branchId: string;
     kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card" | "private" | "recovery";
@@ -3342,6 +3348,7 @@ function derivedFlatPlanFields(
 function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransaction {
     return {
         id: t.id,
+        orderId: t.order_id,
         customerId: t.customer_id,
         branchId: t.branch_id,
         kind: t.kind,
@@ -12781,6 +12788,11 @@ export const useAppStore = create<AppState>()(persist(
             // notification points at matches the one the set writes.
             const stamp = txnStamp;
             const nowISO = new Date().toISOString();
+            // One order id for the whole checkout — every line-item transaction
+            // below is stamped with it (see the forEach before the commit) so
+            // the Transactions/Payment-History tables group them into one
+            // accordion + show one shared transaction number.
+            const orderId = `ord_${stamp}`;
             const newPlans: CustomerPlan[] = [];
             const newTransactions: CustomerTransaction[] = [];
             // Gift-card SALE transactions — one per issued card (client Aug
@@ -13150,6 +13162,11 @@ export const useAppStore = create<AppState>()(persist(
                         : {}),
                 });
             });
+
+            // Stamp the shared order id on every line-item transaction of this
+            // checkout so the tables can group them into one accordion + one
+            // transaction number.
+            newTransactions.forEach(t => { t.orderId = orderId; });
 
             // ─── Promo redemption ─────────────────────────────────────────
             // Stamp the applied promo on the FIRST real sale line (gift-card
@@ -14135,7 +14152,7 @@ export const useAppStore = create<AppState>()(persist(
         //   "working experience (years)" on the staff rows (synced across admin
         //   detail / instructor account / customer profile). Bump past both sides
         //   so persisted demos re-seed with the combined seed set.
-        version: 130,
+        version: 131,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

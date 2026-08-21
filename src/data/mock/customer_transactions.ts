@@ -45,6 +45,12 @@ export const customer_transactions: CustomerTransaction[] = [
     // Dashboard Refund-requests approval queue — `complete` rows with a
     // `refund_requested_at` marker awaiting an admin decision.
     ...DEMO_NOW_REFUND_REQUESTS,
+    // ── Multi-item POS order (demo) — one checkout, two products. Both lines
+    //    share `order_id`, so the Transactions + Payment History tables show ONE
+    //    accordion row (expand → each product with its own refund), while the
+    //    reports keep them as two per-product rows with the same transaction #. ─
+    { id: "txn_ord_demo_a", order_id: "ord_2026_08_18_demo", customer_id: "cust_sophia_lee", branch_id: SOUTH, kind: "package", product_id: "pkg_5_class", name: "5-Class Package for One Month", amount_aed: 750, subtotal_aed: 714, tax_aed: 36, tax_rate_percentage: 5, tax_inclusive: false, status: "complete", payment_method: "card", payment_source: "pos", card_type: "mastercard", payment_type: "one_off", transaction_type: "sale", tax_treatment: "standard", staff_id: "user_casey_desk", created_at: "2026-08-18T14:20:00Z", settlement_iso: "2026-08-19T09:00:00Z" },
+    { id: "txn_ord_demo_b", order_id: "ord_2026_08_18_demo", customer_id: "cust_sophia_lee", branch_id: SOUTH, kind: "retail", product_id: "retail_prod_studio_tank", name: "Onra Studio Tank", amount_aed: 240, status: "complete", payment_method: "card", payment_source: "pos", card_type: "mastercard", payment_type: "one_off", transaction_type: "sale", tax_treatment: "standard", staff_id: "user_casey_desk", created_at: "2026-08-18T14:20:00Z", settlement_iso: "2026-08-19T09:00:00Z", retail_product_id: "retail_prod_studio_tank", product_snapshot_name: "Onra Studio Tank", product_snapshot_sku: "APP-TNK-001", product_snapshot_price_aed: 120, product_snapshot_unit_cost_aed: 45, quantity: 2, branch_id_at_sale: SOUTH },
     // ── Ahmed Zayn ───────────────────────────────────────────────────────────
     {
         id: "txn_ahmed_1",

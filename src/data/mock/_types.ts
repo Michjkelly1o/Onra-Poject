@@ -764,6 +764,9 @@ export type TransactionPaymentMethod =
 export interface CustomerTransaction {
     /** e.g. "txn_ahmed_1" */
     id: string;
+    /** Groups the per-product line-item rows of ONE checkout (all share it).
+     *  Omit on single-item rows — each is then its own order. */
+    order_id?: string;
     customer_id: string;   // → customers.id
     branch_id: string;     // → branches.id
     /** Product type bought — drives the "Plan type" column + filter.
