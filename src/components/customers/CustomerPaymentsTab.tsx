@@ -26,8 +26,9 @@ import { useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, ChevronLeft, XClose, AlignLeft,
     CoinsSwap02, CreditCard01, CreditCard02, Package, Gift01, BankNote01,
-    SlashCircle01, Calendar,
+    SlashCircle01, Calendar, Receipt,
 } from "@untitledui/icons";
+import { TransactionReceiptModal } from "@/components/customers/TransactionReceiptModal";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
@@ -576,6 +577,11 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [refundTxn, setRefundTxn] = useState<CustomerTransaction | null>(null);
+    const [receiptTxn, setReceiptTxn] = useState<CustomerTransaction | null>(null);
+    // This tab is scoped to one customer — resolve their display name once for
+    // the receipt modal.
+    const thisCustomer = customers.find(c => c.id === customerId);
+    const thisCustomerName = thisCustomer ? (`${thisCustomer.firstName} ${thisCustomer.lastName}`.trim() || thisCustomer.email) : "—";
 
     useEffect(() => { setPage(1); }, [search, applied, inner]);
 
@@ -893,22 +899,21 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                 </td>
                                                 <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
                                                 <td className={TD}>
-                                                    {/* Only completed AND refundable payments can be
-                                                        refunded. `isRefundable === false` is set on
-                                                        every `cancellation_penalty` row per client
-                                                        spec — those rows never expose the Refund
-                                                        action. Legacy rows without the flag stay
-                                                        refundable (undefined → falsy check misses,
-                                                        explicit false gates). */}
-                                                    {t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards) && (
-                                                        <RowActions
-                                                            items={[{
-                                                                label: "Refund payment",
-                                                                icon: CoinsSwap02,
-                                                                onClick: () => setRefundTxn(t),
-                                                            }]}
-                                                        />
-                                                    )}
+                                                    {/* "Receipt" shows on every row (view/download the
+                                                        receipt). Refund is added only when the payment is
+                                                        completed AND refundable — `isRefundable === false`
+                                                        is set on every `cancellation_penalty` row per
+                                                        client spec, so those never expose the Refund
+                                                        action; legacy rows without the flag stay
+                                                        refundable. */}
+                                                    <RowActions
+                                                        items={[
+                                                            { label: "Receipt", icon: Receipt, onClick: () => setReceiptTxn(t) },
+                                                            ...(t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards)
+                                                                ? [{ label: "Refund payment", icon: CoinsSwap02, onClick: () => setRefundTxn(t) }]
+                                                                : []),
+                                                        ]}
+                                                    />
                                                 </td>
                                             </tr>
                                         ))}
@@ -931,6 +936,11 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
             {refundTxn && (
                 <RefundModal txn={refundTxn} onClose={() => setRefundTxn(null)}
                     onConfirm={reason => handleRefund(refundTxn, reason)} />
+            )}
+
+            {receiptTxn && (
+                <TransactionReceiptModal txn={receiptTxn} customerName={thisCustomerName}
+                    onClose={() => setReceiptTxn(null)} />
             )}
         </div>
     );

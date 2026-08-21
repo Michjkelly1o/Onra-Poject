@@ -16,8 +16,9 @@
 // customer profile, and the Refunds report all re-render together.
 
 import { useEffect, useMemo, useState } from "react";
-import { CoinsSwap02, MarkerPin01 } from "@untitledui/icons";
+import { CoinsSwap02, MarkerPin01, Receipt } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { TransactionReceiptModal } from "@/components/customers/TransactionReceiptModal";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
@@ -57,6 +58,7 @@ export default function TransactionsPage() {
     const [page, setPage]           = useState(1);
     const [pageSize, setPageSize]   = useState(10);
     const [refundTxn, setRefundTxn] = useState<CustomerTransaction | null>(null);
+    const [receiptTxn, setReceiptTxn] = useState<CustomerTransaction | null>(null);
 
     // Reset to page 1 whenever the result set changes.
     useEffect(() => { setPage(1); }, [search, branchId, applied]);
@@ -154,7 +156,7 @@ export default function TransactionsPage() {
             {/* ── Table — sits flush on the admin chrome (no view card); the table
                    scrolls inside this region, pagination pinned below. ── */}
             <div className="flex-1 min-h-0 flex flex-col">
-                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
+                <div className="flex-auto min-h-0 overflow-auto scrollbar-hide relative">
                     {paged.length === 0 ? (
                         <EmptyBlock
                             title={txns.length === 0 ? "No transactions yet" : "No transactions found"}
@@ -163,7 +165,7 @@ export default function TransactionsPage() {
                                 : "Try adjusting your search or filter."}
                         />
                     ) : (
-                        <table className="w-full border-collapse">
+                        <table className="w-full min-w-[1180px] border-collapse">
                             <thead>
                                 <tr>
                                     <th className={TH}>
@@ -196,7 +198,7 @@ export default function TransactionsPage() {
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
                                                 <TxnIcon kind={t.kind} />
-                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
+                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{t.name}</span>
                                             </div>
                                         </td>
                                         <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums")}>{txnNumberOf(t.id)}</td>
@@ -221,15 +223,14 @@ export default function TransactionsPage() {
                                         </td>
                                         <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
                                         <td className={TD}>
-                                            {t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards) && (
-                                                <RowActions
-                                                    items={[{
-                                                        label: "Refund payment",
-                                                        icon: CoinsSwap02,
-                                                        onClick: () => setRefundTxn(t),
-                                                    }]}
-                                                />
-                                            )}
+                                            <RowActions
+                                                items={[
+                                                    { label: "Receipt", icon: Receipt, onClick: () => setReceiptTxn(t) },
+                                                    ...(t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards)
+                                                        ? [{ label: "Refund payment", icon: CoinsSwap02, onClick: () => setRefundTxn(t) }]
+                                                        : []),
+                                                ]}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
@@ -250,6 +251,12 @@ export default function TransactionsPage() {
             {refundTxn && (
                 <RefundModal txn={refundTxn} onClose={() => setRefundTxn(null)}
                     onConfirm={reason => handleRefund(refundTxn, reason)} />
+            )}
+
+            {receiptTxn && (
+                <TransactionReceiptModal txn={receiptTxn}
+                    customerName={customerName(receiptTxn.customerId)}
+                    onClose={() => setReceiptTxn(null)} />
             )}
         </div>
     );
