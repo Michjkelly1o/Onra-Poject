@@ -32,7 +32,7 @@ const K = {
 export const LEAD_DATA_REPORT: ReportDefinition = {
     id:          "lead-data",
     category:    "marketing",
-    title:       "Lead Data",
+    title:       "Leads",
     description: "New prospects captured, by source & stage.",
     type:        "lookback",
     route:       "/reports/lead-data",

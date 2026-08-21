@@ -146,7 +146,7 @@ const CATEGORIES: ReportCategory[] = [
             "Leads, campaigns, promos, referrals, and acquisition efficiency.",
         icon: Announcement01,
         items: [
-            { slug: "lead-data",              label: "Lead Data"              },
+            { slug: "lead-data",              label: "Leads"                  },
             { slug: "lead-conversion",        label: "Lead Conversion"        },
             { slug: "campaign-performance",   label: "Campaign Performance"   },
             { slug: "promo-redemptions",      label: "Promotion Redemptions"  },
