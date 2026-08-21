@@ -35,6 +35,13 @@ import {
     EMPTY_PAYMENT_FILTER, type PaymentFilter,
 } from "@/components/customers/CustomerPaymentsTab";
 
+// Display transaction number — synthesized from the row id, same convention as
+// the Payments / Refunds / VAT reports (#R-…), since the ledger has no separate
+// human-facing number field.
+function txnNumberOf(id: string): string {
+    return `#R-${id.replace(/^txn_/, "").toUpperCase().replace(/_/g, "-")}`;
+}
+
 export default function TransactionsPage() {
     const customerTransactions = useAppStore(s => s.customerTransactions);
     const customers            = useAppStore(s => s.customers);
@@ -91,6 +98,7 @@ export default function TransactionsPage() {
 
     const { sorted, sortKey, sortDir, toggle } = useSort<CustomerTransaction>(filtered, {
         customer: (a, b) => customerName(a.customerId).localeCompare(customerName(b.customerId)),
+        txnNumber:(a, b) => a.id.localeCompare(b.id),
         name:     (a, b) => a.name.localeCompare(b.name),
         planType: (a, b) => a.kind.localeCompare(b.kind),
         amount:   (a, b) => a.amountAed - b.amountAed,
@@ -161,6 +169,9 @@ export default function TransactionsPage() {
                                     <th className={TH}>
                                         <SortableHeader sortKey="name"     currentSort={sortKey} dir={sortDir} onSort={toggle}>Transaction name</SortableHeader>
                                     </th>
+                                    <th className={cn(TH, "w-[170px]")}>
+                                        <SortableHeader sortKey="txnNumber" currentSort={sortKey} dir={sortDir} onSort={toggle}>Transaction number</SortableHeader>
+                                    </th>
                                     <th className={cn(TH, "w-[200px]")}>
                                         <SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggle}>Customer</SortableHeader>
                                     </th>
@@ -188,6 +199,7 @@ export default function TransactionsPage() {
                                                 <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
                                             </div>
                                         </td>
+                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap tabular-nums")}>{txnNumberOf(t.id)}</td>
                                         <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{customerName(t.customerId)}</td>
                                         <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
                                         {/* Refunded rows prefix `+` (money returned to the customer);
