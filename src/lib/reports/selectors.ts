@@ -122,6 +122,10 @@ export interface GiftCardRow {
     recipientName: string;
     recipientEmail: string;
     senderName: string;
+    /** Most recent redemption date (ISO, date-only), blank when never redeemed. */
+    lastRedeemedAtISO: string;
+    /** FK → the sale that purchased this card; blank until POS writes it. */
+    transactionId: string;
     /** Location the buyer purchased from — not on the seed today; falls
      *  back to "—" until POS writes a branch FK back. */
     location: string;
@@ -1017,6 +1021,8 @@ export function selectGiftCards(state: AppState): GiftCardRow[] {
             recipientName:  c.recipient_name ?? "",
             recipientEmail: c.recipient_email ?? "",
             senderName:     c.sender_name ?? "",
+            lastRedeemedAtISO: c.last_redeemed_at ? c.last_redeemed_at.slice(0, 10) : "",
+            transactionId:  c.transaction_id ?? "",
             // Gift cards aren't branch-scoped in the seed yet — hand off
             // an empty branchId + location so the shell falls back to
             // "no branch filter" on this report.
@@ -1459,8 +1465,13 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
         const qty = t.quantity ?? 1;
         const gross = t.amountAed;
         const discount = t.discountValue ?? 0;
-        const tax = t.taxAed ?? 0;
         const net = gross - discount;
+        // Retail POS rows don't store a tax amount — compute it per the doc's
+        // "Net(before tax) × tax rate": standard-rated → net × VAT rate,
+        // zero-rated / exempt / out-of-scope → 0. An explicit taxAed still wins.
+        const retailTreatment = t.taxTreatment ?? "standard";
+        const retailRate = retailTreatment === "standard" ? Number(t.taxRatePercentage ?? 5) / 100 : 0;
+        const tax = t.taxAed ?? net * retailRate;
         const unitCost = t.productSnapshotUnitCostAed ?? 0;
         const totalCost = unitCost * qty;
         // Stored 0-100 (the shell's "percent" kind formats N.N% directly),

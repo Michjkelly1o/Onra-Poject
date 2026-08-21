@@ -13873,7 +13873,7 @@ export const useAppStore = create<AppState>()(persist(
         //   the campaign) + an SMS send-stat on the Summer HIIT campaign. Bump so
         //   persisted demos re-seed with the campaign budgets that feed the
         //   Acquisition Efficiency report.
-        version: 126,
+        version: 127,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

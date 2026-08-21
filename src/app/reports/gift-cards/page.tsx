@@ -58,10 +58,9 @@ export default function GiftCardsReportPage() {
             purchaseDateISO:     c.issuedAtISO.slice(0, 10),
             expiryDateISO:       c.expiresAtISO.slice(0, 10),
             giftCardNumber:      c.code,
-            // The store doesn't join gift-card issuance back to a
-            // transaction id — carrying a blank for now until POS starts
-            // writing the FK to `issued_gift_cards.transaction_id`.
-            transactionNumber:   "",
+            // FK to the purchasing sale (issued_gift_cards.transaction_id) —
+            // blank until POS writes it; column is hidden by default.
+            transactionNumber:   c.transactionId,
             purchaserName:       c.customerName,
             purchaserEmail:      c.customerEmail,
             recipientName:       c.recipientName || "—",
@@ -70,9 +69,9 @@ export default function GiftCardsReportPage() {
             redeemedAmount:      c.redeemed,
             balance:             c.currentBalance,
             status:              STATUS_LABEL[c.status] ?? c.status,
-            // Not tracked per card in today's seed — the store carries
-            // only aggregate redeemed amount, not a per-redemption log.
-            lastRedeemedDateISO: "",
+            // Most recent redemption date — seeded on partially/fully redeemed
+            // cards (issued_gift_cards.last_redeemed_at); blank when unredeemed.
+            lastRedeemedDateISO: c.lastRedeemedAtISO,
             branchId:            c.branchId,
             location:            c.location,
         } satisfies GiftCardDisplayRow));

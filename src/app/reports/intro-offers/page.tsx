@@ -75,9 +75,10 @@ export default function IntroOffersReportPage() {
                     purchaseDateISO:   r.purchasedAtISO.slice(0, 10),
                     expiryDateISO:     r.expiryISO.slice(0, 10),
                     sessionsIncluded:  parseCredits(r.creditsLabel),
-                    // The store doesn't track per-plan credit usage yet;
-                    // set to 0 until credit-consumption events land.
-                    sessionsUsed:      0,
+                    // Credits consumed on the intro plan — derived per-plan by
+                    // derivePlanBalances (reconciled with the customer's live
+                    // creditsRemaining), same source as the Memberships report.
+                    sessionsUsed:      r.creditsUsed,
                     convertedTo:       converted?.planName ?? "",
                     // Price = price of the converted-to plan (per Excel spec).
                     price:             converted?.priceAed ?? 0,

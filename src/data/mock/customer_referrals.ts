@@ -34,8 +34,12 @@ export const customer_referrals: CustomerReferral[] = [
     {
         id: "ref_ahmed_1",
         referrer_customer_id: "cust_ahmed_zayn",
-        referred_name: "Olivia Rhye",
-        referred_email: "olivia.rhye@email.com",
+        // Converted referral — the referred person signed up + bought a plan, so
+        // they resolve to a real customer (feeds the Referrals report's
+        // "Plan purchased" + "Sales" columns). Unconverted referrals below keep
+        // a non-customer name/email → those columns stay blank.
+        referred_name: "Bosa Ahmed",
+        referred_email: "bosa.ahmed@email.com",
         benefit_credits: 2,
         referred_at: "2025-03-28T22:00:00Z",
         expires_at:  "2025-06-26T22:00:00Z",
@@ -58,8 +62,8 @@ export const customer_referrals: CustomerReferral[] = [
     {
         id: "ref_ava_1",
         referrer_customer_id: "cust_ava_wright",
-        referred_name: "Lana Steiner",
-        referred_email: "lana.steiner@email.com",
+        referred_name: "James Taylor",
+        referred_email: "james.taylor@email.com",
         benefit_credits: 2,
         referred_at: "2026-01-15T14:00:00Z",
         expires_at:  "2026-04-15T14:00:00Z",
@@ -92,8 +96,8 @@ export const customer_referrals: CustomerReferral[] = [
     {
         id: "ref_rosale_1",
         referrer_customer_id: "cust_rosale_martin",
-        referred_name: "Natali Craig",
-        referred_email: "natali.craig@email.com",
+        referred_name: "Lucas Brown",
+        referred_email: "lucas.brown@email.com",
         benefit_credits: 2,
         // benefit_type/amount removed Jul 2026 — studio's referral is
         // Class Credit only; row reverts to `benefit_credits`.
@@ -106,8 +110,8 @@ export const customer_referrals: CustomerReferral[] = [
     {
         id: "ref_sophia_1",
         referrer_customer_id: "cust_sophia_lee",
-        referred_name: "Drew Cano",
-        referred_email: "drew.cano@email.com",
+        referred_name: "Zahra Mahen",
+        referred_email: "zahra.mahen@email.com",
         benefit_credits: 2,
         referred_at: "2026-01-22T13:00:00Z",
         expires_at:  "2026-04-22T13:00:00Z",
@@ -128,8 +132,8 @@ export const customer_referrals: CustomerReferral[] = [
     {
         id: "ref_fatima_1",
         referrer_customer_id: "cust_fatima_al_sayed",
-        referred_name: "Kate Morrison",
-        referred_email: "kate.morrison@email.com",
+        referred_name: "Mia Anderson",
+        referred_email: "mia.anderson@email.com",
         benefit_credits: 2,
         referred_at: "2026-02-25T15:20:00Z",
         expires_at:  "2026-05-26T15:20:00Z",
