@@ -671,6 +671,15 @@ export function selectBookings(state: AppState): BookingRow[] {
     const loc = makeLocationLookup(state);
     const cust = makeCustomerLookup(state);
     const scheduleById = new Map((state as unknown as { classSchedules: import("@/lib/store").ClassSchedule[] }).classSchedules?.map(s => [s.id, s]) ?? []);
+    // Session-type dimension → display label for the "Type" column.
+    const SESSION_TYPE_LABEL: Record<string, string> = { class: "Class", private: "Private session", recovery: "Recovery" };
+    // Private + Recovery bookings live in `appointmentBookings` (their sessions are
+    // `appointments`, not `classSchedules`), so we fold them in below.
+    const apptState = state as unknown as {
+        appointments: import("@/lib/store").Appointment[];
+        appointmentBookings: import("@/lib/store").AppointmentBooking[];
+    };
+    const apptById = new Map((apptState.appointments ?? []).map(a => [a.id, a]));
 
     const OUTCOME_LABEL: Record<string, string> = {
         booked:     "Booked",
@@ -696,7 +705,7 @@ export function selectBookings(state: AppState): BookingRow[] {
         return (h || 0) * 60 + (m || 0);
     }
 
-    return state.classBookings.map(b => {
+    const classRows = state.classBookings.map(b => {
         const sched = scheduleById.get(b.classScheduleId);
         const c = cust(b.customerId);
         const duration = sched ? Math.max(0, toMinutes(sched.endTime) - toMinutes(sched.startTime)) : 0;
@@ -732,7 +741,7 @@ export function selectBookings(state: AppState): BookingRow[] {
             startTime:      sched?.startTime ?? "",
             endTime:        sched?.endTime ?? "",
             durationMinutes: duration,
-            typeLabel:      sched?.classType ?? "Class",
+            typeLabel:      SESSION_TYPE_LABEL[sched?.type ?? "class"] ?? "Class",
             className:      sched?.name ?? "—",
             classType:      sched?.category ?? "—",
             instructor:     sched?.instructorName ?? "—",
@@ -752,6 +761,50 @@ export function selectBookings(state: AppState): BookingRow[] {
             location:       loc(b.branchId),
         };
     });
+
+    // ── Private + Recovery bookings (appointmentBookings → appointments) ─────
+    // Real data, so the Type column reads Class / Private session / Recovery and
+    // the counts/grouping cover every session type, not just classes.
+    const APPT_OUTCOME: Record<string, string> = {
+        Booked: "Booked", Attended: "Attended", NoShow: "No-show", Cancelled: "Cancelled",
+    };
+    const appointmentRows: BookingRow[] = (apptState.appointmentBookings ?? []).map(b => {
+        const a = apptById.get(b.appointmentId);
+        const c = cust(b.customerId);
+        const duration = a ? Math.max(0, toMinutes(a.endTime) - toMinutes(a.startTime)) : 0;
+        // Appointments don't carry a late-cancel flag today; a cancel is treated
+        // as on-time (credit returned), a no-show loses the credit.
+        const cancellationType: BookingRow["cancellationType"] = b.status === "Cancelled" ? "On-time" : "";
+        const creditOutcome: BookingRow["creditOutcome"] =
+            cancellationType === "On-time" ? "Returned" : b.status === "NoShow" ? "Lost" : "";
+        return {
+            id:             b.id,
+            bookingDateISO: (b.bookedAt ?? "").slice(0, 10),
+            classDateISO:   a?.dateISO ?? "",
+            classDay:       a?.date?.slice(0, 3) ?? "",
+            startTime:      a?.startTime ?? "",
+            endTime:        a?.endTime ?? "",
+            durationMinutes: duration,
+            typeLabel:      SESSION_TYPE_LABEL[a?.type ?? "private"] ?? "Private session",
+            className:      a?.serviceName ?? "—",
+            classType:      a?.serviceCategory ?? "—",
+            instructor:     a?.instructorName ?? "—",
+            customerId:     b.customerId,
+            customerName:   c ? `${c.firstName} ${c.lastName}`.trim() : (b.customerName || "—"),
+            customerEmail:  c?.email ?? "—",
+            outcomeLabel:   APPT_OUTCOME[b.status] ?? b.status,
+            cancellationType,
+            creditOutcome,
+            charge:         0,
+            paymentStatus:  "",
+            cancelledAtISO: b.cancelledAt ? b.cancelledAt.slice(0, 10) : (a?.dateISO ?? ""),
+            salesChannel:   "—",
+            branchId:       a?.branchId ?? "",
+            location:       a ? loc(a.branchId) : "—",
+        };
+    });
+
+    return [...classRows, ...appointmentRows];
 }
 
 /** 5. selectClassSessions — one row per classSchedule record with
